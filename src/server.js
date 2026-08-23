@@ -137,16 +137,43 @@ app.get('/api/bootstrap', U.wrap((req, res) => {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
 
-// --- static frontend ---
+// --- static frontend (versioned assets, never-stale HTML) ---
 const PUBLIC = path.join(__dirname, '..', 'public');
+
+// প্রতিটি ডিপ্লয়ে নতুন ভার্সন → ব্রাউজার নিশ্চিতভাবে নতুন CSS/JS পায়
+function computeAssetVersion() {
+  let newest = 0;
+  const walk = (dir) => {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, f.name);
+      if (f.isDirectory()) walk(full);
+      else { const m = fs.statSync(full).mtimeMs; if (m > newest) newest = m; }
+    }
+  };
+  try { walk(path.join(PUBLIC, 'js')); walk(path.join(PUBLIC, 'css')); } catch (e) {}
+  return Math.round(newest).toString(36);
+}
+const ASSET_V = computeAssetVersion();
+const INDEX_HTML = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')
+  .replace(/(src|href)="(\/(?:js|css)\/[^"]+)"/g, (m, attr, url) => `${attr}="${url}?v=${ASSET_V}"`);
+
+function sendIndex(req, res) {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.type('html').send(INDEX_HTML);
+}
+app.get('/', sendIndex);
+app.get('/index.html', sendIndex);
 app.use(express.static(PUBLIC, {
   extensions: ['html'],
-  maxAge: PROD ? '7d' : 0,
+  etag: true,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache');
+    if (filePath.endsWith('index.html')) { res.setHeader('Cache-Control', 'no-cache, must-revalidate'); return; }
+    // ?v=… দিয়ে আসা CSS/JS নিরাপদে দীর্ঘমেয়াদে ক্যাশ করা যায়; বাকিগুলো প্রতিবার যাচাই হবে
+    if (/\.(js|css)$/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    else res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
   },
 }));
-app.use((req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
+app.use((req, res) => sendIndex(req, res));
 
 // --- errors ---
 app.use((err, req, res, next) => {
