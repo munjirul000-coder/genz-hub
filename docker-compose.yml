@@ -1,0 +1,19 @@
+services:
+  genzhub:
+    build: .
+    image: genz-hub:1.0.0
+    container_name: genz-hub
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATA_DIR: /data
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@genzhub.app}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      CANONICAL_HOST: ${CANONICAL_HOST:-}
+    volumes:
+      - genzhub-data:/data
+volumes:
+  genzhub-data:

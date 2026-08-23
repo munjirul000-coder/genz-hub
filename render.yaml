@@ -1,0 +1,31 @@
+# Render.com blueprint — Gen-Z Hub (free tier friendly)
+# Render → New → Blueprint → এই repo সিলেক্ট করলেই সব সেটিং অটো পড়ে নেবে।
+services:
+  - type: web
+    name: genz-hub
+    runtime: node
+    plan: free                 # ফ্রি: URL স্থায়ী, ১৫ মিনিট অলস থাকলে ঘুমায়, রিকোয়েস্টে জাগে
+    region: singapore          # বাংলাদেশ থেকে সবচেয়ে কাছের রিজিয়ন
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /tmp/genzhub-data   # ফ্রি টিয়ারে ডিস্ক নেই → রিস্টার্টে রিসেট হবে
+      - key: DEMO_SEED
+        value: "1"                 # খালি ডেটাবেজ পেলে ডেমো ওয়ার্ল্ড নিজে বসে যাবে
+      - key: ADMIN_EMAIL
+        value: admin@genzhub.app
+      - key: ADMIN_PASSWORD
+        generateValue: true        # Render নিজে একটা শক্ত পাসওয়ার্ড বানাবে (dashboard-এ দেখা যাবে)
+
+# ─────────────────────────────────────────────────────────────
+# পরে আসল ইউজারদের ডেটা রাখতে চাইলে (পেইড, ~$7/মাস):
+#   plan: starter  এবং নিচের ব্লকটা যোগ করো, আর DATA_DIR=/var/data করো
+# disk:
+#   name: genzhub-data
+#   mountPath: /var/data
+#   sizeGB: 5

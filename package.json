@@ -1,0 +1,35 @@
+{
+  "name": "genz-hub",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "prod": "NODE_ENV=production node src/server.js",
+    "qa": "bash qa.sh",
+    "uitest": "node ui-test.js",
+    "test": "bash qa.sh && node ui-test.js",
+    "docker:up": "docker compose up -d --build",
+    "seed:demo": "node src/demo-seed.js --fresh",
+    "seed:reset": "node src/demo-seed.js --fresh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "Gen-Z Hub — Connect. Build. Play. Grow.",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "puppeteer": "^24.43.1"
+  },
+  "engines": {
+    "node": ">=18 <23"
+  }
+}

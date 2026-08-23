@@ -1,0 +1,14 @@
+{
+  "name": "Gen-Z Hub — Connect. Build. Play. Grow.",
+  "short_name": "Gen-Z Hub",
+  "description": "Social platform for Gen-Z builders, freelancers, students and gamers. Business Hub and Gaming Hub in one place.",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0c14",
+  "theme_color": "#7c5cff",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
