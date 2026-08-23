@@ -31,6 +31,7 @@ dimensions are stored *after* rotation, so the player never shows a sideways or 
 | Case | What happens | Quality cost |
 |---|---|---|
 | Source already H.264 / AAC (or MP3), yuv420p, ≤ `VIDEO_MAX_HEIGHT`, sane bitrate | **Remux only** (`-c copy -movflags +faststart`) | **Zero** — the original bytes are kept |
+| Web-safe H.264 but a long clip whose re-encode would exceed `VIDEO_MAX_ENCODE_SECONDS` on this host | **Remux the top rendition**, build the smaller rungs underneath | **Zero** for the quality the viewer sees |
 | Anything else (HEVC, VP9, AV1, huge bitrate, > max height) | CRF encode with libx264 High profile | Visually near-transparent |
 
 Encoder settings (per rung): `-crf 21/22/23/24` (1080/720/480/360), `-preset veryfast`
@@ -130,6 +131,8 @@ thumbnail preview in the composer. On failure the user sees **"Video processing 
 | `VIDEO_MAX_HEIGHT` | `1080` | top rung short side |
 | `VIDEO_MAX_MB` | `300` | upload size limit |
 | `VIDEO_MAX_SECONDS` | `900` | duration limit |
+| `VIDEO_MAX_ENCODE_SECONDS` | `180` | above this estimated cost, keep the original bytes instead of re-encoding |
+| `VIDEO_SPEED_FACTOR` | `7.5` on ≤2 cores | encode-seconds per second of 1080p video, used for that estimate |
 | `VIDEO_KEEP_ORIGINAL` | `0` | keep the source master |
 | `MEDIA_BASE_URL` | – | CDN / object-storage prefix for all media URLs |
 | `FFMPEG_PATH` / `FFPROBE_PATH` | – | use system binaries instead of the npm ones |

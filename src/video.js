@@ -157,13 +157,26 @@ function audioArgs(src, kbps) {
   return ['-c:a', 'aac', '-b:a', `${kbps}k`, '-ar', String(src.sample_rate >= 44100 ? 48000 : 44100), '-ac', String(ch)];
 }
 
-/** Can we keep the original bytes for the top rendition? (best possible quality, ~zero CPU) */
-function canRemux(src) {
+/** Is the source directly playable in every browser (so we may keep its bytes as-is)? */
+function isWebSafe(src) {
   if (src.vcodec !== 'h264') return false;
   if (src.acodec && !['aac', 'mp3'].includes(src.acodec)) return false;
   if (src.pix_fmt && src.pix_fmt !== 'yuv420p' && src.pix_fmt !== 'yuvj420p') return false;
-  if (Math.min(src.width, src.height) > MAX_HEIGHT) return false; // huge sources get a sane top rung
+  if (Math.min(src.width, src.height) > MAX_HEIGHT) return false;
   if (src.fps > 62) return false;
+  return true;
+}
+
+/** Rough encode cost (seconds of wall clock) for one rendition on this machine. */
+function estimateEncodeSeconds(src, rung) {
+  const px = (rung ? rung.w * rung.h : src.width * src.height) || (1920 * 1080);
+  const perSecond = Number(process.env.VIDEO_SPEED_FACTOR || (os.cpus().length <= 2 ? 7.5 : 1.5));
+  return (src.duration || 0) * perSecond * (px / (1920 * 1080));
+}
+
+/** Can we keep the original bytes for the top rendition? (best possible quality, ~zero CPU) */
+function canRemux(src) {
+  if (!isWebSafe(src)) return false;
   const px = src.width * src.height;
   const budget = Math.max(2.5e6, px * (src.fps > 40 ? 0.22 : 0.14)); // bits/s ceiling before it is worth re-encoding
   if (src.bitrate && src.bitrate > budget * 2.2) return false;
@@ -205,5 +218,5 @@ async function remux(input, outFile, src, onProgress) {
 
 module.exports = {
   AVAILABLE, TRANSCODE, FFMPEG, FFPROBE, MAX_HEIGHT, PRESET, THREADS, NICE,
-  probe, planLadder, canRemux, makePoster, makeRendition, remux, even,
+  probe, planLadder, canRemux, isWebSafe, estimateEncodeSeconds, makePoster, makeRendition, remux, even,
 };
