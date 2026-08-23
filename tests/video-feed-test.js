@@ -125,32 +125,33 @@ async function scrollTo(page, i) {
     ok(!anyAudible, 'no audio keeps playing after scrolling away');
 
     // manual pause is respected while the video stays on screen
-    await scrollTo(page, 1);
-    await page.evaluate(() => { const b = document.querySelectorAll('.gzv')[1]; if (b) b.querySelector('.gzv-stage').click(); });
+    const IDX = s0.shells > 1 ? 1 : 0;
+    await scrollTo(page, IDX);
+    await page.evaluate((i) => { const b = document.querySelectorAll('.gzv')[i]; if (b) b.querySelector('.gzv-stage').click(); }, IDX);
     await sleep(900);
-    const paused = await page.evaluate(() => { const v = document.querySelectorAll('.gzv')[1].querySelector('video'); return v ? v.paused : null; });
+    const paused = await page.evaluate((i) => { const v = document.querySelectorAll('.gzv')[i].querySelector('video'); return v ? v.paused : null; }, IDX);
     ok(paused === true, 'tap pauses the video and it stays paused');
-    await page.evaluate(() => { const b = document.querySelectorAll('.gzv')[1]; if (b) b.querySelector('.gzv-stage').click(); });
+    await page.evaluate((i) => { const b = document.querySelectorAll('.gzv')[i]; if (b) b.querySelector('.gzv-stage').click(); }, IDX);
     await sleep(1200);
-    const resumed = await page.evaluate(() => { const v = document.querySelectorAll('.gzv')[1].querySelector('video'); return v ? !v.paused : null; });
+    const resumed = await page.evaluate((i) => { const v = document.querySelectorAll('.gzv')[i].querySelector('video'); return v ? !v.paused : null; }, IDX);
     ok(resumed === true, 'tap again resumes playback');
 
     // sound toggle
-    await page.evaluate(() => document.querySelectorAll('.gzv')[1].querySelector('.gzv-snd').click());
+    await page.evaluate((i) => document.querySelectorAll('.gzv')[i].querySelector('.gzv-snd').click(), IDX);
     await sleep(600);
-    const unmuted = await page.evaluate(() => { const v = document.querySelectorAll('.gzv')[1].querySelector('video'); return v && !v.muted; });
+    const unmuted = await page.evaluate((i) => { const v = document.querySelectorAll('.gzv')[i].querySelector('video'); return v && !v.muted; }, IDX);
     ok(unmuted === true, 'sound toggle unmutes the active video');
-    await page.evaluate(() => document.querySelectorAll('.gzv')[1].querySelector('.gzv-snd').click());
+    await page.evaluate((i) => document.querySelectorAll('.gzv')[i].querySelector('.gzv-snd').click(), IDX);
 
     // quality menu + adaptive selection
-    const q = await page.evaluate(() => {
-      const box = document.querySelectorAll('.gzv')[1];
+    const q = await page.evaluate((i) => {
+      const box = document.querySelectorAll('.gzv')[i];
       box.querySelector('.gzv-q').click();
       const items = [...box.querySelectorAll('.gzv-menu button')].map((b) => b.textContent.trim());
       const label = box.querySelector('.gzv-q').textContent.trim();
       const v = box.querySelector('video');
       return { items, label, src: v ? v.currentSrc.split('/').pop() : '' };
-    });
+    }, IDX);
     console.log('   quality menu:', q.items.join(' | '), '→ active:', q.label, q.src);
     ok(q.items.length >= 2, `quality menu offers ${q.items.length} options (${q.items.join(', ')})`);
     ok(/Auto/.test(q.label), 'auto quality is the default');
