@@ -10,7 +10,10 @@
     if (!media || !media.length) return '';
     const n = Math.min(media.length, 4);
     return `<div class="media-grid n${n}">` + media.slice(0, 4).map((m) => m.type === 'video'
-      ? `<video src="${esc(m.url)}" controls preload="metadata" playsinline></video>`
+      ? `<div class="vid-wrap">
+           <video class="gz-video" src="${esc(m.url)}" controls muted playsinline preload="metadata"></video>
+           <button type="button" class="vid-sound" aria-label="Unmute video">🔇</button>
+         </div>`
       : `<img src="${esc(m.url)}" alt="Post attachment" loading="lazy" data-lightbox="${esc(m.url)}">`).join('') + '</div>';
   }
 
@@ -97,6 +100,7 @@
     };
     G.qs('[data-menu]', node).onclick = (e) => { e.stopPropagation(); postMenu(e.currentTarget, p, node, mine); };
     G.qsa('[data-lightbox]', node).forEach((img) => img.onclick = () => G.lightbox(img.dataset.lightbox));
+    if (G.attachVideos) setTimeout(() => G.attachVideos(node), 0);
     return node;
   };
 
