@@ -39,17 +39,36 @@ r.post('/', U.requireAuth, U.rateLimit({ max: 30, windowMs: 5 * 60 * 1000, key: 
   const err = canPostTo(req.user, { group_id, community_id });
   if (err) return res.status(403).json({ error: err });
 
+  const jobs = require('../video-jobs');
+  const cleanMedia = [];
   for (const m of media) {
-    if (!m || typeof m.url !== 'string' || !m.url.startsWith('/uploads/') || !['image', 'video'].includes(m.type)) {
+    if (!m || !['image', 'video'].includes(m.type)) return res.status(400).json({ error: 'Invalid media attachment.' });
+    if (m.type === 'video' && m.asset_uid) {
+      const asset = jobs.getAsset(m.asset_uid);
+      if (!asset) return res.status(400).json({ error: 'That video is no longer available. Please upload it again.' });
+      if (asset.status === 'failed') return res.status(400).json({ error: 'Video processing failed. Please try again.' });
+      if (asset.status !== 'ready') return res.status(409).json({ error: 'Your video is still processing. It will be ready in a moment.' });
+      let stored = [];
+      try { stored = JSON.parse(asset.variants || '[]'); } catch (e) { stored = []; }
+      stored.sort((a, b) => b.h - a.h);
+      cleanMedia.push({
+        url: (stored[0] && stored[0].url) || '',
+        type: 'video', asset_uid: asset.uid, poster: asset.poster || '',
+        width: asset.width, height: asset.height, duration: asset.duration,
+      });
+      continue;
+    }
+    if (typeof m.url !== 'string' || !m.url.startsWith('/uploads/')) {
       return res.status(400).json({ error: 'Invalid media attachment.' });
     }
+    cleanMedia.push({ url: m.url, type: m.type, asset_uid: '', poster: '', width: 0, height: 0, duration: 0 });
   }
 
   const info = db.prepare(`INSERT INTO posts (user_id,content,hub,kind,topic,privacy,group_id,community_id,link_url,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
     .run(req.user.id, content, hub, kind, topic, privacy, group_id, community_id, link_url || null, U.now());
   const id = info.lastInsertRowid;
-  const im = db.prepare('INSERT INTO post_media (post_id,url,type,position) VALUES (?,?,?,?)');
-  media.forEach((m, i) => im.run(id, m.url, m.type, i));
+  const im = db.prepare('INSERT INTO post_media (post_id,url,type,position,asset_uid,poster,width,height,duration) VALUES (?,?,?,?,?,?,?,?,?)');
+  cleanMedia.forEach((m, i) => im.run(id, m.url, m.type, i, m.asset_uid || '', m.poster || '', m.width || 0, m.height || 0, m.duration || 0));
   U.linkHashtags(id, content);
 
   // mentions

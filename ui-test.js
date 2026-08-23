@@ -1,7 +1,7 @@
 /* Headless UI smoke test: boots the SPA in jsdom against the live server and walks every route. */
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const BASE = 'http://127.0.0.1:3000';
+const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 const ROUTES = ['#/', '#/?scope=following', '#/explore', '#/explore?tab=people&q=rafi', '#/explore?tab=posts&q=startup',
   '#/network', '#/network?tab=suggested', '#/messages', '#/notifications', '#/groups', '#/groups?tab=mine',
   '#/communities', '#/business', '#/business?tab=collab', '#/business?tab=people', '#/business?tab=events', '#/business?tab=network',

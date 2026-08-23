@@ -9,12 +9,23 @@
   function mediaHtml(media) {
     if (!media || !media.length) return '';
     const n = Math.min(media.length, 4);
-    return `<div class="media-grid n${n}">` + media.slice(0, 4).map((m) => m.type === 'video'
-      ? `<div class="vid-wrap">
-           <video class="gz-video" src="${esc(m.url)}" controls muted playsinline preload="metadata"></video>
-           <button type="button" class="vid-sound" aria-label="Unmute video">🔇</button>
-         </div>`
-      : `<img src="${esc(m.url)}" alt="Post attachment" loading="lazy" data-lightbox="${esc(m.url)}">`).join('') + '</div>';
+    const items = media.slice(0, 4);
+    const soloVideo = items.length === 1 && items[0].type === 'video';
+    return `<div class="media-grid n${n}${soloVideo ? ' solo-video' : ''}">` + items.map((m) => m.type === 'video'
+      ? videoHtml(m)
+      : `<img src="${esc(m.url)}" alt="Post attachment" loading="lazy" decoding="async" data-lightbox="${esc(m.url)}">`).join('') + '</div>';
+  }
+
+  /* Lazy video shell — the player engine (js/video.js) hydrates it only when it nears the
+     viewport, so a feed with 50 videos still creates at most 3 <video> elements. */
+  function videoHtml(m) {
+    const data = {
+      url: m.url, poster: m.poster || '', width: m.width || 0, height: m.height || 0,
+      duration: m.duration || 0, variants: m.variants || [], asset_uid: m.asset_uid || '',
+      status: m.status || 'ready',
+    };
+    const ar = data.width && data.height ? data.width / data.height : 16 / 9;
+    return `<div class="gzv${ar < 0.95 ? ' is-portrait' : ''}" style="--gzv-ar:${ar.toFixed(4)}" data-gzv="${esc(JSON.stringify(data))}"></div>`;
   }
 
   function hubTag(p) {
@@ -421,10 +432,11 @@
 
     function drawPreview() {
       const box = G.qs('#cp-preview', b);
-      box.innerHTML = media.map((f, i) => `<div style="position:relative">
-        ${f.type === 'video' ? `<video src="${esc(f.url)}" style="width:96px;height:96px;object-fit:cover;border-radius:10px"></video>`
-          : `<img src="${esc(f.url)}" alt="Attachment preview" style="width:96px;height:96px;object-fit:cover;border-radius:10px">`}
-        <button class="iconbtn" data-rm="${i}" aria-label="Remove attachment" style="position:absolute;top:-6px;right:-6px;width:24px;height:24px;font-size:12px;background:var(--danger);color:#fff">✕</button></div>`).join('');
+      box.innerHTML = media.map((f, i) => `<div class="cp-thumb">
+        ${f.type === 'video'
+          ? (f.poster ? `<img src="${esc(f.poster)}" alt="Video thumbnail">` : '<div class="cp-thumb-blank">🎬</div>') + '<span class="cp-thumb-tag">HD</span>'
+          : `<img src="${esc(f.url)}" alt="Attachment preview">`}
+        <button class="iconbtn" data-rm="${i}" aria-label="Remove attachment">✕</button></div>`).join('');
       box.querySelectorAll('[data-rm]').forEach((x) => x.onclick = () => { media.splice(Number(x.dataset.rm), 1); drawPreview(); });
     }
 
@@ -432,15 +444,77 @@
       const files = [...e.target.files];
       if (!files.length) return;
       if (media.length + files.length > 6) return G.toast('Maximum 6 attachments per post.', 'error');
-      const prog = G.qs('#cp-progress', b), bar = G.qs('#cp-bar', b);
+      const prog = G.qs('#cp-progress', b), bar = G.qs('#cp-bar', b), ptext = G.qs('#cp-ptext', b);
+      const goBtn = G.qs('#cp-go', b);
+      const setStage = (label, pct) => {
+        bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+        ptext.textContent = pct >= 100 && /Ready/.test(label) ? label : `${label} — ${Math.round(pct)}%`;
+      };
       prog.hidden = false;
+      goBtn.disabled = true;
+
+      const videos = files.filter((f) => (f.type || '').startsWith('video/'));
+      const others = files.filter((f) => !(f.type || '').startsWith('video/'));
+
       try {
-        const up = await G.uploadFiles(files, (pc) => { bar.style.width = pc + '%'; });
-        media = media.concat(up.filter((f) => f.type !== 'file'));
-        drawPreview();
+        // --- images / files: plain upload ---
+        if (others.length) {
+          setStage('Uploading', 0);
+          const up = await G.uploadFiles(others, (pc) => setStage('Uploading', pc));
+          media = media.concat(up.filter((f) => f.type !== 'file'));
+          drawPreview();
+        }
+        // --- videos: upload → process → optimise → ready ---
+        for (const file of videos) {
+          const asset = await uploadVideo(file, setStage);
+          if (asset) {
+            media.push({
+              type: 'video', url: asset.url, poster: asset.poster, asset_uid: asset.uid,
+              width: asset.width, height: asset.height, duration: asset.duration, variants: asset.variants,
+            });
+            drawPreview();
+          }
+        }
+        if (videos.length) { setStage('Ready ✓', 100); ptext.textContent = 'Ready ✓'; await new Promise((r) => setTimeout(r, 700)); }
       } catch (err) { G.err(err); }
-      prog.hidden = true; bar.style.width = '0'; e.target.value = '';
+      prog.hidden = true; bar.style.width = '0'; goBtn.disabled = false; e.target.value = '';
     };
+
+    /* Upload one video and follow the server-side pipeline until it can be published. */
+    async function uploadVideo(file, setStage) {
+      setStage('Uploading video', 0);
+      let asset;
+      try {
+        asset = await G.uploadVideo(file, (pc) => setStage('Uploading video', pc * 0.6));
+      } catch (err) { throw err; }
+      if (!asset) return null;
+      if (asset.status === 'ready' && asset.variants.length) return asset;
+
+      // poll processing progress
+      for (let i = 0; i < 600; i++) {
+        await new Promise((r) => setTimeout(r, 1200));
+        let d;
+        try { d = await G.get('/media/video/' + asset.uid); } catch (e) { continue; }
+        const a = d.asset;
+        if (!a) continue;
+        if (a.status === 'failed') {
+          const retry = await confirmRetry(asset.uid);
+          if (retry) { asset = retry; i = 0; continue; }
+          throw new Error('Video processing failed.');
+        }
+        const label = a.stage === 'analysing' ? 'Processing video'
+          : a.stage === 'transcoding' ? 'Optimizing video' : 'Optimizing';
+        setStage(label, 60 + (a.progress || 0) * 0.4);
+        if (a.status === 'ready' && a.variants.length) return a;
+      }
+      throw new Error('Video processing is taking too long. Please try again.');
+    }
+
+    async function confirmRetry(uid) {
+      if (!window.confirm('Video processing failed. Try again?')) return null;
+      try { const d = await G.post('/media/video/' + uid + '/retry', {}); return d.asset; }
+      catch (e) { return null; }
+    }
 
     G.qs('#cp-go', b).onclick = async (e) => {
       const errBox = G.qs('#cp-err', b);

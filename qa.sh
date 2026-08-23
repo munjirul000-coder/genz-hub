@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Gen-Z Hub — end-to-end API smoke test
 set -u
-B=http://127.0.0.1:3000/api
+B=${BASE:-http://127.0.0.1:3000}/api
 H='-H Content-Type:application/json -H X-GenZ-Client:1'
 PASS=0; FAIL=0
 ck(){ if [ "$2" = "$3" ]; then PASS=$((PASS+1)); echo "  ok   $1"; else FAIL=$((FAIL+1)); echo "  FAIL $1 (got '$2' want '$3')"; fi }
@@ -142,10 +142,10 @@ curl -s -b /tmp/adm.txt -X PATCH $B/me/settings $H -d '{"theme":"system","lang":
 
 echo "== STATIC =="
 for f in / /css/app.css /js/core.js /js/components.js /js/views-hubs.js; do
-  ck "serve $f" "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000$f)" "200"
+  ck "serve $f" "$(curl -s -o /dev/null -w '%{http_code}' ${BASE:-http://127.0.0.1:3000}$f)" "200"
 done
 ck "unknown api 404 json" "$(curl -s -o /dev/null -w '%{http_code}' $B/does-not-exist -H X-GenZ-Client:1)" "404"
-ck "spa fallback" "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/anything)" "200"
+ck "spa fallback" "$(curl -s -o /dev/null -w '%{http_code}' ${BASE:-http://127.0.0.1:3000}/anything)" "200"
 
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

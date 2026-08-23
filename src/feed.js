@@ -1,6 +1,32 @@
 'use strict';
 const { db } = require('./db');
 const U = require('./util');
+const jobs = require('./video-jobs');
+
+// Hydrate a stored media row into the shape the player needs: poster, intrinsic size and the
+// adaptive rendition list (read live from video_assets so a post always plays the best copy
+// available, even if lower renditions finished after the post was published).
+const assetCache = new Map();
+function hydrateMedia(m) {
+  const base = { url: jobs.mediaUrl(m.url), type: m.type, poster: jobs.mediaUrl(m.poster || ''),
+    width: m.width || 0, height: m.height || 0, duration: m.duration || 0 };
+  if (m.type !== 'video' || !m.asset_uid) return base;
+  let a = assetCache.get(m.asset_uid);
+  if (a === undefined) { a = jobs.publicAsset(jobs.getAsset(m.asset_uid)); assetCache.set(m.asset_uid, a); }
+  if (!a) return base;
+  return {
+    ...base,
+    asset_uid: a.uid,
+    status: a.status,
+    poster: a.poster || base.poster,
+    width: a.width || base.width,
+    height: a.height || base.height,
+    duration: a.duration || base.duration,
+    variants: a.variants,
+    url: (a.variants[0] && a.variants[0].url) || base.url,
+  };
+}
+setInterval(() => assetCache.clear(), 15000).unref?.();
 
 // Base SQL fragment for visibility filtering. Uses :me param (0 for anonymous).
 function visibilitySQL(alias = 'p') {
@@ -44,7 +70,7 @@ function attachExtras(rows, me) {
   const ids = rows.map((r) => Number(r.id));
   const media = db.prepare(`SELECT * FROM post_media WHERE post_id IN (${ids.join(',')}) ORDER BY position`).all();
   const byPost = {};
-  media.forEach((m) => { (byPost[m.post_id] = byPost[m.post_id] || []).push({ url: m.url, type: m.type }); });
+  media.forEach((m) => { (byPost[m.post_id] = byPost[m.post_id] || []).push(hydrateMedia(m)); });
   const out = rows.map((r) => ({ ...r, media: byPost[r.id] || [], is_saved: !!r.is_saved }));
   // resolve reposts one level deep
   const repostIds = out.filter((r) => r.repost_of).map((r) => Number(r.repost_of));
@@ -54,7 +80,7 @@ function attachExtras(rows, me) {
     if (parents.length) {
       const pids = parents.map((x) => Number(x.id));
       db.prepare(`SELECT * FROM post_media WHERE post_id IN (${pids.join(',')}) ORDER BY position`).all()
-        .forEach((m) => { (pm[m.post_id] = pm[m.post_id] || []).push({ url: m.url, type: m.type }); });
+        .forEach((m) => { (pm[m.post_id] = pm[m.post_id] || []).push(hydrateMedia(m)); });
     }
     const map = {};
     parents.forEach((p) => { map[p.id] = { ...p, media: pm[p.id] || [] }; });

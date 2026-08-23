@@ -26,8 +26,13 @@ function wrap(fn) {
 
 // ---- rate limiting (in-memory sliding window) ----
 const buckets = new Map();
+// Automated test runs hammer the same endpoints from one IP; DISABLE_RATE_LIMIT=1 is a local /
+// CI-only escape hatch and is never set in production.
+const RATE_LIMIT_OFF = process.env.DISABLE_RATE_LIMIT === '1' && process.env.NODE_ENV !== 'production';
+
 function rateLimit({ windowMs = 60000, max = 60, key = 'g' } = {}) {
   return (req, res, next) => {
+    if (RATE_LIMIT_OFF) return next();
     const id = `${key}:${req.ip}:${req.user ? req.user.id : ''}`;
     const t = now();
     let arr = buckets.get(id) || [];

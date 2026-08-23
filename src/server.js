@@ -91,16 +91,31 @@ app.post('/api/upload', U.requireAuth, U.rateLimit({ max: 60, windowMs: 10 * 60 
   });
 });
 
-app.use('/uploads', express.static(UPLOAD_DIR, {
-  maxAge: '7d',
-  setHeaders: (res) => { res.setHeader('Content-Disposition', 'inline'); res.setHeader('X-Content-Type-Options', 'nosniff'); },
-}));
+/* --- media delivery ---------------------------------------------------------
+   Processed video renditions + posters are content-addressed (never overwritten), so they get
+   a 1-year immutable cache and are safe to sit behind a CDN. express.static already answers
+   HTTP Range requests, which is what makes seeking/streaming work; we advertise it explicitly.
+   Setting MEDIA_BASE_URL swaps every media URL to object storage/CDN without touching code. */
+const staticMedia = (dir, immutable) => express.static(dir, {
+  maxAge: immutable ? '365d' : '7d',
+  immutable: !!immutable,
+  acceptRanges: true,
+  setHeaders: (res) => {
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*'); // future CDN / object-storage origin pulls
+  },
+});
+app.use('/uploads/v', staticMedia(path.join(UPLOAD_DIR, 'v'), true));
+app.use('/uploads', staticMedia(UPLOAD_DIR, false));
 
 // --- API routes ---
 const auth = require('./routes/auth');
 app.use('/api/auth', auth.router);
 app.use('/api/me', require('./routes/me'));
 app.use('/api/posts', require('./routes/posts'));
+app.use('/api/media', require('./routes/media'));
 const users = require('./routes/users');
 app.use('/api/users', users.router);
 app.use('/api/conversations', require('./routes/messages'));
@@ -195,6 +210,9 @@ if (process.env.DEMO_SEED === '1') {
     }
   } catch (e) { console.error('[demo] seeding skipped:', e.message); }
 }
+
+// Resume any video that was mid-transcode when the process restarted.
+try { require('./video-jobs').resumePending(); } catch (e) { console.error('[video] resume failed', e.message); }
 
 const server = app.listen(PORT, '0.0.0.0', () => console.log(`Gen-Z Hub running on http://0.0.0.0:${PORT} (${PROD ? 'production' : 'development'})`));
 

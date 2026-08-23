@@ -176,3 +176,18 @@ Mobile-first CSS with breakpoints at 1080 / 860 / 420 px: three-column desktop s
 ## Accessibility
 
 Semantic landmarks, labelled inputs and icon buttons, `aria-modal` dialogs with Escape/backdrop close and focus handling, visible focus rings, `aria-live` toasts, alt text on all images, keyboard navigation for story viewer and chat.
+
+## Video pipeline
+
+Gen-Z Hub transcodes uploads with ffmpeg into an honest resolution ladder (never upscaled, never
+over-compressed), generates sharp posters, serves range requests with immutable caching, and plays
+them with a lazy, one-at-a-time, adaptive-quality feed player.
+
+Full architecture, env vars and scaling path: [`deploy/VIDEO-PIPELINE.md`](deploy/VIDEO-PIPELINE.md)
+
+```bash
+node tests/video-quality-test.js /path/to/clip.mp4   # source vs. delivered quality
+node tests/video-feed-test.js                        # scroll behaviour (desktop + mobile)
+node tests/video-stress-test.js                      # 50-video feed + slow network
+node tests/video-upload-ui-test.js /path/to/clip.mp4 # composer upload states
+```

@@ -66,6 +66,26 @@
     });
   };
 
+  // Single high-quality video upload → returns the server-side asset (processed in background)
+  G.uploadVideo = function (file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/media/video');
+      xhr.setRequestHeader('X-GenZ-Client', '1');
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
+      xhr.onload = () => {
+        let d = {}; try { d = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status >= 200 && xhr.status < 300 && d.asset) resolve(d.asset);
+        else reject(new Error(d.error || 'Video upload failed.'));
+      };
+      xhr.onerror = () => reject(new Error('Video upload failed. Check your connection.'));
+      xhr.send(fd);
+    });
+  };
+
   /* ---------------- helpers ---------------- */
   const esc = G.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   G.el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };

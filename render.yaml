@@ -22,3 +22,16 @@ services:
         value: admin@genzhub.app
       - key: ADMIN_PASSWORD
         generateValue: true
+      # ---- video pipeline (ffmpeg ships as an npm dependency, no system package needed) ----
+      - key: VIDEO_PRESET          # x264 speed/quality trade-off for a 0.1-CPU free instance
+        value: veryfast
+      - key: VIDEO_CONCURRENCY     # one transcode at a time so the web process stays responsive
+        value: "1"
+      - key: VIDEO_THREADS
+        value: "1"
+      - key: VIDEO_MAX_HEIGHT      # honest 1080p; drop to 720 if the free instance runs out of CPU
+        value: "1080"
+      - key: VIDEO_MAX_MB
+        value: "150"
+      # - key: MEDIA_BASE_URL      # set to your CDN / object-storage origin to offload delivery
+      #   value: https://cdn.example.com

@@ -12,18 +12,23 @@
     "docker:up": "docker compose up -d --build",
     "seed:demo": "node src/demo-seed.js --fresh",
     "seed:reset": "node src/demo-seed.js --fresh",
-    "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\""
+    "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\"",
+    "test:video": "node tests/video-quality-test.js",
+    "test:feed": "node tests/video-feed-test.js",
+    "test:stress": "node tests/video-stress-test.js"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "description": "Gen-Z Hub — Connect. Build. Play. Grow.",
+  "description": "Gen-Z Hub \u2014 Connect. Build. Play. Grow.",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
     "multer": "^2.2.0"
   },
   "engines": {

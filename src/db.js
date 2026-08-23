@@ -286,6 +286,45 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at INTEGER NOT NULL,
   resolved_at INTEGER
 );
+
+-- ---------------------------------------------------------------- video pipeline
+-- One row per uploaded video. Renditions/poster live on disk (or, later, object storage);
+-- this table is the source of truth for playback URLs so posts never freeze a stale copy.
+CREATE TABLE IF NOT EXISTS video_assets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL UNIQUE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'processing',  -- processing | ready | failed
+  stage TEXT NOT NULL DEFAULT 'queued',       -- queued | analysing | optimizing | renditions | done
+  progress INTEGER NOT NULL DEFAULT 0,        -- 0..100
+  original_name TEXT DEFAULT '',
+  original_path TEXT DEFAULT '',
+  mime TEXT DEFAULT '',
+  bytes INTEGER NOT NULL DEFAULT 0,
+  width INTEGER NOT NULL DEFAULT 0,
+  height INTEGER NOT NULL DEFAULT 0,
+  duration REAL NOT NULL DEFAULT 0,
+  fps REAL NOT NULL DEFAULT 0,
+  rotation INTEGER NOT NULL DEFAULT 0,
+  poster TEXT DEFAULT '',
+  variants TEXT NOT NULL DEFAULT '[]',        -- JSON [{h,w,url,bytes,label,bitrate}]
+  error TEXT DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_video_assets_user ON video_assets(user_id);
+CREATE INDEX IF NOT EXISTS idx_video_assets_status ON video_assets(status);
 `);
+
+// --- lightweight, idempotent column migrations (SQLite has no "ADD COLUMN IF NOT EXISTS") ---
+function addColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+}
+addColumn('post_media', 'asset_uid', "asset_uid TEXT DEFAULT ''");
+addColumn('post_media', 'poster', "poster TEXT DEFAULT ''");
+addColumn('post_media', 'width', 'width INTEGER NOT NULL DEFAULT 0');
+addColumn('post_media', 'height', 'height INTEGER NOT NULL DEFAULT 0');
+addColumn('post_media', 'duration', 'duration REAL NOT NULL DEFAULT 0');
 
 module.exports = { db, DATA_DIR };
