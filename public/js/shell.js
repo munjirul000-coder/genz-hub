@@ -7,15 +7,15 @@
 
   const NAV = [
     ['home', 'home', 'Home', '#/'],
-    ['explore', 'explore', 'Explore', '#/explore'],
-    ['network', 'network', 'Network', '#/network'],
-    ['messages', 'messages', 'Messages', '#/messages'],
-    ['notifications', 'bell', 'Notifications', '#/notifications'],
-    ['groups', 'groups', 'Groups', '#/groups'],
+    ['explore', 'explore', 'Discover', '#/explore'],
     ['communities', 'communities', 'Communities', '#/communities'],
-    ['business', 'business', 'Business Hub', '#/business'],
-    ['gaming', 'gaming', 'Gaming Hub', '#/gaming'],
+    ['business', 'business', 'Business', '#/business'],
+    ['gaming', 'gaming', 'Gaming', '#/gaming'],
+    ['projects', 'target', 'Projects', '#/projects'],
+    ['network', 'network', 'Connections', '#/network'],
+    ['groups', 'groups', 'Groups', '#/groups'],
     ['events', 'events', 'Events', '#/events'],
+    ['messages', 'messages', 'Messages', '#/messages'],
     ['saved', 'saved', 'Saved', '#/saved'],
     ['settings', 'settings', 'Settings', '#/settings'],
   ];
@@ -60,20 +60,18 @@
         <aside class="rail rail-right side" id="rail" aria-label="Suggestions"></aside>
       </div>
       <nav class="tabbar" aria-label="Mobile navigation">
-        <button data-go="#/" data-k="home"><span class="ti">${G.icon('home', 22)}</span>${esc(G.t('Home'))}</button>
-        <button data-go="#/explore" data-k="explore"><span class="ti">${G.icon('explore', 22)}</span>${esc(G.t('Explore'))}</button>
-        <button data-go="create" data-k="create" class="tab-create"><span class="ti">${G.icon('plus', 22)}</span>${esc(G.t('Create'))}</button>
-        <button data-go="#/notifications" data-k="notifications"><span class="ti">${G.icon('bell', 22)}</span>${esc(G.t('Notifications'))}<span class="dot" id="b-tab-notifications" hidden></span></button>
-        <button data-go="#/menu" data-k="menu"><span class="ti">${G.icon('menu', 22)}</span>${esc(G.t('Menu'))}</button>
+        <button data-go="#/" data-k="home"><span class="ti">${G.icon('home', 21)}</span>${esc(G.t('Home'))}</button>
+        <button data-go="#/explore" data-k="explore"><span class="ti">${G.icon('explore', 21)}</span>Discover</button>
+        <button data-go="create" data-k="create" class="tab-create"><span class="ti">${G.icon('plus', 21)}</span>${esc(G.t('Create'))}</button>
+        <button data-go="#/messages" data-k="messages"><span class="ti">${G.icon('messages', 21)}</span>Chats<span class="dot" id="b-tab-messages" hidden></span></button>
+        <button data-go="#/menu" data-k="menu"><span class="ti">${G.icon('menu', 21)}</span>${esc(G.t('Menu'))}</button>
       </nav>`;
 
     G.qs('#sidenav').innerHTML = `
-      <div class="card pad" style="margin-bottom:14px">
-        <a class="row" href="#/u/${esc(u.username)}">${G.avatar(u, 42)}
-          <div class="grow"><div class="bold" style="font-size:14.5px">${esc(u.full_name)}</div>
-          <div class="tiny muted">@${esc(u.username)}</div></div></a>
-      </div>
-      <div class="card pad" style="padding:8px">${NAV.map((n) => `
+      <a class="me-card" href="#/u/${esc(u.username)}">${G.avatar(u, 44)}
+        <span class="grow" style="min-width:0"><span class="bold" style="display:block;font-size:14.5px">${esc(u.full_name)}</span>
+        <span class="tiny muted">@${esc(u.username)}</span></span></a>
+      <div class="rail-nav">${NAV.map((n) => `
         <a class="nav-item" data-k="${n[0]}" href="${n[3]}"><span class="ni">${G.icon(n[1], 20)}</span>${esc(G.t(n[2]))}
         ${['messages', 'notifications', 'network'].includes(n[0]) ? `<span class="cnt" id="s-${n[0]}" hidden></span>` : ''}</a>`).join('')}
       </div>
@@ -150,6 +148,7 @@
       const set = (id, n) => { const e = G.qs(id); if (e) { e.textContent = n > 99 ? '99+' : n; e.hidden = !n; } };
       set('#b-notifications', badges.notifications);
       set('#b-tab-notifications', badges.notifications);
+      set('#b-tab-messages', badges.messages);
       set('#b-messages', badges.messages);
       set('#s-notifications', badges.notifications);
       set('#s-messages', badges.messages);

@@ -167,30 +167,63 @@
     if (!G.requireUser()) return;
     const view = G.mountShell();
     const scope = query.scope || 'for-you';
-    view.innerHTML = `<div id="stories"></div>
-      <div class="card pad composer" style="margin:14px 0">
-        <div class="row" style="align-items:flex-start">${G.avatar(S.user, 42)}
-          <button class="grow" id="open-composer" style="text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:11px 14px;color:var(--muted);cursor:pointer">
-            ${esc(G.t('What is happening?'))}</button></div>
-        <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-ghost" data-quick="media">🖼️ Photo/Video</button>
-          ${S.user.in_business ? '<button class="btn btn-sm btn-ghost" data-quick="business">💼 Business post</button>' : ''}
-          ${S.user.in_gaming ? '<button class="btn btn-sm btn-ghost" data-quick="gaming">🎮 Gaming post</button>' : ''}
-          <button class="btn btn-sm btn-ghost" data-quick="story">✨ Story</button>
+    const hour = new Date().getHours();
+    const greeting = hour < 5 ? 'Late night' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 22 ? 'Good evening' : 'Late night';
+    const firstName = esc(S.user.full_name.split(' ')[0]);
+    const myInterests = (S.user.interests || []).slice(0, 4);
+    view.innerHTML = `
+      <section class="greet rise">
+        <div class="between wrap" style="align-items:flex-start">
+          <div>
+            <h1>${greeting}, ${firstName}</h1>
+            <div class="sub">What's happening in your world today?</div>
+            ${myInterests.length ? `<div class="row wrap" style="gap:6px;margin-top:12px">${myInterests.map((i) => `<span class="pill">${esc(i.name)}</span>`).join('')}</div>` : ''}
+          </div>
+          <div class="row" style="gap:10px">${G.avatar(S.user, 52)}</div>
+        </div>
+        <div class="quick">
+          <button class="btn btn-primary btn-sm" data-quick="post">${G.icon('edit', 16)} Create post</button>
+          <a class="btn btn-ghost btn-sm" href="#/explore?tab=people">${G.icon('network', 16)} Find people</a>
+          <a class="btn btn-ghost btn-sm" href="#/gaming?tab=teams">${G.icon('target', 16)} Find team</a>
+          <a class="btn btn-ghost btn-sm" href="#/communities">${G.icon('communities', 16)} Explore communities</a>
+        </div>
+      </section>
+      <div id="stories"></div>
+      <div class="card pad composer-shell" style="margin:var(--gap) 0">
+        <button class="composer-trigger" id="open-composer" style="border:0;box-shadow:none;padding:0;background:none">
+          ${G.avatar(S.user, 44)}<span class="ph">Share an idea, a win, or what you're building…</span>
+          <span class="btn btn-primary btn-sm" aria-hidden="true">${G.icon('send', 15)} Post</span>
+        </button>
+        <div class="type-row">
+          <button class="type-btn" data-type="photo">${G.icon('image', 16)} Photo</button>
+          <button class="type-btn" data-type="video">${G.icon('gaming', 16)} Video</button>
+          <button class="type-btn" data-type="project">${G.icon('target', 16)} Project</button>
+          ${S.user.in_business ? `<button class="type-btn" data-type="business">${G.icon('business', 16)} Business</button>` : ''}
+          ${S.user.in_gaming ? `<button class="type-btn" data-type="gaming">${G.icon('gaming', 16)} Gaming</button>` : ''}
+          <button class="type-btn" data-type="question">${G.icon('sparkle', 16)} Question</button>
+          <button class="type-btn" data-type="story">${G.icon('camera', 16)} Story</button>
         </div>
       </div>
-      <div class="tabs" style="margin-bottom:14px">
-        <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">${esc(G.t('For you'))}</button>
-        <button class="tab ${scope === 'following' ? 'on' : ''}" data-scope="following">Following</button>
+      <div class="between" style="margin-bottom:14px">
+        <div class="tabs" style="display:inline-flex">
+          <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">For you</button>
+          <button class="tab ${scope === 'following' ? 'on' : ''}" data-scope="following">Following</button>
+        </div>
       </div>
       <div id="feed"></div>`;
     storiesBar(G.qs('#stories', view));
     G.qs('#open-composer', view).onclick = () => G.openComposer({});
-    G.qsa('[data-quick]', view).forEach((b) => b.onclick = () => {
-      const k = b.dataset.quick;
-      if (k === 'story') return createStory();
-      if (k === 'media') return G.openComposer({});
-      G.openComposer({ hub: k });
+    G.qsa('[data-quick]', view).forEach((b) => b.onclick = () => G.openComposer({}));
+    G.qsa('[data-type]', view).forEach((b) => b.onclick = () => {
+      const t = b.dataset.type;
+      if (t === 'story') return createStory();
+      const map = {
+        photo: { openFile: true }, video: { openFile: true },
+        project: { hub: S.user.in_business ? 'business' : 'general', kind: 'collab', label: 'project' },
+        business: { hub: 'business' }, gaming: { hub: 'gaming' },
+        question: { prefill: '', label: 'question' },
+      };
+      G.openComposer(Object.assign({ contentType: t }, map[t] || {}));
     });
     G.qsa('[data-scope]', view).forEach((b) => b.onclick = () => { location.hash = '#/?scope=' + b.dataset.scope; });
     G.feedList(G.qs('#feed', view), `/posts/feed?scope=${encodeURIComponent(scope)}`, {

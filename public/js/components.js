@@ -35,15 +35,13 @@
     const inner = p.original;
     const node = G.el(`<article class="card post fade-in" data-post="${p.id}">
       <div class="post-head">
-        <a href="#/u/${esc(p.username)}" aria-label="${esc(p.full_name)} profile">${G.avatar(p, 42)}</a>
+        <a href="#/u/${esc(p.username)}" aria-label="${esc(p.full_name)} profile">${G.avatar(p, 46)}</a>
         <div class="grow">
-          <div class="row wrap" style="gap:6px">
-            <a class="bold" href="#/u/${esc(p.username)}">${esc(p.full_name)}</a>
-            <span class="tiny muted">@${esc(p.username)} · ${G.timeAgo(p.created_at)}${p.updated_at ? ' · edited' : ''}</span>
-          </div>
-          <div class="row wrap" style="gap:5px;margin-top:4px">${hubTag(p)}</div>
+          <a class="nm" href="#/u/${esc(p.username)}">${esc(p.full_name)}</a>
+          <div class="post-meta"><span>@${esc(p.username)}</span><span>·</span><span>${G.timeAgo(p.created_at)}</span>${p.updated_at ? '<span>· edited</span>' : ''}</div>
+          <div class="row wrap" style="gap:6px;margin-top:8px">${hubTag(p)}</div>
         </div>
-        <div style="position:relative"><button class="iconbtn" data-menu aria-label="Post options">${G.icon('more', 18)}</button></div>
+        <div style="position:relative"><button class="iconbtn" data-menu aria-label="Post options" style="width:36px;height:36px;border-radius:12px">${G.icon('more', 17)}</button></div>
       </div>
       ${p.content ? `<div class="post-body">${G.linkify(p.content)}</div>` : ''}
       ${p.link_url ? `<a class="quote row" href="${esc(p.link_url)}" target="_blank" rel="noopener nofollow"><span>🔗</span><span class="grow small" style="word-break:break-all">${esc(p.link_url)}</span></a>` : ''}
@@ -52,10 +50,10 @@
           <a class="bold small" href="#/u/${esc(inner.username)}">${esc(inner.full_name)}</a>
           <span class="tiny muted">· ${G.timeAgo(inner.created_at)}</span></div>
         <div class="post-body small">${G.linkify(inner.content || '')}</div>${mediaHtml(inner.media)}</div>` : ''}
-      <div class="row small muted" style="margin-top:10px;gap:14px">
-        <span data-count-r>${G.num(p.reaction_count)} reactions</span>
-        <span data-count-c>${G.num(p.comment_count)} comments</span>
-        <span>${G.num(p.repost_count)} reposts</span>
+      <div class="post-stats">
+        <span data-count-r class="num">${G.num(p.reaction_count)} reactions</span>
+        <span data-count-c class="num">${G.num(p.comment_count)} comments</span>
+        <span class="num">${G.num(p.repost_count)} reposts</span>
       </div>
       <div class="post-actions">
         <button class="pa ${p.my_reaction ? 'on' : ''}" data-react>${p.my_reaction ? REACTIONS[p.my_reaction] : G.icon('heart', 18)} <span class="lbl">${esc(G.t('Like'))}</span></button>
@@ -311,9 +309,18 @@
     if (!G.requireUser()) return;
     opts = opts || {};
     const u = S.user;
-    const m = G.modal('Create post', `
-      <div class="row" style="align-items:flex-start">${G.avatar(u, 44)}
+    const m = G.modal('Create', `
+      <div class="row" style="align-items:flex-start">${G.avatar(u, 46)}
         <div class="grow"><div class="bold">${esc(u.full_name)}</div><div class="tiny muted">@${esc(u.username)}</div></div></div>
+      <div class="type-row" id="cp-types" style="margin-top:14px">
+        <button type="button" class="type-btn on" data-ct="text">${G.icon('edit', 15)} Text</button>
+        <button type="button" class="type-btn" data-ct="photo">${G.icon('image', 15)} Photo</button>
+        <button type="button" class="type-btn" data-ct="video">${G.icon('gaming', 15)} Video</button>
+        <button type="button" class="type-btn" data-ct="project">${G.icon('target', 15)} Project</button>
+        ${u.in_business ? `<button type="button" class="type-btn" data-ct="business">${G.icon('business', 15)} Business</button>` : ''}
+        ${u.in_gaming ? `<button type="button" class="type-btn" data-ct="gaming">${G.icon('gaming', 15)} Gaming</button>` : ''}
+        <button type="button" class="type-btn" data-ct="question">${G.icon('sparkle', 15)} Question</button>
+      </div>
       <div class="field" style="margin-top:12px">
         <label class="sr-only" for="cp-text">Post content</label>
         <textarea class="textarea" id="cp-text" style="min-height:120px" maxlength="5000"
@@ -347,7 +354,7 @@
       <div id="cp-topicwrap" hidden class="field"><label class="label" for="cp-topic">Topic</label>
         <select class="select" id="cp-topic"></select></div>
       <div class="err" id="cp-err" hidden></div>
-      <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" id="cp-go">🚀 Publish</button></div>`);
+      <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" id="cp-go">${G.icon('send', 16)} Publish</button></div>`);
 
     const b = m.body;
     const ta = G.qs('#cp-text', b), dest = G.qs('#cp-dest', b), priv = G.qs('#cp-priv', b);
@@ -355,6 +362,29 @@
     let media = [];
 
     ta.addEventListener('input', () => { G.qs('#cp-count', b).textContent = ta.value.length + ' / 5000'; });
+
+    const PLACEHOLDER = {
+      text: "Share an idea, a win, or what you're building…",
+      photo: 'Add a caption for your photo…',
+      video: 'Tell people what this video is about…',
+      project: 'What are you building? Who do you need on the team?',
+      business: 'Share a business insight, number, or lesson…',
+      gaming: 'Clip, rank-up, squad call — what happened?',
+      question: 'Ask the community something specific…',
+    };
+    function applyType(t) {
+      G.qsa('[data-ct]', b).forEach((x) => x.classList.toggle('on', x.dataset.ct === t));
+      ta.placeholder = PLACEHOLDER[t] || PLACEHOLDER.text;
+      const kindSel = G.qs('#cp-kind', b);
+      if (t === 'project') { if (u.in_business) dest.value = 'business'; kindSel.value = 'collab'; }
+      else if (t === 'business') { dest.value = 'business'; kindSel.value = 'post'; }
+      else if (t === 'gaming') { dest.value = 'gaming'; kindSel.value = 'post'; }
+      else if (t === 'question') { kindSel.value = 'post'; }
+      else kindSel.value = 'post';
+      syncTopic();
+      if ((t === 'photo' || t === 'video') && !ta.dataset.picked) { ta.dataset.picked = '1'; G.qs('#cp-file', b).click(); }
+    }
+    G.qsa('[data-ct]', b).forEach((x) => x.onclick = () => applyType(x.dataset.ct));
 
     // destination options
     G.get('/groups?mine=1').then((r) => {
@@ -371,6 +401,7 @@
     }).catch(() => {});
     if (opts.hub) dest.value = opts.hub;
     if (opts.kind) G.qs('#cp-kind', b).value = opts.kind;
+    setTimeout(() => { if (opts.contentType) applyType(opts.contentType); }, 40);
 
     const BIZ = ['Startups', 'Freelancing', 'Marketing', 'E-commerce', 'Technology', 'Business Ideas', 'Networking'];
     const GAME = ['Esports', 'Mobile Gaming', 'PC Gaming', 'Console Gaming', 'Tournaments', 'Teams'];
@@ -412,7 +443,10 @@
       errBox.hidden = true;
       const content = ta.value.trim();
       if (!content && !media.length) { errBox.textContent = 'Write something or attach a photo/video.'; errBox.hidden = false; return; }
-      const payload = { content, media, privacy: priv.value, kind: G.qs('#cp-kind', b).value, link_url: G.qs('#cp-link', b).value.trim() };
+      const activeType = (G.qs('[data-ct].on', b) || {}).dataset;
+      let finalContent = content;
+      if (activeType && activeType.ct === 'question' && !/#question/i.test(finalContent)) finalContent += '\n\n#question';
+      const payload = { content: finalContent, media, privacy: priv.value, kind: G.qs('#cp-kind', b).value, link_url: G.qs('#cp-link', b).value.trim() };
       const d = dest.value;
       if (d.startsWith('g:')) { payload.group_id = Number(d.slice(2)); payload.hub = 'general'; }
       else if (d.startsWith('c:')) { payload.community_id = Number(d.slice(2)); payload.hub = 'general'; }
@@ -428,7 +462,7 @@
         else if (['home', 'business', 'gaming'].includes(S.route.name)) G.render();
       } catch (err) {
         errBox.textContent = err.message; errBox.hidden = false;
-        e.target.disabled = false; e.target.textContent = '🚀 Publish';
+        e.target.disabled = false; e.target.innerHTML = G.icon('send', 16) + ' Publish';
       }
     };
   };
@@ -500,6 +534,36 @@
         fb.className = 'btn btn-sm ' + (r.following ? 'btn-ghost' : 'btn-primary');
       } catch (e) { G.err(e); }
       fb.disabled = false;
+    };
+    return node;
+  };
+
+  G.projectCard = function (p) {
+    const cover = (p.media && p.media[0] && p.media[0].type === 'image') ? p.media[0].url : null;
+    const title = (p.content || '').split('\n')[0].replace(/#\S+/g, '').trim().slice(0, 70) || 'Untitled project';
+    const desc = (p.content || '').replace(title, '').replace(/#\S+/g, '').trim().slice(0, 130);
+    const tags = (p.content.match(/#([\p{L}0-9_]{2,24})/gu) || []).slice(0, 3);
+    const node = G.el(`<article class="project-card fade-in">
+      <div class="project-cover">${cover ? `<img src="${esc(cover)}" alt="">` : esc(title.slice(0, 42))}
+        <span class="status-tag">${p.kind === 'collab' ? 'Recruiting' : p.hub === 'gaming' ? 'Team' : 'Active'}</span></div>
+      <div class="project-body">
+        <div class="bold" style="font-size:15.5px;line-height:1.3">${esc(title)}</div>
+        ${desc ? `<p class="small muted" style="margin:0">${esc(desc)}</p>` : ''}
+        <div class="row wrap" style="gap:6px">${tags.map((t) => `<span class="pill">${esc(t)}</span>`).join('')}</div>
+        <div class="between" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--line-soft)">
+          <a class="row" href="#/u/${esc(p.username)}" style="gap:8px">${G.avatar(p, 28)}
+            <span class="tiny bold">${esc(p.full_name)}</span></a>
+          <span class="tiny muted num">${G.num(p.reaction_count)} · ${G.num(p.comment_count)} 💬</span>
+        </div>
+        <div class="row" style="gap:8px">
+          <button class="btn btn-sm btn-primary grow" data-open>View</button>
+          <button class="btn btn-sm btn-ghost" data-msg>${G.icon('messages', 15)}</button>
+        </div>
+      </div></article>`);
+    G.qs('[data-open]', node).onclick = () => { location.hash = '#/post/' + p.id; };
+    G.qs('[data-msg]', node).onclick = async () => {
+      try { const r = await G.post('/conversations/start', { user_id: p.user_id }); location.hash = '#/messages/' + r.conversation_id; }
+      catch (e) { G.err(e); }
     };
     return node;
   };
