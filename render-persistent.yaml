@@ -1,21 +1,27 @@
+# ডেটা স্থায়ী রাখার সংস্করণ — Render Starter (~$7/মাস), persistent disk সহ।
+# ব্যবহার করতে: এই ফাইলের কনটেন্ট render.yaml-এ কপি করে commit করো।
 services:
   - type: web
     name: genz-hub
     runtime: node
-    plan: free
+    plan: starter
     region: singapore
     branch: main
     buildCommand: npm ci && npm run build
     startCommand: node src/server.js
     healthCheckPath: /api/health
     autoDeploy: true
+    disk:
+      name: genzhub-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20.19.0"
       - key: NODE_ENV
         value: production
       - key: DATA_DIR
-        value: /opt/render/project/src/data
+        value: /var/data
       - key: DEMO_SEED
         value: "1"
       - key: ADMIN_EMAIL

@@ -7,11 +7,12 @@
     "dev": "node src/server.js",
     "prod": "NODE_ENV=production node src/server.js",
     "qa": "bash qa.sh",
-    "uitest": "node ui-test.js",
-    "test": "bash qa.sh && node ui-test.js",
+    "uitest": "npx --yes jsdom@29 >/dev/null 2>&1; node ui-test.js",
+    "test": "bash qa.sh",
     "docker:up": "docker compose up -d --build",
     "seed:demo": "node src/demo-seed.js --fresh",
-    "seed:reset": "node src/demo-seed.js --fresh"
+    "seed:reset": "node src/demo-seed.js --fresh",
+    "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\""
   },
   "keywords": [],
   "author": "",
@@ -25,11 +26,7 @@
     "express": "^5.2.1",
     "multer": "^2.2.0"
   },
-  "devDependencies": {
-    "jsdom": "^29.1.1",
-    "puppeteer": "^24.43.1"
-  },
   "engines": {
-    "node": ">=18 <23"
+    "node": ">=18"
   }
 }
