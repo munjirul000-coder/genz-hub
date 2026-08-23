@@ -104,7 +104,17 @@ async function scrollTo(page, i) {
     }
     ok(multi === 0, 'never two videos playing at the same time');
     ok(seen.filter((x) => x.playing === 1).length >= Math.min(4, s0.shells), `each visible video autoplays (${seen.filter((x) => x.playing === 1).length}/${seen.length})`);
-    ok(new Set(seen.map((x) => x.src)).size >= 3, 'the active video actually changes while scrolling');
+    // how many *distinct* clips do the first six shells actually contain? (a demo feed may reuse one)
+    const distinctAvailable = await page.evaluate(() => {
+      const urls = [...document.querySelectorAll('.gzv')].slice(0, 6).map((b) => {
+        const d = JSON.parse(b.getAttribute('data-gzv') || '{}');
+        return (d.variants && d.variants[0] && d.variants[0].url) || d.url || '';
+      });
+      return new Set(urls).size;
+    });
+    const distinctPlayed = new Set(seen.map((x) => x.src)).size;
+    ok(distinctPlayed >= Math.min(3, distinctAvailable),
+      `the active video actually changes while scrolling (${distinctPlayed} distinct of ${distinctAvailable} available)`);
     ok(maxAttached <= 3, `pool stays small while scrolling (max ${maxAttached} <video> elements)`);
 
     // scroll away from everything → all paused
