@@ -579,9 +579,31 @@
         done = true;
       }
       loading = false;
+      // If the sentinel is STILL in view after this page (short viewports / tall screens), keep
+      // going. IntersectionObserver only fires on transitions, so without this the mobile feed
+      // stopped loading after two pages.
+      setTimeout(() => fillIfNeeded(true), 60);
     }
-    const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) load(); }, { rootMargin: '400px' });
-    load().then(() => io.observe(sentinel));
+    // Auto-fill exists because IntersectionObserver only fires on transitions: on a short screen the
+    // sentinel can stay visible forever and the feed would stop after two pages. It is deliberately
+    // capped and disabled on slow links so it never competes with video for bandwidth.
+    let autoFills = 0;
+    const onScroll = () => { autoFills = 0; fillIfNeeded(false); };
+    function fillIfNeeded(auto) {
+      if (!document.body.contains(sentinel)) { window.removeEventListener('scroll', onScroll); io.disconnect(); return; }
+      if (loading || done) return;
+      if (auto) {
+        const c = navigator.connection;
+        if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return;
+        if (autoFills >= 2) return;
+        autoFills++;
+      }
+      const r = sentinel.getBoundingClientRect();
+      if (r.top < (window.innerHeight || 0) + 400) load();
+    }
+    const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) { autoFills = 0; load(); } }, { rootMargin: '400px' });
+    load().then(() => { io.observe(sentinel); fillIfNeeded(true); });
+    window.addEventListener('scroll', onScroll, { passive: true });
     return { reload: () => { cursor = null; done = false; first = true; container.innerHTML = ''; load(); } };
   };
 

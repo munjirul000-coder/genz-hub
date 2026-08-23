@@ -91,12 +91,26 @@ function attachExtras(rows, me) {
 
 function queryPosts({ me = 0, where = [], params = {}, limit = 10, cursor = null, order = 'p.created_at DESC, p.id DESC' }) {
   const clauses = [visibilitySQL('p'), ...where];
-  if (cursor) { clauses.push('p.id < @cursor'); params.cursor = Number(cursor); }
+  // Keyset pagination must use the SAME key as the ORDER BY. The old cursor filtered on id alone
+  // while the feed sorts by (created_at, id), so posts could be skipped entirely between pages —
+  // a 50-post feed only ever showed ~15. Cursor format: "<created_at>_<id>" (legacy plain id still works).
+  if (cursor) {
+    const [cts, cid] = String(cursor).split('_');
+    if (cid !== undefined) {
+      clauses.push('(p.created_at < @cts OR (p.created_at = @cts AND p.id < @cid))');
+      params.cts = Number(cts);
+      params.cid = Number(cid);
+    } else {
+      clauses.push('p.id < @cursor');
+      params.cursor = Number(cts);
+    }
+  }
   const sql = `SELECT ${POST_FIELDS} ${POST_JOINS} WHERE ${clauses.join(' AND ')} ORDER BY ${order} LIMIT @limit`;
   const rows = db.prepare(sql).all({ me, limit: limit + 1, ...params });
   const hasMore = rows.length > limit;
   const page = attachExtras(rows.slice(0, limit), me);
-  return { posts: page, nextCursor: hasMore ? page[page.length - 1].id : null };
+  const last = page[page.length - 1];
+  return { posts: page, nextCursor: hasMore && last ? `${last.created_at}_${last.id}` : null };
 }
 
 function getPost(id, me) {

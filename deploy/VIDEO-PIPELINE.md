@@ -155,8 +155,20 @@ is required on Render, Fly, Docker or shared hosting.
 ## 12. Tests
 
 ```bash
+PART=A node tests/video-matrix-test.js                     # 11 source shapes/codecs → delivered quality
+PART=B COUNTS=5,10,20,50 node tests/video-matrix-test.js   # feed size x mobile/laptop/desktop x fast/slow
 node tests/video-quality-test.js /path/a.mp4 /path/b.mov   # source vs. delivered quality
 node tests/video-feed-test.js                              # scroll behaviour, desktop + mobile
 node tests/video-stress-test.js                            # 50-video feed + throttled network
 node tests/video-upload-ui-test.js /path/a.mp4             # composer states, thumbnail, publish
 ```
+
+## 13. Feed-level fixes found by the video stress tests
+
+* **Keyset pagination** — the feed sorted by `(created_at, id)` but paged with `id < cursor`, so
+  posts were silently skipped: a 50-video feed only ever rendered ~15. The cursor is now
+  `"<created_at>_<id>"` and matches the sort order exactly (old numeric cursors still work).
+* **Infinite scroll on short screens** — `IntersectionObserver` only fires on transitions, so on
+  mobile the sentinel could stay visible and the feed stopped after two pages. There is now a
+  capped auto-fill (max 2 consecutive pages, disabled on 2G/`saveData`) plus a scroll listener, so
+  the feed keeps loading without ever competing with video for bandwidth.
