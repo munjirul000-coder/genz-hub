@@ -43,7 +43,7 @@
           </div>
           <div class="row wrap" style="gap:5px;margin-top:4px">${hubTag(p)}</div>
         </div>
-        <div style="position:relative"><button class="iconbtn" data-menu aria-label="Post options">⋯</button></div>
+        <div style="position:relative"><button class="iconbtn" data-menu aria-label="Post options">${G.icon('more', 18)}</button></div>
       </div>
       ${p.content ? `<div class="post-body">${G.linkify(p.content)}</div>` : ''}
       ${p.link_url ? `<a class="quote row" href="${esc(p.link_url)}" target="_blank" rel="noopener nofollow"><span>🔗</span><span class="grow small" style="word-break:break-all">${esc(p.link_url)}</span></a>` : ''}
@@ -58,10 +58,10 @@
         <span>${G.num(p.repost_count)} reposts</span>
       </div>
       <div class="post-actions">
-        <button class="pa ${p.my_reaction ? 'on' : ''}" data-react>${REACTIONS[p.my_reaction] || '👍'} <span class="lbl">${esc(G.t('Like'))}</span></button>
-        <button class="pa" data-comment>💬 <span class="lbl">${esc(G.t('Comment'))}</span></button>
-        <button class="pa" data-repost>🔁 <span class="lbl">${esc(G.t('Share'))}</span></button>
-        <button class="pa ${p.is_saved ? 'on' : ''}" data-save>${p.is_saved ? '🔖' : '📑'} <span class="lbl">${esc(G.t('Save'))}</span></button>
+        <button class="pa ${p.my_reaction ? 'on' : ''}" data-react>${p.my_reaction ? REACTIONS[p.my_reaction] : G.icon('heart', 18)} <span class="lbl">${esc(G.t('Like'))}</span></button>
+        <button class="pa" data-comment>${G.icon('comment', 18)} <span class="lbl">${esc(G.t('Comment'))}</span></button>
+        <button class="pa" data-repost>${G.icon('repost', 18)} <span class="lbl">${esc(G.t('Share'))}</span></button>
+        <button class="pa ${p.is_saved ? 'on' : ''}" data-save>${G.icon('bookmark', 18)} <span class="lbl">${esc(G.t('Save'))}</span></button>
       </div>
       <div data-comments hidden></div>
     </article>`);
@@ -74,7 +74,7 @@
         const r = await G.post(`/posts/${p.id}/react`, { type: 'like' });
         p.my_reaction = r.my_reaction; p.reaction_count = r.reaction_count;
         rBtn.classList.toggle('on', !!r.my_reaction);
-        rBtn.innerHTML = `${REACTIONS[r.my_reaction] || '👍'} <span class="lbl">${esc(G.t('Like'))}</span>`;
+        rBtn.innerHTML = `${r.my_reaction ? REACTIONS[r.my_reaction] : G.icon('heart', 18)} <span class="lbl">${esc(G.t('Like'))}</span>`;
         G.qs('[data-count-r]', node).textContent = G.num(r.reaction_count) + ' reactions';
       } catch (e) { G.err(e); }
     };
@@ -92,7 +92,7 @@
         const r = await G.post(`/posts/${p.id}/save`);
         p.is_saved = r.saved;
         sBtn.classList.toggle('on', r.saved);
-        sBtn.innerHTML = `${r.saved ? '🔖' : '📑'} <span class="lbl">${esc(G.t('Save'))}</span>`;
+        sBtn.innerHTML = `${G.icon('bookmark', 18)} <span class="lbl">${esc(G.t('Save'))}</span>`;
         G.toast(r.saved ? 'Saved to your library' : 'Removed from saved', 'ok');
         if (S.route.name === 'saved' && !r.saved) node.remove();
       } catch (e) { G.err(e); }
@@ -114,7 +114,7 @@
         const r = await G.post(`/posts/${p.id}/react`, { type: b.dataset.r });
         p.my_reaction = r.my_reaction;
         anchor.classList.toggle('on', !!r.my_reaction);
-        anchor.innerHTML = `${REACTIONS[r.my_reaction] || '👍'} <span class="lbl">${esc(G.t('Like'))}</span>`;
+        anchor.innerHTML = `${r.my_reaction ? REACTIONS[r.my_reaction] : G.icon('heart', 18)} <span class="lbl">${esc(G.t('Like'))}</span>`;
         G.qs('[data-count-r]', node).textContent = G.num(r.reaction_count) + ' reactions';
       } catch (e) { G.err(e); }
       box.remove();

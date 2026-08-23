@@ -9,6 +9,13 @@
     if (!G.requireUser()) return;
     const view = G.mountShell();
     G.setRail('');
+    document.body.classList.add('chat-open');
+    if (!G._chatCleanup) {
+      G._chatCleanup = true;
+      window.addEventListener('hashchange', () => {
+        if (!(location.hash || '').startsWith('#/messages')) document.body.classList.remove('chat-open');
+      });
+    }
     const activeId = parts[0] ? Number(parts[0]) : null;
     view.innerHTML = `<div class="card chat-shell ${activeId ? 'has-active' : ''}" style="overflow:hidden">
       <div class="conv-list">
@@ -60,18 +67,19 @@
       other = data.other;
       main.innerHTML = `
         <div class="row pad" style="border-bottom:1px solid var(--border);padding:10px 14px">
-          <a class="btn btn-sm btn-quiet" href="#/messages" aria-label="Back to conversations">←</a>
+          <a class="btn btn-sm btn-quiet chat-back" href="#/messages" aria-label="Back to conversations">${G.icon('back', 18)}</a>
           <a href="#/u/${esc(other.username)}">${G.avatar(other, 38)}</a>
           <div class="grow"><a class="bold small" href="#/u/${esc(other.username)}">${esc(other.full_name)}</a>
             <div class="tiny muted">@${esc(other.username)}</div></div>
-          <button class="iconbtn" id="chat-del" title="Delete conversation" aria-label="Delete conversation">🗑</button>
+          <button class="iconbtn" id="chat-del" title="Delete conversation" aria-label="Delete conversation">${G.icon('trash', 18)}</button>
         </div>
         <div class="chat-body" id="cbody"></div>
-        <div class="emoji-bar" id="ebar">${['😀', '😂', '🔥', '👍', '🎮', '💼', '🚀', '❤️', '😎', '🙌'].map((e) => `<button type="button" aria-label="Insert ${e}">${e}</button>`).join('')}</div>
+        <div class="emoji-bar" id="ebar" hidden>${['😀', '😂', '🔥', '👍', '🎮', '💼', '🚀', '❤️', '😎', '🙌', '✅', '🙏'].map((e) => `<button type="button" aria-label="Insert ${e}">${e}</button>`).join('')}</div>
         <form class="chat-input" id="cform">
-          <label class="btn btn-ghost btn-icon" title="Attach file" style="cursor:pointer">📎<input type="file" id="cfile" hidden accept="image/*,video/*,.pdf,.txt"></label>
-          <textarea class="textarea grow" id="cmsg" style="min-height:44px;max-height:120px" placeholder="Write a message…" aria-label="Message"></textarea>
-          <button class="btn btn-primary" type="submit">${esc(G.t('Send'))}</button>
+          <label class="btn btn-ghost btn-icon" title="Attach file" style="cursor:pointer">${G.icon('image', 18)}<input type="file" id="cfile" hidden accept="image/*,video/*,.pdf,.txt"></label>
+          <button type="button" class="btn btn-ghost btn-icon" id="etoggle" title="Emoji" aria-label="Emoji">🙂</button>
+          <textarea class="textarea grow" id="cmsg" rows="1" style="min-height:44px;max-height:110px" placeholder="Write a message…" aria-label="Message"></textarea>
+          <button class="btn btn-primary" type="submit" aria-label="Send">${G.icon('send', 18)}<span class="lbl-send">${esc(G.t('Send'))}</span></button>
         </form>`;
       const body = G.qs('#cbody', main);
       const render = (msgs) => {
@@ -90,7 +98,12 @@
       if (!data.messages.length) body.innerHTML = '<p class="center small muted" style="margin:auto">No messages yet. Say hi 👋</p>';
       render(data.messages);
 
+      const ebar = G.qs('#ebar', main);
+      G.qs('#etoggle', main).onclick = () => { ebar.hidden = !ebar.hidden; if (!ebar.hidden) body.scrollTop = body.scrollHeight; };
       G.qsa('#ebar button', main).forEach((b) => b.onclick = () => { const ta = G.qs('#cmsg', main); ta.value += b.textContent; ta.focus(); });
+      const ta0 = G.qs('#cmsg', main);
+      ta0.addEventListener('input', () => { ta0.style.height = 'auto'; ta0.style.height = Math.min(ta0.scrollHeight, 110) + 'px'; });
+      ta0.addEventListener('focus', () => setTimeout(() => { body.scrollTop = body.scrollHeight; }, 250));
       G.qs('#chat-del', main).onclick = async () => {
         if (!(await G.confirm('Delete conversation', 'This hides the conversation from your inbox.', 'Delete'))) return;
         try { await G.del('/conversations/' + id); location.hash = '#/messages'; } catch (e) { G.err(e); }
@@ -114,8 +127,10 @@
           if (pendingFile) { payload.media_url = pendingFile.url; payload.media_type = pendingFile.type; }
           const r = await G.post(`/conversations/${id}/messages`, payload);
           if (body.querySelector('p')) body.innerHTML = '';
-          ta.value = ''; pendingFile = null;
+          ta.value = ''; ta.style.height = 'auto'; pendingFile = null;
           render([r.message]);
+          body.scrollTop = body.scrollHeight;
+          ta.focus();
         } catch (err) { G.err(err); }
         btn.disabled = false;
       };

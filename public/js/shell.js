@@ -6,18 +6,18 @@
   let badges = { notifications: 0, messages: 0, requests: 0 };
 
   const NAV = [
-    ['home', '🏠', 'Home', '#/'],
-    ['explore', '🧭', 'Explore', '#/explore'],
-    ['network', '🤝', 'Network', '#/network'],
-    ['messages', '💬', 'Messages', '#/messages'],
-    ['notifications', '🔔', 'Notifications', '#/notifications'],
-    ['groups', '👥', 'Groups', '#/groups'],
-    ['communities', '🌐', 'Communities', '#/communities'],
-    ['business', '💼', 'Business Hub', '#/business'],
-    ['gaming', '🎮', 'Gaming Hub', '#/gaming'],
-    ['events', '📅', 'Events', '#/events'],
-    ['saved', '🔖', 'Saved', '#/saved'],
-    ['settings', '⚙️', 'Settings', '#/settings'],
+    ['home', 'home', 'Home', '#/'],
+    ['explore', 'explore', 'Explore', '#/explore'],
+    ['network', 'network', 'Network', '#/network'],
+    ['messages', 'messages', 'Messages', '#/messages'],
+    ['notifications', 'bell', 'Notifications', '#/notifications'],
+    ['groups', 'groups', 'Groups', '#/groups'],
+    ['communities', 'communities', 'Communities', '#/communities'],
+    ['business', 'business', 'Business Hub', '#/business'],
+    ['gaming', 'gaming', 'Gaming Hub', '#/gaming'],
+    ['events', 'events', 'Events', '#/events'],
+    ['saved', 'saved', 'Saved', '#/saved'],
+    ['settings', 'settings', 'Settings', '#/settings'],
   ];
 
   G.mountFull = function (html) {
@@ -41,13 +41,13 @@
           <a class="logo" href="#/" aria-label="Gen-Z Hub home">
             <span class="logo-mark" aria-hidden="true">Z</span><span class="txt">GEN-Z HUB</span></a>
           <form class="searchbox" id="topsearch" role="search">
-            <span class="si" aria-hidden="true">🔍</span>
+            <span class="si" aria-hidden="true">${G.icon('search', 17)}</span>
             <input type="search" id="q" placeholder="${esc(G.t('Search'))} people, posts, #tags…" aria-label="Search Gen-Z Hub">
           </form>
           <div class="row" style="margin-left:auto;gap:8px">
-            <button class="iconbtn" id="nav-theme" title="Toggle theme" aria-label="Toggle colour theme">🌓</button>
-            <a class="iconbtn" href="#/messages" title="Messages" aria-label="Messages"><span aria-hidden="true">💬</span><span class="dot" id="b-messages" hidden></span></a>
-            <a class="iconbtn" href="#/notifications" title="Notifications" aria-label="Notifications"><span aria-hidden="true">🔔</span><span class="dot" id="b-notifications" hidden></span></a>
+            <button class="iconbtn" id="nav-theme" title="Toggle theme" aria-label="Toggle colour theme">${G.icon('theme', 19)}</button>
+            <a class="iconbtn" href="#/messages" title="Messages" aria-label="Messages">${G.icon('messages', 19)}<span class="dot" id="b-messages" hidden></span></a>
+            <a class="iconbtn" href="#/notifications" title="Notifications" aria-label="Notifications">${G.icon('bell', 19)}<span class="dot" id="b-notifications" hidden></span></a>
             <div style="position:relative">
               <button class="iconbtn" id="nav-me" aria-label="Account menu" style="padding:0;overflow:hidden">${G.avatar(u, 38)}</button>
             </div>
@@ -60,11 +60,11 @@
         <aside class="rail rail-right side" id="rail" aria-label="Suggestions"></aside>
       </div>
       <nav class="tabbar" aria-label="Mobile navigation">
-        <button data-go="#/" data-k="home"><span class="ti" aria-hidden="true">🏠</span>${esc(G.t('Home'))}</button>
-        <button data-go="#/explore" data-k="explore"><span class="ti" aria-hidden="true">🧭</span>${esc(G.t('Explore'))}</button>
-        <button data-go="create" data-k="create"><span class="ti" aria-hidden="true">➕</span>${esc(G.t('Create'))}</button>
-        <button data-go="#/notifications" data-k="notifications"><span class="ti" aria-hidden="true">🔔</span>${esc(G.t('Notifications'))}<span class="dot" id="b-tab-notifications" hidden></span></button>
-        <button data-go="#/menu" data-k="menu"><span class="ti" aria-hidden="true">☰</span>${esc(G.t('Menu'))}</button>
+        <button data-go="#/" data-k="home"><span class="ti">${G.icon('home', 22)}</span>${esc(G.t('Home'))}</button>
+        <button data-go="#/explore" data-k="explore"><span class="ti">${G.icon('explore', 22)}</span>${esc(G.t('Explore'))}</button>
+        <button data-go="create" data-k="create" class="tab-create"><span class="ti">${G.icon('plus', 22)}</span>${esc(G.t('Create'))}</button>
+        <button data-go="#/notifications" data-k="notifications"><span class="ti">${G.icon('bell', 22)}</span>${esc(G.t('Notifications'))}<span class="dot" id="b-tab-notifications" hidden></span></button>
+        <button data-go="#/menu" data-k="menu"><span class="ti">${G.icon('menu', 22)}</span>${esc(G.t('Menu'))}</button>
       </nav>`;
 
     G.qs('#sidenav').innerHTML = `
@@ -74,11 +74,11 @@
           <div class="tiny muted">@${esc(u.username)}</div></div></a>
       </div>
       <div class="card pad" style="padding:8px">${NAV.map((n) => `
-        <a class="nav-item" data-k="${n[0]}" href="${n[3]}"><span class="ni" aria-hidden="true">${n[1]}</span>${esc(G.t(n[2]))}
+        <a class="nav-item" data-k="${n[0]}" href="${n[3]}"><span class="ni">${G.icon(n[1], 20)}</span>${esc(G.t(n[2]))}
         ${['messages', 'notifications', 'network'].includes(n[0]) ? `<span class="cnt" id="s-${n[0]}" hidden></span>` : ''}</a>`).join('')}
       </div>
-      <button class="btn btn-primary btn-block" id="side-create" style="margin-top:14px">✏️ ${esc(G.t('Create'))} ${esc(G.t('Post'))}</button>
-      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" style="margin-top:8px" href="#/admin">🛡️ Admin Panel</a>' : ''}
+      <button class="btn btn-primary btn-block" id="side-create" style="margin-top:14px">${G.icon('edit', 18)} ${esc(G.t('Create'))} ${esc(G.t('Post'))}</button>
+      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" style="margin-top:8px" href="#/admin">' + G.icon('shield', 18) + ' Admin Panel</a>' : ''}
       <p class="tiny muted" style="margin:14px 6px 0">Gen-Z Hub · Connect. Build. Play. Grow.</p>`;
 
     G.qs('#topsearch').addEventListener('submit', (e) => {
@@ -109,11 +109,11 @@
   function accountMenu(anchor) {
     const u = S.user;
     const box = G.el(`<div class="menu" role="menu">
-      <button data-go="#/u/${esc(u.username)}">👤 ${esc(G.t('Profile'))}</button>
-      <button data-go="#/saved">🔖 ${esc(G.t('Saved'))}</button>
-      <button data-go="#/settings">⚙️ ${esc(G.t('Settings'))}</button>
-      ${u.role === 'admin' ? '<button data-go="#/admin">🛡️ Admin Panel</button>' : ''}
-      <button class="danger" data-logout>🚪 ${esc(G.t('Log out'))}</button></div>`);
+      <button data-go="#/u/${esc(u.username)}">${G.icon('user', 18)} ${esc(G.t('Profile'))}</button>
+      <button data-go="#/saved">${G.icon('saved', 18)} ${esc(G.t('Saved'))}</button>
+      <button data-go="#/settings">${G.icon('settings', 18)} ${esc(G.t('Settings'))}</button>
+      ${u.role === 'admin' ? '<button data-go="#/admin">' + G.icon('shield', 18) + ' Admin Panel</button>' : ''}
+      <button class="danger" data-logout>${G.icon('logout', 18)} ${esc(G.t('Log out'))}</button></div>`);
     anchor.parentElement.appendChild(box);
     const off = (e) => { if (!box.contains(e.target)) { box.remove(); document.removeEventListener('click', off); } };
     setTimeout(() => document.addEventListener('click', off), 0);
@@ -126,9 +126,9 @@
     const m = G.modal('Menu', `<div class="stack">
       <a class="row card pad" href="#/u/${esc(u.username)}" data-close>${G.avatar(u, 44)}<div><div class="bold">${esc(u.full_name)}</div>
         <div class="tiny muted">@${esc(u.username)} · View profile</div></div></a>
-      <div class="card" style="padding:8px">${NAV.map((n) => `<a class="nav-item" href="${n[3]}" data-close><span class="ni">${n[1]}</span>${esc(G.t(n[2]))}</a>`).join('')}</div>
-      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" href="#/admin" data-close>🛡️ Admin Panel</a>' : ''}
-      <button class="btn btn-danger btn-block" id="m-logout">🚪 ${esc(G.t('Log out'))}</button></div>`);
+      <div class="card" style="padding:8px">${NAV.map((n) => `<a class="nav-item" href="${n[3]}" data-close><span class="ni">${G.icon(n[1], 20)}</span>${esc(G.t(n[2]))}</a>`).join('')}</div>
+      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" href="#/admin" data-close>' + G.icon('shield', 18) + ' Admin Panel</a>' : ''}
+      <button class="btn btn-danger btn-block" id="m-logout">${G.icon('logout', 18)} ${esc(G.t('Log out'))}</button></div>`);
     G.qs('#m-logout', m.body).onclick = async () => { await G.post('/auth/logout'); location.reload(); };
   }
 

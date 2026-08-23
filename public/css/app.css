@@ -332,3 +332,158 @@ button,input,textarea,select{font:inherit;color:inherit}
   .hero-land{padding:44px 0 56px}
 }
 @media (max-width:420px){.foot-grid{grid-template-columns:1fr}.stats-row{gap:18px}}
+
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM LAYER — glossy surfaces, refined depth, SVG icon system
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --gloss: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 58%);
+  --gloss-strong: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.04) 45%, rgba(0,0,0,.06));
+  --ring-soft: 0 0 0 1px rgba(18,20,42,.05);
+  --elev-1: 0 1px 2px rgba(18,20,42,.05), 0 4px 14px rgba(18,20,42,.05);
+  --elev-2: 0 2px 6px rgba(18,20,42,.07), 0 14px 34px rgba(18,20,42,.09);
+  --elev-3: 0 18px 60px rgba(18,20,42,.18);
+  --brand-grad: linear-gradient(120deg,#7c5cff 0%,#6f7bff 45%,#12d6c8 130%);
+}
+html[data-theme="dark"]{
+  --gloss: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 58%);
+  --gloss-strong: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.02) 45%, rgba(0,0,0,.25));
+  --ring-soft: 0 0 0 1px rgba(255,255,255,.06);
+  --elev-1: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35);
+  --elev-2: 0 2px 8px rgba(0,0,0,.45), 0 16px 40px rgba(0,0,0,.5);
+  --elev-3: 0 22px 70px rgba(0,0,0,.65);
+}
+body{
+  background:
+    radial-gradient(1100px 520px at 12% -8%, color-mix(in srgb, var(--brand-1) 12%, transparent), transparent 60%),
+    radial-gradient(900px 480px at 92% 4%, color-mix(in srgb, var(--brand-2) 10%, transparent), transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+  letter-spacing:-.005em;
+}
+
+/* icons */
+.ic{display:block;flex-shrink:0}
+.nav-item .ni,.tabbar .ti,.iconbtn,.pa,.menu button,.btn{display:inline-flex;align-items:center;justify-content:center}
+.nav-item .ni{width:22px;height:22px;opacity:.78;transition:.18s}
+.nav-item:hover .ni,.nav-item.on .ni{opacity:1}
+.btn .ic{margin-right:2px}
+
+/* glossy cards */
+.card{
+  background-image: var(--gloss), linear-gradient(var(--surface), var(--surface));
+  box-shadow: var(--ring-soft), var(--elev-1);
+  border-color: color-mix(in srgb, var(--border) 75%, transparent);
+  transition: box-shadow .22s ease, transform .22s ease, border-color .22s;
+}
+.post:hover,.feature:hover,.kpi:hover{box-shadow: var(--ring-soft), var(--elev-2)}
+
+/* glossy buttons */
+.btn{
+  background-image: var(--gloss-strong);
+  box-shadow: var(--ring-soft), 0 1px 2px rgba(18,20,42,.06);
+  letter-spacing:-.01em;
+}
+.btn-primary{
+  background-image: var(--gloss-strong), var(--brand-grad);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 6px 18px rgba(124,92,255,.34), 0 2px 4px rgba(18,20,42,.12);
+  border-color:transparent;color:#fff;
+}
+.btn-primary:hover{box-shadow: inset 0 1px 0 rgba(255,255,255,.42), 0 10px 26px rgba(124,92,255,.42)}
+.btn-accent{
+  background-image: var(--gloss-strong), linear-gradient(120deg,#12d6c8,#22b8ff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 18px rgba(18,214,200,.34);
+}
+.btn-ghost{background-image:var(--gloss);backdrop-filter:blur(6px)}
+.btn:active{transform:translateY(1px) scale(.995)}
+
+/* glass top bar */
+.topbar{
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,.35) inset, 0 6px 24px rgba(18,20,42,.05);
+}
+.logo-mark{
+  background-image: var(--gloss-strong), var(--brand-grad);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 18px rgba(124,92,255,.45);
+}
+.logo .txt{background:var(--brand-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.searchbox input{background-image:var(--gloss);box-shadow:var(--ring-soft)}
+.searchbox .si{display:grid;place-items:center;color:var(--muted-2)}
+.iconbtn{background-image:var(--gloss);box-shadow:var(--ring-soft);color:var(--muted)}
+.iconbtn:hover{color:var(--text);background-color:var(--surface-2)}
+
+/* nav pill */
+.nav-item{position:relative;border-radius:12px}
+.nav-item.on{
+  background-image: var(--gloss), linear-gradient(120deg, color-mix(in srgb,var(--brand-1) 16%,transparent), color-mix(in srgb,var(--brand-2) 12%,transparent));
+  box-shadow: var(--ring-soft), 0 2px 10px rgba(124,92,255,.16);
+  font-weight:700;
+}
+.nav-item.on::before{
+  content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  width:3px;height:20px;border-radius:3px;background:var(--brand-grad);
+}
+
+/* mobile tab bar */
+.tabbar{
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 -6px 24px rgba(18,20,42,.08);
+}
+.tabbar .ti{width:26px;height:26px;border-radius:9px;transition:.18s}
+.tabbar button.on .ti{background-image:var(--gloss), linear-gradient(120deg, color-mix(in srgb,var(--brand-1) 18%,transparent), color-mix(in srgb,var(--brand-2) 14%,transparent))}
+.tabbar .tab-create .ti{background-image:var(--gloss-strong), var(--brand-grad);color:#fff;box-shadow:0 4px 14px rgba(124,92,255,.4)}
+
+/* reactions / post actions */
+.pa{gap:6px;border-radius:11px}
+.pa .ic{width:18px;height:18px}
+.pa.on{background-image:var(--gloss), linear-gradient(120deg, color-mix(in srgb,var(--brand-1) 14%,transparent), transparent)}
+
+/* inputs + modals */
+.input,.textarea,.select{background-image:var(--gloss);box-shadow:var(--ring-soft)}
+.modal{box-shadow:var(--elev-3);background-image:var(--gloss),linear-gradient(var(--surface),var(--surface))}
+.menu{background-image:var(--gloss),linear-gradient(var(--surface),var(--surface));box-shadow:var(--elev-3)}
+.chip{background-image:var(--gloss);box-shadow:var(--ring-soft)}
+.chip.on{background-image:var(--gloss-strong),var(--brand-grad);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 12px rgba(124,92,255,.3)}
+.avatar{box-shadow:var(--ring-soft)}
+.hero,.hero.biz,.hero.game{box-shadow:var(--elev-2)}
+.hero::after{content:'';position:absolute;inset:0;background:var(--gloss);pointer-events:none}
+
+/* ═══ CHAT — fixed viewport-locked layout (input never scrolls away) ═══ */
+.chat-shell{
+  height: calc(100vh - var(--nav-h) - 40px);
+  height: calc(100dvh - var(--nav-h) - 40px);
+  min-height: 420px;
+  border-radius: var(--r-lg);
+}
+.chat-main{min-height:0}
+.chat-body{flex:1 1 auto;min-height:0;scroll-behavior:smooth;overscroll-behavior:contain}
+.chat-input,.emoji-bar,.chat-main > .row:first-child{flex:0 0 auto}
+.chat-input{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.chat-input .textarea{max-height:110px}
+.msg{box-shadow:var(--ring-soft)}
+.msg.mine{background-image:var(--gloss-strong),var(--brand-grad);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 10px rgba(124,92,255,.28)}
+.emoji-toggle{border:0;background:none;cursor:pointer;font-size:18px;padding:0 6px;color:var(--muted)}
+.conv{transition:.16s}
+.conv.on,.conv:hover{background-image:var(--gloss),linear-gradient(120deg,color-mix(in srgb,var(--brand-1) 8%,transparent),transparent)}
+
+@media (max-width:860px){
+  /* messages page: lock to the visible screen, above the bottom nav */
+  body.chat-open{overflow:hidden}
+  body.chat-open .shell{padding-bottom:0;padding-top:8px}
+  .chat-shell{
+    height: calc(100vh - var(--nav-h) - var(--tab-h) - 22px);
+    height: calc(100dvh - var(--nav-h) - var(--tab-h) - 22px);
+    min-height: 320px;
+    border-radius: var(--r);
+  }
+  .emoji-bar{padding:6px 10px;gap:2px}
+  .emoji-bar button{font-size:17px}
+}
+@media (max-width:420px){
+  .chat-shell{height: calc(100dvh - var(--nav-h) - var(--tab-h) - 14px)}
+}
