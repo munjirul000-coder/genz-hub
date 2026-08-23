@@ -24,6 +24,9 @@ const CANONICAL_HOST = process.env.CANONICAL_HOST || '';
 
 // Force HTTPS + canonical host when deployed behind a proxy
 app.use((req, res, next) => {
+  // Platform health probes (Render/Fly/Kubernetes) arrive over plain HTTP and treat any 3xx as a
+  // FAILED check — which pulls the whole service out of the load balancer. Never redirect them.
+  if (req.path === '/api/health') return next();
   if (PROD && req.get('x-forwarded-proto') === 'http') {
     return res.redirect(301, 'https://' + req.get('host') + req.originalUrl);
   }
