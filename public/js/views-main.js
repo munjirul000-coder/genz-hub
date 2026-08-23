@@ -343,31 +343,37 @@
 
     const mine = p.is_self;
     view.innerHTML = `
-      <div class="card" style="overflow:hidden">
+      <div class="card prof-hero rise">
         <div class="cover">${p.cover ? `<img src="${esc(p.cover)}" alt="${esc(p.full_name)} cover">` : ''}</div>
         <div class="prof-head">
-          <div class="prof-av" style="border-radius:50%">${G.avatar(p, 96)}</div>
-          <div class="grow" style="min-width:200px">
-            <div class="row wrap" style="gap:8px"><h2 style="margin:0">${esc(p.full_name)}</h2>
+          <div class="prof-av">${G.avatar(p, 104)}</div>
+          <div class="prof-id">
+            <h2>${esc(p.full_name)}</h2>
+            <div class="prof-badges">
               ${p.in_business ? '<span class="badge badge-biz">Business</span>' : ''}
               ${p.in_gaming ? '<span class="badge badge-game">Gaming</span>' : ''}
-              ${p.role === 'admin' ? '<span class="badge badge-admin">Admin</span>' : ''}</div>
-            <div class="muted small">@${esc(p.username)} · Joined ${G.fmtDate(p.created_at)}${p.location ? ' · 📍 ' + esc(p.location) : ''}</div>
+              ${p.role === 'admin' ? '<span class="badge badge-admin">Admin</span>' : ''}
+              ${p.business_role ? `<span class="pill">${esc(p.business_role)}</span>` : ''}
+            </div>
+            <div class="prof-meta">
+              <span>@${esc(p.username)}</span>
+              <span class="sep">·</span><span>Joined ${G.fmtDate(p.created_at)}</span>
+              ${p.location ? `<span class="sep">·</span><span>${G.icon('globe', 14)} ${esc(p.location)}</span>` : ''}
+            </div>
           </div>
-          <div class="row wrap" id="prof-actions"></div>
+          <div class="prof-actions" id="prof-actions"></div>
         </div>
-        <div class="pad" style="padding-top:0">
-          ${p.bio ? `<p style="margin:0 0 12px">${esc(p.bio)}</p>` : ''}
-          <div class="row wrap" style="gap:6px;margin-bottom:12px">${(p.interests || []).map((i) => `<span class="chip static">${esc(i.name)}</span>`).join('')}</div>
-          <div class="stat small">
-            <div><b>${G.num(p.counts.posts)}</b><span class="muted">Posts</span></div>
-            <a href="#/u/${esc(p.username)}?tab=followers"><b>${G.num(p.counts.followers)}</b><span class="muted">Followers</span></a>
-            <a href="#/u/${esc(p.username)}?tab=following"><b>${G.num(p.counts.following)}</b><span class="muted">Following</span></a>
-            <div><b>${G.num(p.counts.connections)}</b><span class="muted">Connections</span></div>
-          </div>
+        ${p.bio ? `<p class="prof-bio">${esc(p.bio)}</p>` : ''}
+        ${(p.interests || []).length ? `<div class="prof-tags">${p.interests.map((i) => `<span class="chip static">${esc(i.name)}</span>`).join('')}</div>` : ''}
+        <div class="stat small">
+          <div><b class="num">${G.num(p.counts.posts)}</b><span>Posts</span></div>
+          <a href="#/u/${esc(p.username)}?tab=followers"><b class="num">${G.num(p.counts.followers)}</b><span>Followers</span></a>
+          <a href="#/u/${esc(p.username)}?tab=following"><b class="num">${G.num(p.counts.following)}</b><span>Following</span></a>
+          <div><b class="num">${G.num(p.counts.connections)}</b><span>Connections</span></div>
+          <div><b class="num">${G.num(p.counts.communities)}</b><span>Communities</span></div>
         </div>
-        <div class="tabs">${['posts', 'about', 'media', 'groups', 'communities'].map((t) =>
-          `<button class="tab ${tab === t ? 'on' : ''}" data-t="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
+        <div class="prof-tabs"><div class="tabs">${['posts', 'about', 'media', 'groups', 'communities'].map((t) =>
+          `<button class="tab ${tab === t ? 'on' : ''}" data-t="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
       </div>
       <div id="ptab" style="margin-top:14px"></div>`;
 

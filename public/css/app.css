@@ -439,14 +439,31 @@ html[data-theme="dark"] .pa.on{color:var(--volt)}
 .feat .fi{width:38px;height:38px;border-radius:13px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;flex-shrink:0}
 
 /* ═══════════════ PROFILE ═══════════════ */
-.cover{height:210px;border-radius:var(--r-lg);background:linear-gradient(120deg,var(--iris),#4b34c9 42%,var(--aqua));position:relative;overflow:hidden}
+.prof-hero{overflow:hidden;border-radius:var(--r-lg)}
+.cover{height:200px;background:linear-gradient(120deg,var(--iris),#4b34c9 42%,var(--aqua));position:relative;overflow:hidden;z-index:0}
 .cover img{width:100%;height:100%;object-fit:cover}
-.prof-head{margin-top:-52px;padding:0 22px 18px;display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
-.prof-av{border:4px solid var(--surface);border-radius:32px;box-shadow:var(--sh-2)}
+.cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(6,7,11,.35))}
+/* হেডার কভারের উপরে থাকে; শুধু avatar কভারে ওভারল্যাপ করে, নাম সবসময় নিচে */
+.prof-head{
+  position:relative;z-index:2;padding:0 24px 20px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:flex-end;
+}
+.prof-av{margin-top:-58px;border:4px solid var(--surface);border-radius:34px;box-shadow:var(--sh-2);line-height:0;background:var(--surface)}
 .prof-av .avatar{border-radius:28px}
-.stat{display:flex;gap:26px;flex-wrap:wrap}
-.stat b{display:block;font-size:19px;letter-spacing:-.03em}
-.stat span{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);font-weight:600}
+.prof-id{min-width:0;padding-bottom:2px}
+.prof-id h2{font-size:clamp(20px,2.4vw,27px);line-height:1.15;margin:0;word-break:break-word}
+.prof-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:13.5px;color:var(--muted)}
+.prof-meta .sep{opacity:.45}
+.prof-actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end;padding-bottom:2px}
+.prof-bio{padding:0 24px;margin:2px 0 16px;font-size:15px;line-height:1.6;color:var(--ink-2);max-width:660px}
+.prof-tags{display:flex;flex-wrap:wrap;gap:7px;padding:0 24px;margin-bottom:18px}
+.stat{display:flex;gap:12px;flex-wrap:wrap;padding:0 24px 20px}
+.stat > *{background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--r-sm);padding:10px 16px;min-width:92px;transition:var(--t)}
+.stat a:hover{border-color:var(--accent);transform:translateY(-1px)}
+.stat b{display:block;font-size:19px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);font-weight:650}
+.prof-tabs{padding:0 16px 4px}
 
 /* ═══════════════ MESSAGING ═══════════════ */
 .chat-shell{
@@ -607,8 +624,14 @@ html[data-theme="dark"] .pa.on{color:var(--volt)}
   .modal-head{border-radius:var(--r-xl) var(--r-xl) 0 0}
   .modal-head::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:3px;background:var(--line)}
   .overlay{align-items:flex-end;padding:0}
-  .cover{height:150px;border-radius:0 0 var(--r-lg) var(--r-lg)}
-  .prof-head{margin-top:-42px;padding:0 16px 16px}
+  .cover{height:140px}
+  .prof-head{grid-template-columns:1fr;gap:12px;padding:0 16px 16px}
+  .prof-av{margin-top:-46px}
+  .prof-actions{justify-content:stretch}
+  .prof-actions .btn{flex:1;min-width:112px}
+  .prof-bio,.prof-tags,.stat{padding-left:16px;padding-right:16px}
+  .stat{gap:8px}
+  .stat > *{flex:1;min-width:78px;padding:9px 12px;text-align:center}
   .post{padding:18px;border-radius:var(--r)}
   .pa span.lbl{display:none}
   .pa{padding:11px 4px}
