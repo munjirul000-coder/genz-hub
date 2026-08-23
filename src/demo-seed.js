@@ -306,6 +306,9 @@ db.prepare(`INSERT INTO reports (reporter_id,target_type,target_id,reason,detail
 db.prepare(`INSERT INTO reports (reporter_id,target_type,target_id,reason,details,status,created_at) VALUES (?,?,?,?,?,?,?)`)
   .run(ID.mahi, 'comment', 1, 'Harassment', 'Rude reply to a new member.', 'resolved', now - 3 * D);
 
+/* সব ডেমো অ্যাকাউন্টে ফ্ল্যাগশিপ dark থিম */
+db.prepare("UPDATE users SET theme='dark'").run();
+
 /* ================= SUMMARY ================= */
 const count = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
 console.log('\n=== GEN-Z HUB DEMO WORLD READY ===');

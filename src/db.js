@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   fav_games TEXT DEFAULT '',
   platform TEXT DEFAULT '',
   gamer_tag TEXT DEFAULT '',
-  theme TEXT NOT NULL DEFAULT 'system',
+  theme TEXT NOT NULL DEFAULT 'dark',
   lang TEXT NOT NULL DEFAULT 'en',
   profile_visibility TEXT NOT NULL DEFAULT 'public',   -- public | connections
   default_post_privacy TEXT NOT NULL DEFAULT 'public',
