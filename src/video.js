@@ -38,7 +38,12 @@ const PRESET = process.env.VIDEO_PRESET || 'veryfast';
 const TRANSCODE = process.env.VIDEO_TRANSCODE !== '0';
 // Small boxes (Render free = 0.1 CPU / 512 MB) can cap the ladder without touching code.
 const MAX_HEIGHT = Number(process.env.VIDEO_MAX_HEIGHT || 1080);
-const THREADS = Number(process.env.VIDEO_THREADS || 0); // 0 = let ffmpeg decide
+// On a 1–2 core box (Render free) a multi-threaded encode starves the HTTP server, so default to
+// a single encoder thread there; bigger machines let ffmpeg decide.
+const THREADS = Number(process.env.VIDEO_THREADS || (os.cpus().length <= 2 ? 1 : 0));
+// …and run the encoder at the lowest scheduling priority so page loads always win the CPU.
+const NICE = process.env.VIDEO_NICE !== '0' && process.platform === 'linux'
+  && !spawnSync('sh', ['-c', 'command -v nice']).status;
 
 /* ---------------------------------------------------------------- ladder */
 // CRF is a *quality* target, not a size target. Lower = better. These values are deliberately
@@ -123,7 +128,9 @@ function probe(file) {
 /* ---------------------------------------------------------------- runner */
 function run(args, { duration, onProgress } = {}) {
   return new Promise((resolve, reject) => {
-    const ps = spawn(FFMPEG, ['-hide_banner', '-nostdin', '-loglevel', 'error', '-progress', 'pipe:1', '-y', ...args]);
+    const full = ['-hide_banner', '-nostdin', '-loglevel', 'error', '-progress', 'pipe:1', '-y',
+      ...(THREADS ? ['-threads', String(THREADS), '-filter_threads', String(THREADS)] : []), ...args];
+    const ps = NICE ? spawn('nice', ['-n', '19', FFMPEG, ...full]) : spawn(FFMPEG, full);
     let err = '';
     let buf = '';
     ps.stdout.on('data', (d) => {
@@ -177,7 +184,6 @@ async function makePoster(input, outFile, src, onProgress) {
 async function makeRendition(input, outFile, src, rung, onProgress) {
   const gop = Math.max(24, Math.round((src.fps || 30) * 2));
   const args = [
-    ...(THREADS ? ['-threads', String(THREADS)] : []),
     '-i', input,
     '-c:v', 'libx264', '-preset', PRESET, '-crf', String(rung.crf),
     '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
@@ -198,6 +204,6 @@ async function remux(input, outFile, src, onProgress) {
 }
 
 module.exports = {
-  AVAILABLE, TRANSCODE, FFMPEG, FFPROBE, MAX_HEIGHT, PRESET,
+  AVAILABLE, TRANSCODE, FFMPEG, FFPROBE, MAX_HEIGHT, PRESET, THREADS, NICE,
   probe, planLadder, canRemux, makePoster, makeRendition, remux, even,
 };

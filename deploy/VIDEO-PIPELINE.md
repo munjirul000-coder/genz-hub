@@ -41,6 +41,9 @@ stereo stays stereo).
 
 **CRF, not a fixed low bitrate** — that is the difference between "sharp" and "blurry".
 
+Transcodes run at `nice -n 19` with a single encoder thread on small instances, so the web process
+stays responsive: measured feed-API latency during a 1440p transcode was **6 ms median / 23 ms max**.
+
 ## 4. Resolution ladder — derived from the source, never faked
 
 The rung number is always the **short side**, so `1080p` means 1920×1080 landscape *and*
@@ -122,7 +125,8 @@ thumbnail preview in the composer. On failure the user sees **"Video processing 
 | `VIDEO_TRANSCODE` | `1` | `0` = store the original untouched (no ffmpeg) |
 | `VIDEO_PRESET` | `veryfast` | x264 preset |
 | `VIDEO_CONCURRENCY` | `1` | parallel transcode jobs |
-| `VIDEO_THREADS` | auto | `-threads` for ffmpeg |
+| `VIDEO_THREADS` | `1` on ≤2 cores | `-threads` / `-filter_threads` for ffmpeg |
+| `VIDEO_NICE` | `1` | run ffmpeg at `nice -n 19` so HTTP always wins the CPU |
 | `VIDEO_MAX_HEIGHT` | `1080` | top rung short side |
 | `VIDEO_MAX_MB` | `300` | upload size limit |
 | `VIDEO_MAX_SECONDS` | `900` | duration limit |
