@@ -327,4 +327,7 @@ addColumn('post_media', 'width', 'width INTEGER NOT NULL DEFAULT 0');
 addColumn('post_media', 'height', 'height INTEGER NOT NULL DEFAULT 0');
 addColumn('post_media', 'duration', 'duration REAL NOT NULL DEFAULT 0');
 
+// v2 platform schema: hubs, marketplace, work, ads, gamification, polls, ideas, admin log
+require('./schema-v2').applySchemaV2(db);
+
 module.exports = { db, DATA_DIR };

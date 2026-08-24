@@ -191,3 +191,16 @@ node tests/video-feed-test.js                        # scroll behaviour (desktop
 node tests/video-stress-test.js                      # 50-video feed + slow network
 node tests/video-upload-ui-test.js /path/to/clip.mp4 # composer upload states
 ```
+
+## Platform v2 — Connect · Play · Build · Work · Shop
+
+Interest hubs, marketplace (stores/cart/orders/reviews), freelancing & jobs with configurable
+packages, interest-targeted advertising with admin review, XP/levels/badges/daily missions,
+leaderboards, challenges, Poll Arena, Idea Arena and an extended admin panel with audit logging.
+
+Full documentation: [`deploy/PLATFORM-V2.md`](deploy/PLATFORM-V2.md)
+
+```bash
+node tests/platform-test.js      # 70 API checks
+node tests/platform-ui-test.js   # 56 browser checks (desktop + mobile)
+```

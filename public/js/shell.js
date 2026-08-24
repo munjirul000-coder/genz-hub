@@ -9,6 +9,11 @@
     ['home', 'home', 'Home', '#/'],
     ['explore', 'explore', 'Discover', '#/explore'],
     ['communities', 'communities', 'Communities', '#/communities'],
+    ['hubs', 'sparkle', 'Interest hubs', '#/hubs'],
+    ['shop', 'saved', 'Shop', '#/shop'],
+    ['work', 'business', 'Work', '#/work'],
+    ['arena', 'target', 'Arena', '#/arena'],
+    ['ideas', 'sparkle', 'Idea Arena', '#/ideas'],
     ['business', 'business', 'Business', '#/business'],
     ['gaming', 'gaming', 'Gaming', '#/gaming'],
     ['projects', 'target', 'Projects', '#/projects'],
@@ -109,6 +114,9 @@
     const box = G.el(`<div class="menu" role="menu">
       <button data-go="#/u/${esc(u.username)}">${G.icon('user', 18)} ${esc(G.t('Profile'))}</button>
       <button data-go="#/saved">${G.icon('saved', 18)} ${esc(G.t('Saved'))}</button>
+      <button data-go="#/orders">${G.icon('saved', 18)} My orders</button>
+      <button data-go="#/seller">${G.icon('business', 18)} Seller studio</button>
+      <button data-go="#/arena">${G.icon('target', 18)} Arena &amp; XP</button>
       <button data-go="#/settings">${G.icon('settings', 18)} ${esc(G.t('Settings'))}</button>
       ${u.role === 'admin' ? '<button data-go="#/admin">' + G.icon('shield', 18) + ' Admin Panel</button>' : ''}
       <button class="danger" data-logout>${G.icon('logout', 18)} ${esc(G.t('Log out'))}</button></div>`);

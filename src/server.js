@@ -129,6 +129,23 @@ app.use('/api/groups', gc.groups);
 app.use('/api/communities', gc.communities);
 app.use('/api/events', gc.events);
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./routes/admin2'));       // v2 platform administration
+const market = require('./routes/market');
+app.use('/api/market', market.router);
+const work = require('./routes/work');
+app.use('/api/work', work.router);
+const arena = require('./routes/arena');
+app.use('/api/hubs', arena.hubs);
+app.use('/api/challenges', arena.challenges);
+app.use('/api/polls', arena.polls);
+app.use('/api/ideas', arena.ideas);
+app.use('/api/arena', arena.arena);
+app.use('/api/ads', arena.ads);
+app.get('/api/payments/status', (req, res) => res.json(require('./payments').status()));
+app.post('/api/payments/callback', (req, res) => {
+  const out = require('./payments').confirmCallback(req.body);
+  res.status(out.ok ? 200 : 400).json(out);
+});
 
 app.get('/api/health', (req, res) => {
   let dbOk = true;
@@ -210,6 +227,9 @@ if (process.env.DEMO_SEED === '1') {
     }
   } catch (e) { console.error('[demo] seeding skipped:', e.message); }
 }
+
+// Platform v2 defaults: hubs, badges, missions, packages, settings (idempotent).
+try { require('./seed-platform').seedPlatform(); } catch (e) { console.error('[seed] platform seed failed:', e.message); }
 
 // Resume any video that was mid-transcode when the process restarted.
 try { require('./video-jobs').resumePending(); } catch (e) { console.error('[video] resume failed', e.message); }

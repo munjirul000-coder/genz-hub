@@ -2,6 +2,7 @@
 const express = require('express');
 const { db } = require('../db');
 const U = require('../util');
+const XP = require('../gamify');
 const F = require('../feed');
 
 /* ================= GROUPS ================= */
@@ -191,6 +192,7 @@ c.post('/:id/join', U.requireAuth, U.wrap((req, res) => {
     return res.json({ joined: false });
   }
   db.prepare('INSERT INTO community_members (community_id,user_id,role,created_at) VALUES (?,?,?,?)').run(row.id, req.user.id, 'member', U.now());
+  XP.award(req.user.id, 'community_join', { refType: 'community', refId: row.id });
   res.json({ joined: true });
 }));
 

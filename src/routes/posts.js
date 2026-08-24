@@ -2,6 +2,7 @@
 const express = require('express');
 const { db } = require('../db');
 const U = require('../util');
+const XP = require('../gamify');
 const F = require('../feed');
 
 const r = express.Router();
@@ -70,6 +71,7 @@ r.post('/', U.requireAuth, U.rateLimit({ max: 30, windowMs: 5 * 60 * 1000, key: 
   const im = db.prepare('INSERT INTO post_media (post_id,url,type,position,asset_uid,poster,width,height,duration) VALUES (?,?,?,?,?,?,?,?,?)');
   cleanMedia.forEach((m, i) => im.run(id, m.url, m.type, i, m.asset_uid || '', m.poster || '', m.width || 0, m.height || 0, m.duration || 0));
   U.linkHashtags(id, content);
+  XP.award(req.user.id, kind === 'post' ? 'post' : 'project', { refType: 'post', refId: Number(id) });
 
   // mentions
   const mentions = [...new Set((content.match(/@([a-z0-9_]{3,20})/gi) || []).map((x) => x.slice(1).toLowerCase()))].slice(0, 8);
@@ -167,6 +169,7 @@ r.post('/:id/react', U.requireAuth, U.wrap((req, res) => {
   } else {
     db.prepare('INSERT INTO reactions (post_id,user_id,type,created_at) VALUES (?,?,?,?)').run(id, req.user.id, type, U.now());
     U.notify({ userId: post.user_id, actorId: req.user.id, type: 'like', entityType: 'post', entityId: id, text: `${req.user.full_name} reacted to your post`, link: `#/post/${id}` });
+    if (post.user_id !== req.user.id) XP.award(post.user_id, 'reaction_received', { refType: 'post', refId: id });
   }
   const count = db.prepare('SELECT COUNT(*) n FROM reactions WHERE post_id=?').get(id).n;
   const mine = db.prepare('SELECT type FROM reactions WHERE post_id=? AND user_id=?').get(id, req.user.id);
@@ -203,6 +206,7 @@ r.post('/:id/comments', U.requireAuth, U.rateLimit({ max: 60, windowMs: 5 * 60 *
   }
   const info = db.prepare('INSERT INTO comments (post_id,user_id,parent_id,content,created_at) VALUES (?,?,?,?,?)').run(post.id, me, parent_id, content, U.now());
   U.notify({ userId: post.user_id, actorId: me, type: 'comment', entityType: 'post', entityId: post.id, text: `${req.user.full_name} commented on your post`, link: `#/post/${post.id}` });
+  XP.award(me, 'comment', { refType: 'comment', refId: Number(info.lastInsertRowid) });
   const c = db.prepare(`SELECT c.*, u.username,u.full_name,u.avatar FROM comments c JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(info.lastInsertRowid);
   res.json({ comment: c });
 }));

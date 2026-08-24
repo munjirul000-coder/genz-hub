@@ -15,7 +15,10 @@
     "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\"",
     "test:video": "node tests/video-quality-test.js",
     "test:feed": "node tests/video-feed-test.js",
-    "test:stress": "node tests/video-stress-test.js"
+    "test:stress": "node tests/video-stress-test.js",
+    "test:platform": "node tests/platform-test.js",
+    "test:platform-ui": "node tests/platform-ui-test.js",
+    "seed:platform": "node src/seed-platform.js"
   },
   "keywords": [],
   "author": "",

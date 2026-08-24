@@ -2,6 +2,7 @@
 const express = require('express');
 const { db } = require('../db');
 const U = require('../util');
+const XP = require('../gamify');
 const F = require('../feed');
 
 const r = express.Router();
@@ -91,6 +92,7 @@ r.post('/:id/follow', U.requireAuth, U.wrap((req, res) => {
   if (ex) { db.prepare('DELETE FROM follows WHERE follower_id=? AND following_id=?').run(req.user.id, target.id); return res.json({ following: false }); }
   db.prepare('INSERT INTO follows (follower_id,following_id,created_at) VALUES (?,?,?)').run(req.user.id, target.id, U.now());
   U.notify({ userId: target.id, actorId: req.user.id, type: 'follow', entityType: 'user', entityId: req.user.id, text: `${req.user.full_name} started following you`, link: `#/u/${req.user.username}` });
+  XP.award(target.id, 'follow_received', { refType: 'user', refId: req.user.id });
   res.json({ following: true });
 }));
 
