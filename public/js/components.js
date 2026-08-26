@@ -382,6 +382,19 @@
   };
 
   /* ---------------- composer ---------------- */
+  function showPublishedPost(post) {
+    const feed = G.qs('#feed');
+    if (!feed || !post) return G.render();
+    if (feed.querySelector(`[data-post="${post.id}"]`)) return;
+    const list = feed.firstElementChild;
+    if (list && list.tagName === 'DIV' && !list.classList.contains('post') && !list.classList.contains('empty')) {
+      list.insertBefore(G.postCard(post), list.firstChild);
+      return;
+    }
+    // The initial skeleton may still be loading; let the normal feed loader reconcile it.
+    G.render();
+  }
+
   G.openComposer = function (opts) {
     if (!G.requireUser()) return;
     opts = opts || {};
@@ -603,7 +616,7 @@
         m.close();
         G.toast('Post published 🎉', 'ok');
         if (opts.onDone) opts.onDone(r.post);
-        else if (['home', 'business', 'gaming'].includes(S.route.name)) G.render();
+        else if (['home', 'business', 'gaming'].includes(S.route.name)) showPublishedPost(r.post);
       } catch (err) {
         errBox.textContent = err.message; errBox.hidden = false;
         e.target.disabled = false; e.target.innerHTML = G.icon('send', 16) + ' Publish';

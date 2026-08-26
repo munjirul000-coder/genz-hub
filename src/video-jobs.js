@@ -68,11 +68,19 @@ function update(uid, fields) {
 }
 
 /** Register a freshly uploaded file and queue it for processing. */
-function createAsset({ filePath, originalName, mime, bytes, userId }) {
+function createAsset({ filePath, originalName, mime, bytes, userId, instantPublic = false }) {
   const uid = newUid();
-  db.prepare(`INSERT INTO video_assets (uid,user_id,status,stage,progress,original_name,original_path,mime,bytes,created_at,updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(uid, userId || null, 'processing', 'queued', 0, String(originalName || '').slice(0, 160), filePath, mime || '', bytes || 0, now(), now());
+  // Publish the original immediately and let the quality ladder finish in the background.
+  // This prevents a Render Free CPU queue from blocking the composer for several minutes;
+  // the asset UID remains stable, so posts automatically switch to better renditions later.
+  const originalUrl = `/uploads/src/${path.basename(filePath)}`;
+  const initialVariants = instantPublic ? JSON.stringify([{
+    h: 0, w: 0, url: originalUrl, label: 'Original', bytes: bytes || 0, source: 'original',
+  }]) : '[]';
+  db.prepare(`INSERT INTO video_assets (uid,user_id,status,stage,progress,original_name,original_path,mime,bytes,variants,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(uid, userId || null, instantPublic ? 'ready' : 'processing', 'queued', 0,
+      String(originalName || '').slice(0, 160), filePath, mime || '', bytes || 0, initialVariants, now(), now());
   enqueue(uid);
   return getAsset(uid);
 }
@@ -95,7 +103,16 @@ function pump() {
       .catch((e) => {
         // Never surface raw ffmpeg output to users — log it, show a friendly message.
         console.error('[video] processing failed', uid, e && e.message);
-        try { update(uid, { status: 'failed', stage: 'failed', error: String((e && e.message) || 'error').slice(0, 500) }); } catch (_) {}
+        try {
+          const cur = getAsset(uid);
+          let hasFallback = false;
+          try { hasFallback = !!(cur && cur.original_path && JSON.parse(cur.variants || '[]').length); } catch (_) {}
+          // A published original is still usable if the optional ladder fails on a tiny host.
+          // Keep the post live instead of trapping the composer in an endless processing state.
+          update(uid, hasFallback
+            ? { status: 'ready', stage: 'done', progress: 100, error: String((e && e.message) || 'rendition skipped').slice(0, 500) }
+            : { status: 'failed', stage: 'failed', error: String((e && e.message) || 'error').slice(0, 500) });
+        } catch (_) {}
       })
       .finally(() => { running--; setImmediate(pump); });
   }
@@ -222,7 +239,8 @@ function retry(uid) {
 
 /** Requeue anything left mid-flight by a restart. */
 function resumePending() {
-  const rows = db.prepare("SELECT uid, original_path FROM video_assets WHERE status='processing'").all();
+  const rows = db.prepare(`SELECT uid, original_path FROM video_assets
+    WHERE status='processing' OR (status='ready' AND stage NOT IN ('done','failed') AND original_path<>'')`).all();
   rows.forEach((r) => {
     if (r.original_path && fs.existsSync(r.original_path)) enqueue(r.uid);
     else update(r.uid, { status: 'failed', stage: 'failed', error: 'interrupted' });

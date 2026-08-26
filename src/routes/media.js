@@ -19,11 +19,18 @@ const VIDEO_MIME = {
   'video/mpeg': 'mpg', 'video/x-msvideo': 'avi',
 };
 const MAX_MB = Number(process.env.VIDEO_MAX_MB || 300);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'mkv', 'm4v', '3gp', 'mpg', 'mpeg', 'avi']);
+function videoExtension(file) {
+  const byMime = VIDEO_MIME[file.mimetype];
+  if (byMime) return byMime;
+  const byName = path.extname(file.originalname || '').toLowerCase().slice(1);
+  return VIDEO_EXTENSIONS.has(byName) ? byName : 'bin';
+}
 
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, jobs.SRC_DIR),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${VIDEO_MIME[file.mimetype] || 'bin'}`),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${videoExtension(file)}`),
   }),
   limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
@@ -60,12 +67,24 @@ r.post('/video', U.requireAuth, U.rateLimit({ max: 30, windowMs: 30 * 60 * 1000,
       return res.json({ asset: jobs.publicAsset(jobs.getAsset(uid)) });
     }
 
+    // Probe first (cheap) so an invalid .mp4 cannot become a published fallback post.
+    // The expensive poster/rendition work still runs asynchronously after this check.
+    try {
+      const probe = await V.probe(f.path);
+      if (!probe.width || !probe.height) throw new Error('unreadable video');
+      if (probe.duration && probe.duration > Number(process.env.VIDEO_MAX_SECONDS || 900)) throw new Error('video too long');
+    } catch (probeErr) {
+      fs.promises.unlink(f.path).catch(() => {});
+      return res.status(400).json({ error: 'This video could not be read. Please choose a valid MP4, MOV or WebM video.' });
+    }
+
     const row = jobs.createAsset({
       filePath: f.path,
       originalName: U.sanitizeText(f.originalname, 160),
       mime: f.mimetype,
       bytes: f.size,
       userId: req.user.id,
+      instantPublic: true,
     });
     res.json({ asset: jobs.publicAsset(row) });
   });
