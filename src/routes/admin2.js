@@ -235,7 +235,13 @@ r.get('/settings', U.wrap((req, res) => {
 r.put('/settings', U.wrap((req, res) => {
   const body = req.body || {};
   const allowed = ['job_free_quota', 'marketplace_commission_pct', 'ads_enabled', 'marketplace_enabled',
-    'work_enabled', 'arena_enabled', 'signup_open', 'platform_notice'];
+    'work_enabled', 'arena_enabled', 'signup_open', 'platform_notice',
+    'rec_exploration_pct', 'rec_freshness_half_life_hours', 'rec_diversity_penalty', 'rec_creator_penalty',
+    'rec_small_creator_boost', 'rec_weight_like', 'rec_weight_love', 'rec_weight_angry', 'rec_weight_middle',
+    'rec_weight_comment', 'rec_weight_share', 'rec_weight_save', 'rec_weight_post_click',
+    'rec_weight_profile_visit', 'rec_weight_group_visit', 'rec_weight_search', 'rec_weight_video_watch',
+    'rec_weight_video_complete', 'rec_weight_video_replay', 'rec_weight_video_skip', 'rec_weight_follow', 'rec_weight_hide',
+    'rec_weight_report', 'rec_weight_skip'];
   const stmt = db.prepare(`INSERT INTO platform_settings (key,value,updated_at) VALUES (?,?,?)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`);
   Object.keys(body).filter((k) => allowed.includes(k)).forEach((k) => stmt.run(k, String(body[k]).slice(0, 300), U.now()));

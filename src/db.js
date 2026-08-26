@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS posts (
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_hub ON posts(hub);
+CREATE INDEX IF NOT EXISTS idx_posts_hub_created ON posts(hub, created_at DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS post_media (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -314,6 +315,82 @@ CREATE TABLE IF NOT EXISTS video_assets (
 );
 CREATE INDEX IF NOT EXISTS idx_video_assets_user ON video_assets(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_assets_status ON video_assets(status);
+
+-- ------------------------------------------------------------- recommendations
+CREATE TABLE IF NOT EXISTS recommendation_categories (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS user_interest_scores (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL REFERENCES recommendation_categories(slug) ON DELETE CASCADE,
+  score REAL NOT NULL DEFAULT 0,
+  interaction_count INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, category)
+);
+CREATE INDEX IF NOT EXISTS idx_interest_scores_user ON user_interest_scores(user_id, score DESC);
+
+CREATE TABLE IF NOT EXISTS user_activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  target_id INTEGER,
+  category TEXT NOT NULL DEFAULT 'general',
+  value REAL NOT NULL DEFAULT 1,
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_activity_user_time ON user_activity(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_post ON user_activity(post_id, action);
+CREATE INDEX IF NOT EXISTS idx_activity_event ON user_activity(user_id, action, post_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_target ON user_activity(user_id, action, target_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS post_categories (
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  category TEXT NOT NULL REFERENCES recommendation_categories(slug) ON DELETE CASCADE,
+  weight REAL NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, category)
+);
+CREATE INDEX IF NOT EXISTS idx_post_categories_category ON post_categories(category, post_id);
+
+CREATE TABLE IF NOT EXISTS recommendation_impressions (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  shown_at INTEGER NOT NULL,
+  view_count INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, post_id)
+);
+CREATE INDEX IF NOT EXISTS idx_rec_impressions_user_time ON recommendation_impressions(user_id, shown_at DESC);
+
+CREATE TABLE IF NOT EXISTS recommendation_feedback (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL, -- hide | report | skip
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, post_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_rec_feedback_user ON recommendation_feedback(user_id, kind);
+
+CREATE TABLE IF NOT EXISTS video_watch_stats (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  watched_seconds REAL NOT NULL DEFAULT 0,
+  max_seconds REAL NOT NULL DEFAULT 0,
+  completion_pct REAL NOT NULL DEFAULT 0,
+  starts INTEGER NOT NULL DEFAULT 0,
+  replays INTEGER NOT NULL DEFAULT 0,
+  skips INTEGER NOT NULL DEFAULT 0,
+  last_watched INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, post_id)
+);
+CREATE INDEX IF NOT EXISTS idx_video_watch_user ON video_watch_stats(user_id, last_watched DESC);
 `);
 
 // --- lightweight, idempotent column migrations (SQLite has no "ADD COLUMN IF NOT EXISTS") ---

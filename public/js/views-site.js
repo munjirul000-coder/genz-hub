@@ -62,7 +62,7 @@
               <div><b>${G.num(c.users || 0)}</b><span>members</span></div>
               <div><b>${G.num(c.posts || 0)}</b><span>posts</span></div>
               <div><b>${G.num(c.communities || 0)}</b><span>communities</span></div>
-              <div><b>2</b><span>specialised hubs</span></div>
+              <div><b>12</b><span>Interest Hubs</span></div>
             </div>
           </div>
           <div class="hero-mock" aria-hidden="true">
@@ -86,7 +86,7 @@
 
       <section class="site-wrap section">
         <h2 class="sec-title">Everything a modern social platform should do</h2>
-        <p class="sec-sub">No marketplace. No AI gimmicks. Just real people, real communities and features that work.</p>
+        <p class="sec-sub">CONNECT • PLAY • BUILD • WORK • SHOP — real features for real Gen-Z life.</p>
         <div class="feature-grid">
           ${[['📝', 'Posts that fit your life', 'Text, photo carousels, videos, links, hashtags and mentions — with public, connections-only or private visibility.'],
              ['💬', 'Private messaging', 'One-to-one chats with attachments, emoji, unread counts and read receipts. Only you and the recipient can access them.'],
@@ -110,9 +110,9 @@
             </ul>
           </div>
           <div>
-            <h2 class="sec-title left">Business Hub — build, don't sell</h2>
+            <h2 class="sec-title left">Business Hub — build, work & shop</h2>
             <p class="muted">A dedicated ecosystem for entrepreneurship, startups, freelancing, e-commerce, marketing, sales and investing education. Post your ideas, share what is working, and find people to build with.</p>
-            <p class="muted">The collaboration board is for <b>looking for a co-founder, a developer, a designer or a team</b> — networking, not a marketplace. Nothing is bought or sold on Gen-Z Hub.</p>
+            <p class="muted">The collaboration board is for <b>looking for a co-founder, a developer, a designer or a team</b> — plus full Marketplace, Work jobs, Arena & XP now live.</p>
             <div class="row wrap" style="gap:7px;margin-top:14px">${['Startups', 'Freelancing', 'Marketing', 'E-commerce', 'Technology', 'Business Ideas', 'Networking'].map((t) => `<span class="chip static">${t}</span>`).join('')}</div>
           </div>
         </div>
@@ -159,7 +159,7 @@
       <h3>Why we exist</h3>
       <p>Most social platforms make you choose an identity. Business networks feel formal and old. Gaming spaces are fragmented across a dozen chat servers. General social feeds are noise. Gen-Z Hub keeps one profile, one feed and one messaging inbox — with two specialised ecosystems inside it: <b>Business Hub</b> and <b>Gaming Hub</b>.</p>
       <h3>What we do not do</h3>
-      <ul><li>No marketplace, product listings or buying and selling.</li>
+      <ul><li>Full Marketplace + Shop, Work + Freelance jobs, Arena challenges, Interest Hubs, XP — all live and functional.</li>
         <li>No AI chatbot, AI assistant or AI content generator — everything you read here is written by people.</li>
         <li>No betting or gambling features in Gaming Hub.</li>
         <li>No copying another company's branding or interface. Gen-Z Hub is its own design system.</li></ul>
@@ -196,7 +196,7 @@
       <h3>3. Acceptable use</h3>
       <p>Do not post illegal content, harassment, hate speech, sexual content involving minors, spam, scams, malware, impersonation or content that violates someone else's rights. Do not attempt to break, overload or gain unauthorised access to the platform.</p>
       <h3>4. No marketplace, no gambling</h3>
-      <p>Gen-Z Hub is not a marketplace. Do not use it to sell products, run paid listings, or operate betting or gambling activities.</p>
+      <p>Gen-Z Hub has a full Marketplace + Work section. No gambling or betting.</p>
       <h3>5. Moderation</h3>
       <p>Reported content is reviewed by moderators. We may hide or delete content, restrict features, suspend or remove accounts that break these terms. Serious or repeated violations lead to permanent removal.</p>
       <h3>6. Availability</h3>
@@ -211,7 +211,7 @@
       <h3>Zero tolerance</h3>
       <ul><li>Harassment, bullying, threats or targeted hate.</li><li>Sexual content involving minors — reported to authorities immediately.</li>
         <li>Scams, fake investment schemes, "guaranteed returns" and financial fraud.</li><li>Spam, mass DMs and engagement farming.</li>
-        <li>Selling products or services (this is not a marketplace) and any betting or gambling.</li></ul>
+        <li>Selling products in Shop, offering services in Work (no gambling or betting).</li></ul>
       <h3>Reporting</h3>
       <p>Every post, comment, user, group and community has a report action. Choose a category — spam, harassment, impersonation, inappropriate content or other — and add details. Reports go to a moderation queue where admins can remove content, suspend accounts or dismiss the report.</p>
       <h3>Blocking</h3>

@@ -27,7 +27,12 @@ const upload = multer({
   }),
   limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
-    if (!VIDEO_MIME[file.mimetype]) return cb(new U.HttpError(400, 'Unsupported video format. Use MP4, MOV or WebM.'));
+    const mime = file.mimetype || '';
+    const name = (file.originalname || '').toLowerCase();
+    const isVideo = mime.startsWith('video/') || 
+                    name.endsWith('.mp4') || name.endsWith('.mov') || name.endsWith('.webm') ||
+                    name.endsWith('.mkv') || name.endsWith('.m4v');
+    if (!isVideo) return cb(new U.HttpError(400, 'Unsupported video format. Use MP4, MOV or WebM.'));
     cb(null, true);
   },
 });

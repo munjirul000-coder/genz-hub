@@ -306,8 +306,7 @@ html[data-theme="dark"] .nav-item.on .ni{color:var(--volt)}
   background:linear-gradient(135deg,color-mix(in srgb,var(--iris) 16%,var(--surface)) 0%, var(--surface) 55%, color-mix(in srgb,var(--volt) 12%,var(--surface)) 100%);
   border:1px solid var(--line);box-shadow:var(--sh-1);
 }
-.greet::before{content:'';position:absolute;width:280px;height:280px;border-radius:50%;right:-90px;top:-140px;
-  background:radial-gradient(circle,color-mix(in srgb,var(--volt) 26%,transparent),transparent 70%);pointer-events:none}
+.
 .greet h1{font-size:clamp(21px,2.4vw,29px);margin-bottom:5px}
 .greet .sub{color:var(--muted);font-size:14.5px}
 .quick{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;position:relative}
@@ -526,12 +525,43 @@ html[data-theme="dark"] .pa.on{color:var(--volt)}
 /* হেডার কভারের উপরে থাকে; শুধু avatar কভারে ওভারল্যাপ করে, নাম সবসময় নিচে */
 .prof-head{
   position:relative;z-index:2;padding:0 24px 20px;
-  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:flex-end;
+  display:grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  gap:18px;
+  align-items:flex-end;
+  width:100%;
+  min-width:0;
 }
 .prof-av{margin-top:-58px;border:4px solid var(--surface);border-radius:34px;box-shadow:var(--sh-2);line-height:0;background:var(--surface)}
 .prof-av .avatar{border-radius:28px}
-.prof-id{min-width:0;padding-bottom:2px}
-.prof-id h2{font-size:clamp(20px,2.4vw,27px);line-height:1.15;margin:0;word-break:break-word}
+.prof-id {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-bottom: 2px;
+  display: block !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important; /* allow children to wrap inside */
+}
+.prof-id h2,
+.prof-id h2 * {
+  font-size: clamp(18px, 2.1vw, 25px) !important;
+  line-height: 1.35 !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  text-align: left !important;
+  hyphens: auto !important;
+}
 .prof-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
 .prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:13.5px;color:var(--muted)}
 .prof-meta .sep{opacity:.45}
@@ -740,3 +770,577 @@ html[data-theme="dark"] .pa.on{color:var(--volt)}
   .kpi-row{gap:16px}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+
+/* Profile name - must wrap to multiple lines, never break into single letters */
+.prof-id {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.prof-id h2,
+.prof-id .bold {
+  font-size: clamp(18px, 2.1vw, 25px) !important;
+  line-height: 1.28 !important;
+  margin: 2px 0 6px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Also protect other headers */
+.group-header .bold,
+.community-header .bold {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+@media (max-width: 700px) {
+  .prof-id h2 { font-size: 17px !important; line-height: 1.25 !important; }
+}
+
+/* =============================================
+   FINAL FIX: Profile name vertical letters bug
+   Force normal wrapping for long names like "Ayesha Siddika"
+   ============================================= */
+.prof-hero,
+.prof-head,
+.prof-id {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.prof-id h2,
+.prof-id .bold {
+  font-size: clamp(17px, 2vw, 23px) !important;
+  line-height: 1.32 !important;
+  margin: 0 0 6px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  display: block !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+}
+
+/* Make sure the grid cell can shrink */
+.prof-head > .prof-id {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+@media (max-width: 640px) {
+  .prof-id h2 {
+    font-size: 16.5px !important;
+    line-height: 1.3 !important;
+  }
+}
+
+
+}
+
+
+}
+
+/* =====================================================
+   DEFINITIVE FIX for vertical letter name bug
+   "Ayesha Siddika" must display as normal wrapped text
+   This rule has maximum specificity
+   ===================================================== */
+html body #root .prof-hero .prof-head .prof-id h2,
+
+
+/* Make sure the grid/flex parents allow the name column to shrink */
+html body #root .prof-head,
+.prof-head {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html body #root .prof-id,
+.prof-id {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  html body #root .prof-id h2 {
+    font-size: 17px !important;
+    line-height: 1.3 !important;
+  }
+}
+
+
+}
+
+
+}
+
+
+}
+
+
+}
+
+/* ============================================================
+   DEFINITIVE FIX - Profile name vertical letters (Ayesha Siddika)
+   Force normal multi-line wrapping. This is the LAST rule.
+   ============================================================ */
+html body #root .prof-hero .prof-head .prof-id h2,
+html body #root .prof-id h2,
+#root .prof-id h2,
+.prof-id h2 {
+  font-size: 19px !important;
+  line-height: 1.35 !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+}
+
+/* Force grid to allow name column to shrink */
+html body #root .prof-head,
+.prof-head {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html body #root .prof-id,
+.prof-id {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 0% !important;
+  overflow: visible !important;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  html body #root .prof-id h2 {
+    font-size: 17px !important;
+    line-height: 1.32 !important;
+  }
+}
+
+/* ============================================================
+   CLEAN DEFINITIVE FIX: Profile + Group + Community long names
+   "Ayesha Siddika" (and similar) MUST wrap normally as multi-line.
+   NO vertical single letters. Preserve VOLT classes only.
+   ============================================================ */
+
+/* Force grid parents to shrink name column */
+.prof-head,
+.group-head,
+.community-head {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Core name containers */
+.prof-id,
+.group-id,
+.community-id {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important; /* clip safely but allow wrap inside */
+}
+
+/* All long names: force normal wrapping + multi-line */
+.prof-id h2,
+.prof-id .bold,
+.group-head h2,
+.community-head h2,
+.group-id h2,
+.community-id h2,
+#root .prof-id h2,
+html body .prof-id h2 {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: block !important;
+  font-size: 19px !important;
+  line-height: 1.35 !important;
+  box-sizing: border-box !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+}
+
+/* Mobile friendly */
+@media (max-width: 640px) {
+  .prof-id h2,
+  .group-head h2,
+  .community-head h2 {
+    font-size: 17px !important;
+    line-height: 1.32 !important;
+  }
+}
+
+/* ============================================================
+   REACTION PICKER — FULLY VISIBLE, NEVER CLIPPED (desktop + mobile)
+   Strongest possible positioning + z-index
+   ============================================================ */
+.reaction-picker {
+  position: fixed !important;           /* fixed so nothing can clip it */
+  z-index: 2147483647 !important;       /* maximum possible z-index */
+  display: flex !important;
+  gap: 6px !important;
+  padding: 12px 10px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35), var(--sh-3) !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+/* Position dynamically via JS below (more reliable than bottom) */
+.reaction-picker button {
+  font-size: 26px !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform .12s ease, background .1s !important;
+}
+.reaction-picker button:hover {
+  transform: scale(1.3) !important;
+  background: var(--surface-2) !important;
+}
+
+/* Make sure the post action area doesn't clip */
+.post,
+.post-actions,
+.pa[data-react] {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* ============================================================
+   COVER — clean linear fade ONLY (no circular blob/gradient dag)
+   ============================================================ */
+.prof-hero .cover,
+.cover {
+  background: linear-gradient(120deg, var(--iris), #4b34c9 42%, var(--aqua)) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.prof-hero .cover::after,
+.cover::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(180deg, transparent 40%, rgba(6,7,11,.32)) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  border-radius: 0 !important;
+}
+.cover img {
+  position: relative !important;
+  z-index: 0 !important;
+}
+
+
+
+/* ========== NUCLEAR REACTION PICKER FIX (never clipped) ========== */
+.reaction-picker {
+  display: flex !important;
+  gap: 8px !important;
+  padding: 14px 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 35px 100px rgba(0,0,0,.6) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 28px !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.reaction-picker button:hover {
+  transform: scale(1.45) !important;
+  background: var(--surface-2) !important;
+}
+
+
+/* ========== NUCLEAR PICKER — NEVER CLIPPED (final) ========== */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 13px 11px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.65) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 27px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover {
+  transform: scale(1.4) !important;
+  background: var(--surface-2) !important;
+}
+
+
+/* ========== NUCLEAR-STRONG-PICKER-2026 (absolutely never clipped) ========== */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 7px !important;
+  padding: 13px 10px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 40px 110px rgba(0,0,0,0.6) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 27px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.4) !important; background: var(--surface-2) !important; }
+
+
+/* NUCLEAR-PICKER-FINAL — 100% visible, never clipped */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 13px 11px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.65) !important;
+}
+.reaction-picker button {
+  font-size: 27px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.45) !important; background: var(--surface-2) !important; }
+
+
+/* NUCLEAR-PICKER-ABSOLUTE — 100% visible, never behind next post */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 13px 11px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.65) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 27px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.45) !important; background: var(--surface-2) !important; }
+
+
+/* ========== NUCLEAR-PICKER-ABSOLUTE-2026 (never clipped, always on top) ========== */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 14px 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 50px 140px rgba(0,0,0,0.7) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 28px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.5) !important; background: var(--surface-2) !important; }
+
+
+/* NUCLEAR-PICKER-ABSOLUTE-FINAL */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 14px 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 50px 150px rgba(0,0,0,0.7) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 28px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.5) !important; background: var(--surface-2) !important; }
+
+
+/* NUCLEAR-PICKER-ABSOLUTE-FINAL-2026 - 100% visible above everything */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 14px 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 60px 160px rgba(0,0,0,0.75) !important;
+  pointer-events: auto !important;
+}
+.reaction-picker button {
+  font-size: 28px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover { transform: scale(1.5) !important; background: var(--surface-2) !important; }
+
+
+/* ========== SUPER STRONG PICKER FIX (never clipped by anything) ========== */
+.reaction-picker {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  gap: 8px !important;
+  padding: 14px 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 60px 180px rgba(0,0,0,0.8) !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+.reaction-picker button {
+  font-size: 28px !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+.reaction-picker button:hover {
+  transform: scale(1.5) !important;
+  background: var(--surface-2) !important;
+}
+
+/* Make sure no post can clip popups */
+.post, .card, .post-actions {
+  overflow: visible !important;
+}
+
+/* Seven reactions fit on a narrow phone without horizontal clipping. */
+@media (max-width: 520px) {
+  .reaction-picker {
+    gap: 4px !important;
+    padding: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+  .reaction-picker button {
+    position: static !important;
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 23px !important;
+    border-radius: 10px !important;
+  }
+}
+
+/* Older picker rules made every descendant fixed; restore normal flex children. */
+.reaction-picker > button {
+  position: static !important;
+  flex: 0 0 auto !important;
+}

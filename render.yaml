@@ -21,7 +21,7 @@ services:
       - key: ADMIN_EMAIL
         value: admin@genzhub.app
       - key: ADMIN_PASSWORD
-        generateValue: true
+        value: "AdminGenz2026"
       # ---- video pipeline (ffmpeg ships as an npm dependency, no system package needed) ----
       - key: VIDEO_PRESET          # x264 speed/quality trade-off for a 0.1-CPU free instance
         value: veryfast

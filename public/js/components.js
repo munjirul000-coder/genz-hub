@@ -3,7 +3,15 @@
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
 
-  const REACTIONS = { like: '👍', fire: '🔥', clap: '👏', mind: '🤯' };
+  const REACTIONS = { 
+    like: '👍', 
+    fire: '🔥', 
+    clap: '👏', 
+    mind: '🤯',
+    love: '❤️',
+    angry: '😠',
+    middle: '🖕'
+  };
 
   /* ---------------- media ---------------- */
   function mediaHtml(media) {
@@ -78,6 +86,15 @@
       <div data-comments hidden></div>
     </article>`);
 
+    // Feed telemetry is intentionally client-side and batched; it never blocks rendering.
+    if (G.observeRecommendationPost) G.observeRecommendationPost(node, p);
+    node.addEventListener('click', (e) => {
+      if (e.target.closest('.post-actions, [data-menu], .menu, a[href*="#/u/"]')) return;
+      if (e.target.closest('.post-body, .media-grid, a[href*="#/post/"]')) {
+        G.trackActivity && G.trackActivity('post_click', { post_id: p.id, target_id: p.user_id });
+      }
+    });
+
     // reactions
     const rBtn = G.qs('[data-react]', node);
     rBtn.onclick = async () => {
@@ -116,28 +133,68 @@
   };
 
   function reactionPicker(anchor, p, node) {
-    const box = G.el(`<div class="menu" style="right:auto;left:0;display:flex;gap:4px;padding:6px">
-      ${Object.entries(REACTIONS).map(([k, v]) => `<button data-r="${k}" style="font-size:20px;width:40px;justify-content:center" aria-label="React ${k}">${v}</button>`).join('')}</div>`);
-    anchor.parentElement.style.position = 'relative';
-    anchor.parentElement.appendChild(box);
-    const off = (e) => { if (!box.contains(e.target)) { box.remove(); document.removeEventListener('click', off); } };
-    setTimeout(() => document.addEventListener('click', off), 0);
-    box.querySelectorAll('[data-r]').forEach((b) => b.onclick = async () => {
-      try {
-        const r = await G.post(`/posts/${p.id}/react`, { type: b.dataset.r });
-        p.my_reaction = r.my_reaction;
-        anchor.classList.toggle('on', !!r.my_reaction);
-        anchor.innerHTML = `${r.my_reaction ? REACTIONS[r.my_reaction] : G.icon('heart', 18)} <span class="lbl">${esc(G.t('Like'))}</span>`;
-        G.qs('[data-count-r]', node).textContent = G.num(r.reaction_count) + ' reactions';
-      } catch (e) { G.err(e); }
-      box.remove();
+    // === BULLETPROOF FIXED PICKER — NEVER CLIPPED (body append + viewport calc + max z) ===
+    // Fully usable on right-click (desktop) / long-press (mobile). Always appears fully above button.
+    document.querySelectorAll(".reaction-picker").forEach(el => el.remove());
+
+    const r = anchor.getBoundingClientRect();
+
+    const html = `<div class="reaction-picker" style="position:fixed;z-index:2147483647;display:flex;gap:8px;padding:14px 12px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 50px 150px rgba(0,0,0,.7);white-space:nowrap;pointer-events:auto;">
+      ${Object.entries(REACTIONS).map(([k,v]) => `<button data-r="${k}" style="font-size:28px;width:46px;height:46px;border-radius:14px;border:0;background:transparent;cursor:pointer;">${v}</button>`).join("")}
+    </div>`;
+
+    const box = G.el(html);
+    document.body.appendChild(box);
+
+    // Keep the picker inside the viewport. It is always placed above the button;
+    // if the button is near the top, clamp to the top edge instead of dropping it
+    // over the next post.
+    const w = box.offsetWidth || 340;
+    const h = box.offsetHeight || 76;
+    let left = r.left + (r.width / 2) - (w / 2);
+    let top = r.top - h - 12;
+    const maxLeft = Math.max(8, window.innerWidth - w - 8);
+    const maxTop = Math.max(8, window.innerHeight - h - 8);
+    left = Math.max(8, Math.min(left, maxLeft));
+    top = Math.max(8, Math.min(top, maxTop));
+
+    box.style.left = left + "px";
+    box.style.top = top + "px";
+
+    const cleanup = () => { if (box && box.parentNode) box.parentNode.removeChild(box); };
+
+    const onOutside = (ev) => {
+      if (!box.contains(ev.target)) {
+        cleanup();
+        document.removeEventListener("click", onOutside, true);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener("click", onOutside, true);
+      window.addEventListener("scroll", cleanup, { once: true });
+      window.addEventListener("resize", cleanup, { once: true });
+    }, 30);
+
+    box.querySelectorAll("[data-r]").forEach(b => {
+      b.onclick = async () => {
+        try {
+          const res = await G.post(`/posts/${p.id}/react`, { type: b.dataset.r });
+          p.my_reaction = res.my_reaction;
+          anchor.classList.toggle("on", !!res.my_reaction);
+          anchor.innerHTML = `${res.my_reaction ? REACTIONS[res.my_reaction] : G.icon("heart",18)} <span class=\"lbl\">${esc(G.t("Like"))}</span>`;
+          const c = G.qs("[data-count-r]", node);
+          if (c) c.textContent = G.num(res.reaction_count) + " reactions";
+        } catch(e) { G.err(e); }
+        cleanup();
+      };
     });
   }
-
   function postMenu(anchor, p, node, mine) {
     const box = G.el(`<div class="menu" role="menu">
       <button data-copy>🔗 Copy link</button>
       <button data-open>↗️ Open post</button>
+      ${!mine ? '<button data-hide>🙈 Not interested</button>' : ''}
       ${mine ? '<button data-edit>✏️ Edit post</button>' : ''}
       ${!mine ? '<button data-report>🚩 Report post</button>' : ''}
       ${mine || (S.user && S.user.role === 'admin') ? '<button class="danger" data-del>🗑️ Delete post</button>' : ''}
@@ -152,6 +209,11 @@
       box.remove();
     };
     q('[data-open]').onclick = () => { location.hash = '#/post/' + p.id; box.remove(); };
+    if (q('[data-hide]')) q('[data-hide]').onclick = async () => {
+      box.remove();
+      try { await G.post(`/posts/${p.id}/hide`); node.remove(); G.toast('We will show you less like this.', 'ok'); }
+      catch (e) { G.err(e); }
+    };
     if (q('[data-edit]')) q('[data-edit]').onclick = () => { box.remove(); editPost(p, node); };
     if (q('[data-report]')) q('[data-report]').onclick = () => { box.remove(); G.reportModal('post', p.id); };
     if (q('[data-del]')) q('[data-del]').onclick = async () => {
@@ -453,8 +515,12 @@
       prog.hidden = false;
       goBtn.disabled = true;
 
-      const videos = files.filter((f) => (f.type || '').startsWith('video/'));
-      const others = files.filter((f) => !(f.type || '').startsWith('video/'));
+    // Some Android/iOS browsers report an empty or generic MIME type for MP4/MOV files.
+    // Classify by MIME OR extension so those files still use the video pipeline instead of
+    // being sent to the stricter image/file upload endpoint.
+    const isVideoFile = (f) => /^video\//i.test(f.type || '') || /\.(mp4|mov|webm|mkv|m4v)$/i.test(f.name || '');
+    const videos = files.filter(isVideoFile);
+    const others = files.filter((f) => !isVideoFile(f));
 
       try {
         // --- images / files: plain upload ---

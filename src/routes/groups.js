@@ -4,6 +4,7 @@ const { db } = require('../db');
 const U = require('../util');
 const XP = require('../gamify');
 const F = require('../feed');
+const R = require('../recommendations');
 
 /* ================= GROUPS ================= */
 const g = express.Router();
@@ -49,6 +50,7 @@ g.post('/', U.requireAuth, U.rateLimit({ max: 10, windowMs: 3600e3, key: 'newgro
 g.get('/:id', U.wrap((req, res) => {
   const row = groupRow(Number(req.params.id), req.user ? req.user.id : 0);
   if (!row) return res.status(404).json({ error: 'Group not found.' });
+  if (req.user) R.recordActivity({ userId: req.user.id, action: 'group_visit', targetId: row.id, category: R.categoryForText(`${row.name} ${row.category} ${row.hub}`)[0] });
   res.json({ group: row });
 }));
 
@@ -173,6 +175,7 @@ c.post('/', U.requireAuth, U.rateLimit({ max: 8, windowMs: 3600e3, key: 'newcomm
 c.get('/:id', U.wrap((req, res) => {
   const row = commRow(req.params.id, req.user ? req.user.id : 0);
   if (!row) return res.status(404).json({ error: 'Community not found.' });
+  if (req.user) R.recordActivity({ userId: req.user.id, action: 'community_visit', targetId: row.id, category: R.categoryForText(`${row.name} ${row.category} ${row.hub}`)[0] });
   res.json({ community: row });
 }));
 
@@ -263,10 +266,13 @@ e.post('/:id/rsvp', U.requireAuth, U.wrap((req, res) => {
 
 e.post('/:id/save', U.requireAuth, U.wrap((req, res) => {
   const id = Number(req.params.id);
-  if (!eventRow(id, req.user.id)) return res.status(404).json({ error: 'Event not found.' });
+  const ev = eventRow(id, req.user.id);
+  if (!ev) return res.status(404).json({ error: 'Event not found.' });
+  const category = R.categoryForText(`${ev.title} ${ev.hub}`)[0] || 'general';
   const ex = db.prepare(`SELECT * FROM saved_items WHERE user_id=? AND item_type='event' AND item_id=?`).get(req.user.id, id);
-  if (ex) { db.prepare('DELETE FROM saved_items WHERE id=?').run(ex.id); return res.json({ saved: false }); }
+  if (ex) { db.prepare('DELETE FROM saved_items WHERE id=?').run(ex.id); R.recordActivity({ userId: req.user.id, action: 'unsave', category }); return res.json({ saved: false }); }
   db.prepare(`INSERT INTO saved_items (user_id,item_type,item_id,created_at) VALUES (?,'event',?,?)`).run(req.user.id, id, U.now());
+  R.recordActivity({ userId: req.user.id, action: 'save', category });
   res.json({ saved: true });
 }));
 
@@ -277,6 +283,8 @@ e.post('/:id/share', U.requireAuth, U.wrap((req, res) => {
   const content = `${U.sanitizeText(req.body.content, 500)}\n\nEvent: ${ev.title}`.trim();
   const info = db.prepare(`INSERT INTO posts (user_id,content,hub,kind,privacy,event_id,created_at) VALUES (?,?,?, 'event','public',?,?)`)
     .run(req.user.id, content, ev.hub, id, U.now());
+  R.ensurePostCategories({ id: Number(info.lastInsertRowid), content, hub: ev.hub, topic: '' });
+  R.recordActivity({ userId: req.user.id, action: 'share', postId: Number(info.lastInsertRowid) });
   res.json({ ok: true, post_id: info.lastInsertRowid });
 }));
 

@@ -95,6 +95,7 @@
     const st = {
       box, data, video: null, attached: false, ratio: 0, userPaused: false,
       pinned: null, stallPenalty: 1, stallTimes: [], goodSince: 0, currentH: null, seeking: false,
+      pendingWatch: 0, watchedTotal: 0, lastWatchReport: 0, lastVideoTime: 0, started: false, ended: false, skipSent: false,
     };
     players.set(box, st);
 
@@ -152,6 +153,34 @@
   }
   function fsIcon() { return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></svg>'; }
 
+  /* ------------------------------------------------------------- recommendation telemetry */
+  function videoPostId(st) {
+    const card = st.box && st.box.closest ? st.box.closest('[data-post]') : null;
+    return card ? Number(card.dataset.post) : 0;
+  }
+  function trackVideo(st, action, value, extra) {
+    const postId = videoPostId(st);
+    if (postId && G.trackActivity) G.trackActivity(action, Object.assign({ post_id: postId, value: value || 1 }, extra || {}));
+  }
+  function reportWatch(st, force) {
+    if (!st.pendingWatch || (!force && performance.now() - st.lastWatchReport < 8000)) return;
+    const duration = st.video ? (st.video.duration || st.data.duration || 0) : (st.data.duration || 0);
+    const current = st.video ? (st.video.currentTime || 0) : 0;
+    trackVideo(st, 'video_watch', Math.min(30, st.pendingWatch), {
+      metadata: { duration, current, completion: duration ? current / duration * 100 : 0 },
+    });
+    st.pendingWatch = 0;
+    st.lastWatchReport = performance.now();
+  }
+  function trackPlayback(st) {
+    if (!st.video) return;
+    const current = st.video.currentTime || 0;
+    const delta = current - (st.lastVideoTime || 0);
+    if (delta > 0 && delta < 2.5) { st.pendingWatch += delta; st.watchedTotal += delta; }
+    st.lastVideoTime = current;
+    reportWatch(st, false);
+  }
+
   /* ------------------------------------------------------------- video element */
   function attach(st, { autoplay }) {
     if (st.attached) { if (autoplay) play(st); return; }
@@ -168,10 +197,23 @@
     updateQualityLabel(st);
 
     v.addEventListener('waiting', () => { onStall(st); showSpin(st, true); });
-    v.addEventListener('playing', () => { showSpin(st, false); st.box.classList.add('is-playing'); st.ui.play.innerHTML = pauseIcon(); markGood(st); });
+    v.addEventListener('playing', () => {
+      if (!st.started) { trackVideo(st, 'video_start', 1); st.started = true; }
+      else if (st.ended) { trackVideo(st, 'video_replay', 1, { metadata: { duration: st.video.duration || st.data.duration || 0 } }); }
+      st.ended = false; st.skipSent = false; st.lastVideoTime = st.video.currentTime || 0;
+      showSpin(st, false); st.box.classList.add('is-playing'); st.ui.play.innerHTML = pauseIcon(); markGood(st);
+    });
     v.addEventListener('canplay', () => showSpin(st, false));
-    v.addEventListener('pause', () => { st.box.classList.remove('is-playing'); st.ui.play.innerHTML = playIcon(); });
-    v.addEventListener('timeupdate', () => paint(st));
+    v.addEventListener('pause', () => {
+      reportWatch(st, true);
+      const duration = st.video.duration || st.data.duration || 0;
+      if (!st.skipSent && st.watchedTotal < 3 && (st.video.currentTime || 0) < Math.max(3, duration * 0.2)) {
+        trackVideo(st, 'video_skip', 1, { metadata: { duration, current: st.video.currentTime || 0 } });
+        st.skipSent = true;
+      }
+      st.box.classList.remove('is-playing'); st.ui.play.innerHTML = playIcon();
+    });
+    v.addEventListener('timeupdate', () => { trackPlayback(st); paint(st); });
     v.addEventListener('progress', () => { paintBuffer(st); measure(st); });
     v.addEventListener('loadedmetadata', () => {
       if (!st.data.width && v.videoWidth) {
@@ -180,7 +222,11 @@
       }
       paint(st);
     });
-    v.addEventListener('ended', () => { st.box.classList.remove('is-playing'); st.ui.play.innerHTML = playIcon(); st.ui.big.hidden = false; });
+    v.addEventListener('ended', () => {
+      reportWatch(st, true);
+      if (!st.ended) trackVideo(st, 'video_complete', 1, { metadata: { duration: st.video.duration || st.data.duration || 0, current: st.video.duration || st.data.duration || 0, completion: 100 } });
+      st.ended = true; st.box.classList.remove('is-playing'); st.ui.play.innerHTML = playIcon(); st.ui.big.hidden = false;
+    });
     v.addEventListener('error', () => { showSpin(st, false); downshift(st, true); });
 
     st.ui.stage.appendChild(v);

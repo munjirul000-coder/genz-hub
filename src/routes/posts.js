@@ -4,6 +4,7 @@ const { db } = require('../db');
 const U = require('../util');
 const XP = require('../gamify');
 const F = require('../feed');
+const R = require('../recommendations');
 
 const r = express.Router();
 const HUBS = ['general', 'business', 'gaming'];
@@ -71,6 +72,7 @@ r.post('/', U.requireAuth, U.rateLimit({ max: 30, windowMs: 5 * 60 * 1000, key: 
   const im = db.prepare('INSERT INTO post_media (post_id,url,type,position,asset_uid,poster,width,height,duration) VALUES (?,?,?,?,?,?,?,?,?)');
   cleanMedia.forEach((m, i) => im.run(id, m.url, m.type, i, m.asset_uid || '', m.poster || '', m.width || 0, m.height || 0, m.duration || 0));
   U.linkHashtags(id, content);
+  R.ensurePostCategories({ id: Number(id), content, hub, topic });
   XP.award(req.user.id, kind === 'post' ? 'post' : 'project', { refType: 'post', refId: Number(id) });
 
   // mentions
@@ -90,15 +92,27 @@ r.get('/feed', U.wrap((req, res) => {
   const where = [];
   const params = {};
   if (hub) { where.push('p.hub=@hub'); params.hub = hub; }
-  else where.push("p.hub='general'");
+  // For-you can learn from all public hubs. Anonymous and Following keep the old General scope.
+  else if (!me || scope !== 'for-you') where.push("p.hub='general'");
   where.push('p.group_id IS NULL');
   if (scope === 'following' && me) {
     where.push('(p.user_id=@me OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=@me AND f.following_id=p.user_id))');
   }
   if (req.query.topic) { where.push('p.topic=@topic'); params.topic = U.sanitizeText(req.query.topic, 40); }
   if (req.query.kind) { where.push('p.kind=@kind'); params.kind = U.sanitizeText(req.query.kind, 20); }
-  const out = F.queryPosts({ me, where, params, limit: Math.min(Number(req.query.limit) || 8, 20), cursor: req.query.cursor });
-  res.json(out);
+  const limit = Math.min(Number(req.query.limit) || 8, 20);
+  // Personalized ranking is only used for an authenticated For-you request. If it fails,
+  // keep the original feed alive rather than making recommendations a single point of failure.
+  if (me && scope === 'for-you') {
+    try {
+      return res.json(R.personalizedFeed({ me, where, params, limit, cursor: req.query.cursor }));
+    } catch (e) {
+      console.error('[recommendations] feed fallback:', e.message);
+      try { return res.json(R.fallbackFeed({ me, where, params, limit, cursor: req.query.cursor })); } catch (ignored) {}
+    }
+  }
+  const out = F.queryPosts({ me, where, params, limit, cursor: req.query.cursor });
+  res.json({ ...out, personalized: false, recommendationFallback: true });
 }));
 
 r.get('/hashtag/:tag', U.wrap((req, res) => {
@@ -129,6 +143,7 @@ r.get('/:id', U.wrap((req, res) => {
   const me = req.user ? req.user.id : 0;
   const p = F.getPost(Number(req.params.id), me);
   if (!p) return res.status(404).json({ error: 'Post not found or you do not have access to it.' });
+  if (me) R.recordActivity({ userId: me, action: 'post_click', postId: p.id, targetId: p.user_id });
   res.json({ post: p });
 }));
 
@@ -143,6 +158,7 @@ r.patch('/:id', U.requireAuth, U.wrap((req, res) => {
   if (!content && !hasMedia) return res.status(400).json({ error: 'Post cannot be empty.' });
   db.prepare('UPDATE posts SET content=?, privacy=?, updated_at=? WHERE id=?').run(content, privacy, U.now(), post.id);
   U.linkHashtags(post.id, content);
+  R.refreshPostCategories({ id: post.id, content, hub: post.hub, topic: post.topic });
   res.json({ post: F.getPost(post.id, req.user.id) });
 }));
 
@@ -160,17 +176,22 @@ r.post('/:id/react', U.requireAuth, U.wrap((req, res) => {
   const id = Number(req.params.id);
   const post = F.getPost(id, req.user.id);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
-  const type = ['like', 'fire', 'clap', 'mind'].includes(req.body.type) ? req.body.type : 'like';
+  const ALLOWED_REACTIONS = ['like', 'fire', 'clap', 'mind', 'love', 'angry', 'middle'];
+  const type = ALLOWED_REACTIONS.includes(req.body.type) ? req.body.type : 'like';
   const existing = db.prepare('SELECT * FROM reactions WHERE post_id=? AND user_id=?').get(id, req.user.id);
+  let activeType = null;
   if (existing && existing.type === type) {
     db.prepare('DELETE FROM reactions WHERE post_id=? AND user_id=?').run(id, req.user.id);
   } else if (existing) {
     db.prepare('UPDATE reactions SET type=? WHERE post_id=? AND user_id=?').run(type, id, req.user.id);
+    activeType = type;
   } else {
     db.prepare('INSERT INTO reactions (post_id,user_id,type,created_at) VALUES (?,?,?,?)').run(id, req.user.id, type, U.now());
+    activeType = type;
     U.notify({ userId: post.user_id, actorId: req.user.id, type: 'like', entityType: 'post', entityId: id, text: `${req.user.full_name} reacted to your post`, link: `#/post/${id}` });
     if (post.user_id !== req.user.id) XP.award(post.user_id, 'reaction_received', { refType: 'post', refId: id });
   }
+  if (activeType) R.recordActivity({ userId: req.user.id, action: 'reaction', postId: id, metadata: { type: activeType } });
   const count = db.prepare('SELECT COUNT(*) n FROM reactions WHERE post_id=?').get(id).n;
   const mine = db.prepare('SELECT type FROM reactions WHERE post_id=? AND user_id=?').get(id, req.user.id);
   res.json({ reaction_count: count, my_reaction: mine ? mine.type : null });
@@ -205,6 +226,7 @@ r.post('/:id/comments', U.requireAuth, U.rateLimit({ max: 60, windowMs: 5 * 60 *
     U.notify({ userId: p.user_id, actorId: me, type: 'reply', entityType: 'post', entityId: post.id, text: `${req.user.full_name} replied to your comment`, link: `#/post/${post.id}` });
   }
   const info = db.prepare('INSERT INTO comments (post_id,user_id,parent_id,content,created_at) VALUES (?,?,?,?,?)').run(post.id, me, parent_id, content, U.now());
+  R.recordActivity({ userId: me, action: 'comment', postId: post.id });
   U.notify({ userId: post.user_id, actorId: me, type: 'comment', entityType: 'post', entityId: post.id, text: `${req.user.full_name} commented on your post`, link: `#/post/${post.id}` });
   XP.award(me, 'comment', { refType: 'comment', refId: Number(info.lastInsertRowid) });
   const c = db.prepare(`SELECT c.*, u.username,u.full_name,u.avatar FROM comments c JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(info.lastInsertRowid);
@@ -230,6 +252,14 @@ r.delete('/comments/:cid', U.requireAuth, U.wrap((req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- recommendation feedback ----------
+r.post('/:id/hide', U.requireAuth, U.wrap((req, res) => {
+  const id = Number(req.params.id);
+  if (!F.getPost(id, req.user.id)) return res.status(404).json({ error: 'Post not found.' });
+  R.feedback(req.user.id, id, 'hide');
+  res.json({ ok: true, hidden: true });
+}));
+
 // ---------- repost / save ----------
 r.post('/:id/repost', U.requireAuth, U.wrap((req, res) => {
   const id = Number(req.params.id);
@@ -239,6 +269,8 @@ r.post('/:id/repost', U.requireAuth, U.wrap((req, res) => {
   const content = U.sanitizeText(req.body.content, 1000);
   const info = db.prepare(`INSERT INTO posts (user_id,content,hub,privacy,repost_of,created_at) VALUES (?,?,?,?,?,?)`)
     .run(req.user.id, content, post.hub, 'public', root, U.now());
+  R.ensurePostCategories({ id: Number(info.lastInsertRowid), content, hub: post.hub, topic: post.topic });
+  R.recordActivity({ userId: req.user.id, action: 'share', postId: id });
   const owner = db.prepare('SELECT user_id FROM posts WHERE id=?').get(root);
   U.notify({ userId: owner.user_id, actorId: req.user.id, type: 'repost', entityType: 'post', entityId: root, text: `${req.user.full_name} reposted your post`, link: `#/post/${root}` });
   res.json({ post: F.getPost(info.lastInsertRowid, req.user.id) });
@@ -248,8 +280,13 @@ r.post('/:id/save', U.requireAuth, U.wrap((req, res) => {
   const id = Number(req.params.id);
   if (!F.getPost(id, req.user.id)) return res.status(404).json({ error: 'Post not found.' });
   const ex = db.prepare(`SELECT * FROM saved_items WHERE user_id=? AND item_type='post' AND item_id=?`).get(req.user.id, id);
-  if (ex) { db.prepare('DELETE FROM saved_items WHERE id=?').run(ex.id); return res.json({ saved: false }); }
+  if (ex) {
+    db.prepare('DELETE FROM saved_items WHERE id=?').run(ex.id);
+    R.recordActivity({ userId: req.user.id, action: 'unsave', postId: id });
+    return res.json({ saved: false });
+  }
   db.prepare(`INSERT INTO saved_items (user_id,item_type,item_id,created_at) VALUES (?,'post',?,?)`).run(req.user.id, id, U.now());
+  R.recordActivity({ userId: req.user.id, action: 'save', postId: id });
   res.json({ saved: true });
 }));
 

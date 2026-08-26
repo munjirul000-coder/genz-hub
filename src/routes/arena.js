@@ -7,6 +7,7 @@ const { db } = require('../db');
 const U = require('../util');
 const XP = require('../gamify');
 const pay = require('../payments');
+const R = require('../recommendations');
 
 const slugify = (s, extra) => (String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'item')
   + (extra ? '-' + extra : '');
@@ -28,6 +29,7 @@ hubs.get('/:slug', U.wrap((req, res) => {
   const me = req.user ? req.user.id : 0;
   const h = db.prepare('SELECT * FROM hubs WHERE slug=? AND active=1').get(req.params.slug);
   if (!h) return res.status(404).json({ error: 'Hub not found.' });
+  if (req.user) R.recordActivity({ userId: req.user.id, action: 'interest_view', category: R.categoryForHub(h.slug, h.name) });
   const communities = db.prepare(`SELECT c.*, (SELECT COUNT(*) FROM community_members cm WHERE cm.community_id=c.id) AS member_count
     FROM communities c WHERE c.category=? ORDER BY member_count DESC LIMIT 12`).all(h.name);
   const people = db.prepare(`SELECT u.id,u.username,u.full_name,u.avatar,u.bio FROM user_hubs uh JOIN users u ON u.id=uh.user_id

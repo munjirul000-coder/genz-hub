@@ -92,6 +92,50 @@
   G.qs = (s, r) => (r || document).querySelector(s);
   G.qsa = (s, r) => [...(r || document).querySelectorAll(s)];
 
+  /* ---------------- lightweight recommendation telemetry ---------------- */
+  const activityQueue = [];
+  let activityTimer = 0;
+  async function flushActivity() {
+    activityTimer = 0;
+    if (!S.user || !activityQueue.length) return;
+    const events = activityQueue.splice(0, 25);
+    try { await api('/recommendations/activity', { method: 'POST', body: { events } }); }
+    catch (e) { /* telemetry must never break the UI */ }
+  }
+  G.trackActivity = function (action, data) {
+    if (!S.user || !action) return;
+    activityQueue.push(Object.assign({ action }, data || {}));
+    if (activityQueue.length >= 10) flushActivity();
+    else if (!activityTimer) activityTimer = setTimeout(flushActivity, 900);
+  };
+  window.addEventListener('pagehide', () => { if (activityQueue.length) flushActivity(); });
+
+  let recommendationObserver = null;
+  const recommendationSeen = new WeakMap();
+  G.observeRecommendationPost = function (node, post) {
+    if (!S.user || !node || !post || !window.IntersectionObserver) return;
+    if (!recommendationObserver) {
+      recommendationObserver = new IntersectionObserver((entries) => entries.forEach((entry) => {
+        const state = recommendationSeen.get(entry.target);
+        if (!state) return;
+        if (entry.isIntersecting) {
+          state.entered = Date.now();
+          state.maxRatio = Math.max(state.maxRatio || 0, entry.intersectionRatio || 0);
+        } else if (state.entered) {
+          const seconds = (Date.now() - state.entered) / 1000;
+          if (seconds < 1.2 && state.maxRatio >= 0.25) G.trackActivity('skip', { post_id: state.postId, value: 1, metadata: { source: 'fast_scroll' } });
+          else if (seconds >= 1.2) G.trackActivity('impression', { post_id: state.postId, value: Math.min(seconds, 30) });
+          state.entered = 0;
+          state.maxRatio = 0;
+          if (!document.body.contains(entry.target)) recommendationObserver.unobserve(entry.target);
+        }
+      }), { threshold: [0, 0.25, 0.5] });
+    }
+    if (recommendationSeen.has(node)) return;
+    recommendationSeen.set(node, { postId: Number(post.id), entered: 0, maxRatio: 0 });
+    recommendationObserver.observe(node);
+  };
+
   G.timeAgo = function (ts) {
     const d = Math.floor((Date.now() - ts) / 1000);
     if (d < 45) return G.t('just now');

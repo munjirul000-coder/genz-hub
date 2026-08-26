@@ -3,6 +3,7 @@ const express = require('express');
 const { db } = require('../db');
 const U = require('../util');
 const F = require('../feed');
+const R = require('../recommendations');
 
 const r = express.Router();
 
@@ -89,6 +90,11 @@ q.get('/', U.wrap((req, res) => {
   const like = '%' + term.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
   const out = {};
   if (!term) return res.json({ users: [], posts: [], groups: [], communities: [], hashtags: [] });
+  if (me) {
+    const category = R.categoryForText(term)[0] || 'general';
+    // Store only a category + short hash, never the raw search text.
+    R.recordActivity({ userId: me, action: 'search', category, metadata: { query_hash: R.hashQuery(term) } });
+  }
   if (type === 'all' || type === 'people') {
     out.users = db.prepare(`SELECT * FROM users WHERE status='active' AND (full_name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' OR bio LIKE ? ESCAPE '\\')
       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=users.id) OR (b.blocker_id=users.id AND b.blocked_id=?)) LIMIT 20`)
@@ -125,6 +131,7 @@ rep.post('/', U.rateLimit({ max: 20, windowMs: 10 * 60 * 1000, key: 'report' }),
   const details = U.sanitizeText(req.body.details, 600);
   db.prepare('INSERT INTO reports (reporter_id,target_type,target_id,reason,details,created_at) VALUES (?,?,?,?,?,?)')
     .run(req.user.id, target_type, target_id, reason, details, U.now());
+  if (target_type === 'post') R.feedback(req.user.id, target_id, 'report');
   res.json({ ok: true });
 }));
 

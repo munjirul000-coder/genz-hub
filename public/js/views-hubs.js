@@ -306,10 +306,31 @@
           list.appendChild(card);
         });
       } else {
-        const s = await G.get('/admin/stats');
+        const [s, cfg] = await Promise.all([G.get('/admin/stats'), G.get('/admin/settings')]);
+        const v = cfg.settings || {};
+        const fields = [
+          ['rec_exploration_pct', 'Exploration percentage', '0.15', '0.10–0.20', '0.01'],
+          ['rec_freshness_half_life_hours', 'Freshness half-life (hours)', '72', 'Higher keeps older quality posts alive longer', '1'],
+          ['rec_diversity_penalty', 'Category diversity penalty', '3', 'Higher spreads categories more strongly', '0.1'],
+          ['rec_creator_penalty', 'Creator repetition penalty', '4', 'Higher reduces repeated creators', '0.1'],
+          ['rec_small_creator_boost', 'Small creator discovery boost', '3', 'Extra score for newer/smaller creators', '0.1'],
+          ['rec_weight_like', 'Like weight', '2', '', '0.1'],
+          ['rec_weight_love', 'Love weight', '4', '', '0.1'],
+          ['rec_weight_comment', 'Comment weight', '5', '', '0.1'],
+          ['rec_weight_share', 'Share/repost weight', '6', '', '0.1'],
+          ['rec_weight_save', 'Save weight', '7', '', '0.1'],
+          ['rec_weight_video_watch', 'Video watch weight', '4', '', '0.1'],
+          ['rec_weight_video_complete', 'Video completion weight', '5', '', '0.1'],
+          ['rec_weight_hide', 'Hide penalty', '-5', '', '0.1'],
+          ['rec_weight_report', 'Report penalty', '-10', '', '0.1'],
+          ['rec_weight_skip', 'Fast-skip penalty', '-2', '', '0.1'],
+        ];
         box.innerHTML = `<div class="card pad stack">
           <div><div class="label">Platform</div><div class="small">Gen-Z Hub · Connect. Build. Play. Grow.</div></div>
           <div><div class="label">Storage</div><div class="small">${G.num(s.posts)} posts · ${G.num(s.messages)} messages · uploads stored on the server file system.</div></div>
+          <div><div class="label">Recommendation controls</div><p class="small muted">Rules-based controls only — no AI/API dependency. Changes apply within about 30 seconds.</p>
+            <form id="rec-config" class="stack">${fields.map(([key, label, fallback, hint, step]) => `<label class="field"><span class="label">${label}</span><input class="input" type="number" step="${step}" data-rec="${key}" value="${esc(v[key] == null ? fallback : v[key])}">${hint ? `<span class="tiny muted">${hint}</span>` : ''}</label>`).join('')}
+              <button class="btn btn-primary" type="submit">Save recommendation settings</button></form></div>
           <div><div class="label">Security</div><ul class="small muted" style="margin:0;padding-left:18px;line-height:1.8">
             <li>Passwords hashed with bcrypt (cost 12) — never stored or exposed in plaintext.</li>
             <li>Session tokens in httpOnly cookies with server-side expiry.</li>
@@ -317,6 +338,13 @@
             <li>Uploads restricted by MIME type and 25 MB size limit.</li>
             <li>Rate limiting on auth, posting, commenting, messaging and uploads.</li></ul></div>
           <div><div class="label">Admin credentials</div><div class="small muted">Configured via ADMIN_EMAIL / ADMIN_PASSWORD environment variables.</div></div></div>`;
+        G.qs('#rec-config', box).onsubmit = async (e) => {
+          e.preventDefault();
+          const body = {};
+          G.qsa('[data-rec]', box).forEach((input) => { body[input.dataset.rec] = input.value; });
+          try { await G.put('/admin/settings', body); G.toast('Recommendation settings saved', 'ok'); }
+          catch (ex) { G.err(ex); }
+        };
       }
     } catch (e) {
       box.innerHTML = G.errorState(e.message, 'ad-retry');

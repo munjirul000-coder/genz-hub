@@ -79,7 +79,7 @@
     view.innerHTML = `<div class="card" style="overflow:hidden">
         <div class="cover" style="height:150px">${g.cover ? `<img src="${esc(g.cover)}" alt="${esc(g.name)} cover">` : ''}</div>
         <div class="pad">
-          <div class="between wrap"><div><h2 style="margin:0">${esc(g.name)}</h2>
+          <div class="between wrap group-head"><div class="group-id"><h2>${esc(g.name)}</h2>
             <div class="muted small">${G.num(g.member_count)} members · ${esc(g.category)} · ${g.privacy === 'private' ? '🔒 Private group' : '🌍 Public group'}
             ${g.hub !== 'general' ? ` · ${g.hub === 'business' ? '💼 Business' : '🎮 Gaming'}` : ''}</div></div>
             <div class="row wrap" id="gact"></div></div>
@@ -263,7 +263,7 @@
     view.innerHTML = `<div class="card">
         <div class="pad"><div class="between wrap">
           <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:22px;background:linear-gradient(135deg,var(--brand-1),var(--brand-2))">${esc(c.name[0])}</div>
-            <div><h2 style="margin:0">${esc(c.name)}</h2>
+            <div class="community-head"><div class="community-id"><h2>${esc(c.name)}</h2>
             <div class="muted small">${G.num(c.member_count)} members · ${esc(c.category || '')} ${c.hub !== 'general' ? '· ' + (c.hub === 'business' ? '💼 Business Hub' : '🎮 Gaming Hub') : ''}</div></div></div>
           <div class="row" id="cact"></div></div>
           <p class="small" style="margin:10px 0 0">${esc(c.description || '')}</p></div>
@@ -503,8 +503,15 @@
           <select class="select" id="s-dp">${['public', 'connections', 'private'].map((x) => `<option value="${x}" ${u.default_post_privacy === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
         <button class="btn btn-primary" id="s-psave">Save privacy settings</button>
         <div class="divider"></div>
+        <div><div class="label">Recommendations</div><p class="small muted">Reset your activity-based feed profile while keeping your selected interests.</p>
+          <button class="btn btn-ghost btn-sm" id="s-reset-rec">Reset recommendations</button></div>
+        <div class="divider"></div>
         <div><div class="label">Blocked users</div><div id="s-blocked">${G.skeletonList(1)}</div></div></div>`;
       G.qs('#s-psave', box).onclick = () => save({ profile_visibility: G.qs('#s-pv', box).value, default_post_privacy: G.qs('#s-dp', box).value }, 'Privacy updated');
+      G.qs('#s-reset-rec', box).onclick = async () => {
+        if (!(await G.confirm('Reset recommendations', 'This clears your activity-based feed profile but keeps your selected interests.', 'Reset'))) return;
+        try { await G.post('/recommendations/reset'); G.toast('Recommendations reset', 'ok'); } catch (e) { G.err(e); }
+      };
       G.get('/users/me/blocked').then(({ users }) => {
         const bb = G.qs('#s-blocked', box);
         bb.innerHTML = users.length ? '' : '<p class="small muted">You have not blocked anyone.</p>';

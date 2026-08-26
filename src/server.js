@@ -115,6 +115,7 @@ const auth = require('./routes/auth');
 app.use('/api/auth', auth.router);
 app.use('/api/me', require('./routes/me'));
 app.use('/api/posts', require('./routes/posts'));
+app.use('/api/recommendations', require('./routes/recommendations'));
 app.use('/api/media', require('./routes/media'));
 const users = require('./routes/users');
 app.use('/api/users', users.router);
@@ -230,6 +231,9 @@ if (process.env.DEMO_SEED === '1') {
 
 // Platform v2 defaults: hubs, badges, missions, packages, settings (idempotent).
 try { require('./seed-platform').seedPlatform(); } catch (e) { console.error('[seed] platform seed failed:', e.message); }
+
+// Lightweight recommendation categories/settings are seeded locally; no external service is used.
+try { require('./recommendations').init(); } catch (e) { console.error('[recommendations] init failed:', e.message); }
 
 // Resume any video that was mid-transcode when the process restarted.
 try { require('./video-jobs').resumePending(); } catch (e) { console.error('[video] resume failed', e.message); }

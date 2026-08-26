@@ -32,15 +32,20 @@ function ensureSeed() {
   const insC = db.prepare('INSERT OR IGNORE INTO communities (name,slug,description,hub,category,created_at) VALUES (?,?,?,?,?,?)');
   COMMUNITIES.forEach(([n, hub, cat, desc]) => insC.run(n, n.toLowerCase().replace(/[^a-z0-9]+/g, '-'), desc, hub, cat, U.now()));
 
-  // admin account (credentials configurable via env)
+  // admin account (credentials configurable via env) — always ensure correct password
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@genzhub.app').toLowerCase();
   const adminPass = process.env.ADMIN_PASSWORD || 'AdminGenz2026';
   let admin = db.prepare('SELECT * FROM users WHERE email=?').get(adminEmail);
+  const hashed = bcrypt.hashSync(adminPass, 12);
   if (!admin) {
     const info = db.prepare(`INSERT INTO users (username,email,password_hash,full_name,dob,role,onboarded,bio,in_business,in_gaming,created_at,last_seen)
-      VALUES (?,?,?,?,?, 'admin',1,?,1,1,?,?)`).run('genzadmin', adminEmail, bcrypt.hashSync(adminPass, 12), 'Gen-Z Hub Admin', '2000-01-01',
+      VALUES (?,?,?,?,?, 'admin',1,?,1,1,?,?)`).run('genzadmin', adminEmail, hashed, 'Gen-Z Hub Admin', '2000-01-01',
       'Platform moderation & safety.', U.now(), U.now());
     admin = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
+  } else if (admin.password_hash !== hashed) {
+    // Update password if it was changed via env (e.g. after switching from generateValue)
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashed, admin.id);
+    admin = db.prepare('SELECT * FROM users WHERE id=?').get(admin.id);
   }
 
   if (db.prepare('SELECT COUNT(*) n FROM users').get().n > 1) return; // demo content only on a fresh database
