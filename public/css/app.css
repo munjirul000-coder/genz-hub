@@ -73,6 +73,110 @@ html[data-theme="dark"]{
   --focus:0 0 0 3px rgba(201,243,29,.32);
 }
 
+/* ---------- CRIMSON RED THEME (optional premium red/black palette) ---------- */
+html[data-theme="crimson"]{
+  --volt:#ff2846;
+  --volt-deep:#df1738;
+  --iris:#a31335;
+  --aqua:#f02b4d;
+  --flare:#ff5267;
+
+  --bg:#050102;
+  --bg-tint:#0b0205;
+  --surface:#110307;
+  --surface-2:#19050a;
+  --surface-3:#260912;
+  --line:#481320;
+  --line-soft:#2d0a14;
+  --ink:#ffe8ec;
+  --ink-2:#ffc0c9;
+  --muted:#c36b78;
+  --muted-2:#86404e;
+
+  --accent:#ff2846;
+  --accent-ink:#160104;
+  --accent-bg:linear-gradient(135deg,#ff4861,#c70f31);
+
+  --sh-1:0 1px 2px rgba(0,0,0,.62),0 6px 18px rgba(120,0,24,.18);
+  --sh-2:0 4px 14px rgba(0,0,0,.7),0 22px 50px rgba(120,0,24,.24);
+  --sh-3:0 36px 90px rgba(0,0,0,.82);
+  --ring:0 0 0 1px rgba(255,40,70,.16);
+  --focus:0 0 0 3px rgba(255,40,70,.34);
+}
+html[data-theme="crimson"] body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(900px 460px at 8% -6%,rgba(160,13,45,.25),transparent 62%),
+    radial-gradient(760px 420px at 96% 2%,rgba(255,34,70,.14),transparent 60%),
+    linear-gradient(135deg,#050102 0%,#0d0206 52%,#030102 100%);
+}
+html[data-theme="crimson"] .btn-primary{
+  box-shadow:0 6px 20px rgba(255,40,70,.28),inset 0 1px 0 rgba(255,150,160,.34);
+}
+html[data-theme="crimson"] .btn-accent{
+  background:linear-gradient(135deg,#ff4861,#a80e2d);
+  color:#ffe8ec;
+  box-shadow:0 6px 20px rgba(255,40,70,.28);
+}
+html[data-theme="crimson"] .badge-biz,
+html[data-theme="crimson"] .badge-game{
+  background:rgba(255,40,70,.14);
+  color:#ff8a99;
+}
+html[data-theme="crimson"] .badge-admin,
+html[data-theme="crimson"] .err,
+html[data-theme="crimson"] .menu button.danger{
+  color:#ff6b7d;
+}
+html[data-theme="crimson"] .nav-item.on .ni,
+html[data-theme="crimson"] .pa.on,
+html[data-theme="crimson"] .link,
+html[data-theme="crimson"] .panel-title .ic{
+  color:var(--volt);
+}
+html[data-theme="crimson"] .cover,
+html[data-theme="crimson"] .prof-hero .cover{
+  background:linear-gradient(120deg,#3a0715,#a31335 46%,#25040e) !important;
+}
+html[data-theme="crimson"] .hero,
+html[data-theme="crimson"] .hero-land,
+html[data-theme="crimson"] .cta,
+html[data-theme="crimson"] .split-art{
+  background:linear-gradient(145deg,#090103 0%,#430914 52%,#120207 100%);
+  color:var(--ink);
+}
+html[data-theme="crimson"] .project-cover,
+html[data-theme="crimson"] .mock-media{
+  background:linear-gradient(135deg,#21040c,#b31336 58%,#4c0718);
+}
+html[data-theme="crimson"] .hero-grid h1 em{
+  background:linear-gradient(100deg,#ff3e59,#b90f31);
+  -webkit-background-clip:text;
+  background-clip:text;
+}
+html[data-theme="crimson"] .auth-art{
+  background:linear-gradient(145deg,#090103,#30050f 55%,#080103);
+}
+html[data-theme="crimson"] .auth-art:before,
+html[data-theme="crimson"] .auth-art:after{
+  background:radial-gradient(circle,rgba(255,40,70,.30),transparent 64%);
+}
+html[data-theme="crimson"] .story .ring{
+  background:conic-gradient(from 210deg,#ff2846,#8f0d2c,#ff5267,#ff2846);
+}
+html[data-theme="crimson"] .online-dot{
+  background:#ff2846;
+  box-shadow:0 0 0 2px var(--surface),0 0 10px #ff2846;
+}
+html[data-theme="crimson"] .tabbar .tab-create .ti{
+  background:var(--accent-bg);
+  color:var(--accent-ink);
+}
+html[data-theme="crimson"] .gzv-big,
+html[data-theme="crimson"] .gzv-btn{
+  color:#ffe8ec;
+}
+
 /* ---------- RESET ---------- */
 *{box-sizing:border-box}
 [hidden]{display:none!important}

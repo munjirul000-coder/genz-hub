@@ -535,7 +535,7 @@
       };
     } else if (tab === 'appearance') {
       box.innerHTML = `<div class="card pad stack"><div class="label">Theme</div>
-        <div class="row wrap" style="gap:8px">${[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['system', '🖥️ System']].map(([k, l]) =>
+        <div class="row wrap" style="gap:8px">${[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['crimson', '🩸 Crimson Red'], ['system', '🖥️ System']].map(([k, l]) =>
           `<button class="chip ${u.theme === k ? 'on' : ''}" data-th="${k}">${l}</button>`).join('')}</div>
         <p class="small muted">Your theme preference is stored on your account and applied on every device.</p></div>`;
       G.qsa('[data-th]', box).forEach((b) => b.onclick = async () => {

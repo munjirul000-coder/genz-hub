@@ -35,7 +35,7 @@ r.patch('/settings', U.wrap((req, res) => {
   const b = req.body;
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(req.user.id);
   const vals = {
-    theme: ['light', 'dark', 'system'].includes(b.theme) ? b.theme : u.theme,
+    theme: ['light', 'dark', 'crimson', 'system'].includes(b.theme) ? b.theme : u.theme,
     lang: ['en', 'bn'].includes(b.lang) ? b.lang : u.lang,
     profile_visibility: ['public', 'connections'].includes(b.profile_visibility) ? b.profile_visibility : u.profile_visibility,
     default_post_privacy: ['public', 'connections', 'private'].includes(b.default_post_privacy) ? b.default_post_privacy : u.default_post_privacy,
