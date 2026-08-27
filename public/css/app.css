@@ -1340,7 +1340,18 @@ html body .prof-id h2 {
 }
 
 /* Older picker rules made every descendant fixed; restore normal flex children. */
-.reaction-picker > button {
+  .reaction-picker > button {
   position: static !important;
   flex: 0 0 auto !important;
+}
+
+/* Portrait player fix: width:auto could collapse a grid item to 0x0 on live feed. */
+.gzv.is-portrait {
+  display: block !important;
+  width: min(100%, 430px) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 1px !important;
+  aspect-ratio: var(--gzv-ar, .5625) !important;
 }
