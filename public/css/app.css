@@ -1626,3 +1626,334 @@ html[data-theme="crimson"] .prof-id h2{
   min-height: 1px !important;
   aspect-ratio: var(--gzv-ar, .5625) !important;
 }
+
+/* ---------- CRIMSON BLOOD PREMIUM — final paid-tier finish ---------- */
+html[data-theme="crimson"] body{
+  position:relative;
+  isolation:isolate;
+  color:#070104;
+  overflow-x:hidden;
+}
+html[data-theme="crimson"] body::before{
+  content:"";
+  position:fixed;
+  inset:-22%;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.82;
+  background:
+    radial-gradient(42% 34% at 14% 18%,rgba(174,0,27,.78),transparent 70%),
+    radial-gradient(34% 42% at 88% 22%,rgba(112,0,22,.82),transparent 70%),
+    radial-gradient(46% 32% at 50% 92%,rgba(213,13,45,.58),transparent 72%),
+    conic-gradient(from 125deg,transparent 0 22%,rgba(255,35,70,.18) 29%,transparent 38% 58%,rgba(126,0,25,.3) 67%,transparent 78%);
+  filter:blur(44px) saturate(145%);
+  transform:scale(1.05);
+  animation:crimsonFlow 22s ease-in-out infinite alternate;
+}
+html[data-theme="crimson"] body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.24;
+  background:
+    repeating-radial-gradient(ellipse at 18% 32%,transparent 0 48px,rgba(255,35,70,.18) 50px 52px,transparent 55px 110px),
+    linear-gradient(118deg,transparent 0 32%,rgba(255,54,77,.13) 42%,transparent 52% 100%);
+  mix-blend-mode:screen;
+  animation:crimsonSheen 28s linear infinite;
+}
+@keyframes crimsonFlow{
+  0%{transform:scale(1.05) translate3d(-2%,0,0) rotate(-1deg)}
+  50%{transform:scale(1.12) translate3d(2%,1%,0) rotate(1deg)}
+  100%{transform:scale(1.05) translate3d(-1%,-2%,0) rotate(-.5deg)}
+}
+@keyframes crimsonSheen{
+  0%{transform:translate3d(-2%,0,0) rotate(0deg)}
+  50%{transform:translate3d(2%,1%,0) rotate(2deg)}
+  100%{transform:translate3d(-2%,-1%,0) rotate(0deg)}
+}
+html[data-theme="crimson"] #root{position:relative;z-index:1}
+html[data-theme="crimson"] .topbar{
+  background:linear-gradient(180deg,#3b000b 0%,#1b0006 100%) !important;
+  border-bottom:1px solid #b20d2e !important;
+  box-shadow:0 8px 34px rgba(125,0,23,.45),inset 0 -1px rgba(255,75,95,.24);
+}
+html[data-theme="crimson"] .logo,
+html[data-theme="crimson"] .topbar a,
+html[data-theme="crimson"] .topbar button,
+html[data-theme="crimson"] .topbar .searchbox input{
+  color:#050103;
+}
+html[data-theme="crimson"] .logo .txt{color:#050103 !important;text-shadow:0 1px rgba(255,180,160,.3)}
+html[data-theme="crimson"] .logo-mark{
+  background:linear-gradient(145deg,#ff3e5d 0%,#cf082e 62%,#f1b26c 100%) !important;
+  color:#070104 !important;
+  box-shadow:0 7px 24px rgba(255,35,70,.5),inset 0 1px rgba(255,215,180,.55);
+}
+html[data-theme="crimson"] .searchbox{
+  background:linear-gradient(145deg,#a90a2a,#5b0015) !important;
+  border-color:#f33b58 !important;
+  box-shadow:inset 0 1px rgba(255,190,170,.3),0 8px 28px rgba(93,0,17,.4);
+}
+html[data-theme="crimson"] .searchbox .si,
+html[data-theme="crimson"] .searchbox input::placeholder{color:#130106 !important}
+html[data-theme="crimson"] .shell .side,
+html[data-theme="crimson"] .rail{
+  color:#080104;
+}
+html[data-theme="crimson"] .side{
+  background:linear-gradient(180deg,rgba(88,0,16,.92),rgba(35,0,8,.94)) !important;
+  border-color:#970b28 !important;
+  box-shadow:inset 0 1px rgba(255,90,105,.25),0 16px 44px rgba(91,0,18,.36);
+}
+html[data-theme="crimson"] .me-card,
+html[data-theme="crimson"] .nav-item{
+  color:#080104 !important;
+  border-color:rgba(255,70,92,.44) !important;
+}
+html[data-theme="crimson"] .nav-item:hover,
+html[data-theme="crimson"] .nav-item.on{
+  color:#080104 !important;
+  background:linear-gradient(100deg,#ed2f4d,#a90729) !important;
+  box-shadow:0 7px 22px rgba(239,35,68,.35),inset 0 1px rgba(255,174,165,.36);
+}
+html[data-theme="crimson"] .nav-item.on .ni{color:#080104 !important}
+html[data-theme="crimson"] .greet,
+html[data-theme="crimson"] .stories,
+html[data-theme="crimson"] .composer-shell,
+html[data-theme="crimson"] .rail .card,
+html[data-theme="crimson"] .kpi,
+html[data-theme="crimson"] .project-card{
+  background:linear-gradient(145deg,#710016 0%,#43000d 58%,#1d0006 100%) !important;
+  color:#080104 !important;
+  border-color:#d31b3f !important;
+  box-shadow:0 15px 42px rgba(75,0,13,.52),inset 0 1px rgba(255,110,120,.34),inset 0 -1px rgba(0,0,0,.35);
+}
+html[data-theme="crimson"] .greet h1,
+html[data-theme="crimson"] .greet .sub,
+html[data-theme="crimson"] .greet .pill,
+html[data-theme="crimson"] .stories .nm,
+html[data-theme="crimson"] .rail .card *:not(.btn),
+html[data-theme="crimson"] .composer-shell *:not(.btn){
+  color:#080104 !important;
+}
+html[data-theme="crimson"] .pill,
+html[data-theme="crimson"] .chip,
+html[data-theme="crimson"] .type-btn,
+html[data-theme="crimson"] .tab{
+  color:#080104 !important;
+  background:linear-gradient(145deg,#c7193c,#7b001b) !important;
+  border-color:#fa4260 !important;
+  box-shadow:inset 0 1px rgba(255,188,175,.28),0 4px 16px rgba(60,0,10,.3);
+}
+html[data-theme="crimson"] .pill:hover,
+html[data-theme="crimson"] .chip:hover,
+html[data-theme="crimson"] .type-btn:hover,
+html[data-theme="crimson"] .tab:hover,
+html[data-theme="crimson"] .tab.on{
+  background:linear-gradient(145deg,#ff4762,#c60c31 65%,#e1aa68) !important;
+  color:#080104 !important;
+}
+html[data-theme="crimson"] .btn,
+html[data-theme="crimson"] .iconbtn{
+  color:#080104;
+  border-color:#e22a4a;
+  box-shadow:inset 0 1px rgba(255,170,155,.22),0 5px 18px rgba(75,0,14,.34);
+}
+html[data-theme="crimson"] .btn-primary,
+html[data-theme="crimson"] .tab-create .ti{
+  color:#080104 !important;
+  background:linear-gradient(145deg,#ff405d,#c60c31 62%,#e1aa68) !important;
+}
+html[data-theme="crimson"] .post{
+  background:linear-gradient(145deg,#0b0c10 0%,#12070b 66%,#08090c 100%) !important;
+  color:#f7eef0 !important;
+  border-color:#6e1830 !important;
+  box-shadow:0 15px 42px rgba(0,0,0,.6),inset 0 1px rgba(255,55,80,.18);
+}
+html[data-theme="crimson"] .post .post-body,
+html[data-theme="crimson"] .post .post-body a,
+html[data-theme="crimson"] .post .nm,
+html[data-theme="crimson"] .post .post-head .nm,
+html[data-theme="crimson"] .post .post-meta,
+html[data-theme="crimson"] .post .post-stats,
+html[data-theme="crimson"] .post .pa,
+html[data-theme="crimson"] .post .quote,
+html[data-theme="crimson"] .post .tiny{
+  color:#f7eef0 !important;
+}
+html[data-theme="crimson"] .post .post-body a.tag,
+html[data-theme="crimson"] .post .pa:hover,
+html[data-theme="crimson"] .post .pa.on{
+  color:#ff526b !important;
+}
+html[data-theme="crimson"] .post .pa.on{
+  background:linear-gradient(145deg,#ff405d,#c60c31) !important;
+  color:#080104 !important;
+}
+html[data-theme="crimson"] .modal,
+html[data-theme="crimson"] .menu{
+  background:linear-gradient(145deg,#730016,#2a0009) !important;
+  color:#080104 !important;
+  border-color:#ef2d50 !important;
+  box-shadow:0 28px 90px rgba(0,0,0,.75),inset 0 1px rgba(255,100,120,.3);
+}
+html[data-theme="crimson"] .modal h3,
+html[data-theme="crimson"] .modal .label,
+html[data-theme="crimson"] .modal .small,
+html[data-theme="crimson"] .menu button{
+  color:#080104 !important;
+}
+html[data-theme="crimson"] .modal .input,
+html[data-theme="crimson"] .modal .textarea,
+html[data-theme="crimson"] .modal .select{
+  background:#b71936 !important;
+  color:#080104 !important;
+  border-color:#ff516d !important;
+}
+html[data-theme="crimson"] .modal .input::placeholder,
+html[data-theme="crimson"] .modal .textarea::placeholder{color:#3b0610 !important}
+html[data-theme="crimson"] .reaction-picker{
+  background:linear-gradient(145deg,#b10d2f,#4e0012) !important;
+  border-color:#ff526b !important;
+  box-shadow:0 22px 70px rgba(0,0,0,.8),inset 0 1px rgba(255,180,160,.35) !important;
+}
+html[data-theme="crimson"] .reaction-picker button:hover{
+  background:linear-gradient(145deg,#ff405d,#d50f34) !important;
+}
+html[data-theme="crimson"] .tabbar{
+  background:linear-gradient(180deg,#4f0011,#170006) !important;
+  border-top-color:#b40f31 !important;
+}
+html[data-theme="crimson"] .tabbar button{
+  color:#080104 !important;
+}
+html[data-theme="crimson"] .tabbar button.on .ti,
+html[data-theme="crimson"] .tabbar .tab-create .ti{
+  color:#080104 !important;
+  background:linear-gradient(145deg,#ff405d,#c60c31 62%,#e1aa68) !important;
+}
+@media (prefers-reduced-motion: reduce){
+  html[data-theme="crimson"] body::before,
+  html[data-theme="crimson"] body::after{animation:none !important}
+}
+
+/* Final layout safeguards for the paid Crimson theme. */
+html[data-theme="crimson"] .prof-head{
+  display:grid !important;
+  grid-template-columns:104px minmax(220px,1fr) minmax(0,auto) !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  gap:18px !important;
+}
+html[data-theme="crimson"] .prof-head > .prof-id{
+  min-width:220px !important;
+  width:auto !important;
+  max-width:100% !important;
+  overflow:visible !important;
+}
+html[data-theme="crimson"] .prof-head .prof-id h2{
+  white-space:normal !important;
+  word-break:normal !important;
+  overflow-wrap:anywhere !important;
+  width:auto !important;
+  max-width:100% !important;
+}
+html[data-theme="crimson"] .prof-actions{
+  min-width:0 !important;
+  max-width:320px !important;
+}
+html[data-theme="crimson"] body.chat-open .topbar,
+html[data-theme="crimson"] body.chat-open .tabbar{
+  display:none !important;
+}
+html[data-theme="crimson"] body.chat-open .shell{
+  height:100dvh !important;
+  min-height:100dvh !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+html[data-theme="crimson"] body.chat-open #view{
+  height:100dvh !important;
+  min-height:0 !important;
+  padding:0 !important;
+}
+html[data-theme="crimson"] body.chat-open .chat-shell{
+  height:100dvh !important;
+  min-height:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+@media (max-width:900px){
+  html[data-theme="crimson"] .prof-head{
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+    align-items:start !important;
+  }
+  html[data-theme="crimson"] .prof-head > .prof-id{
+    min-width:0 !important;
+    width:100% !important;
+  }
+  html[data-theme="crimson"] .prof-actions{
+    max-width:none !important;
+    justify-content:stretch !important;
+  }
+}
+
+/* Global safety: normal profile names and true edge-to-edge mobile chat. */
+.prof-head{
+  display:grid !important;
+  grid-template-columns:104px minmax(220px,1fr) minmax(0,auto) !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  gap:18px !important;
+}
+.prof-head > .prof-id{
+  min-width:220px !important;
+  width:auto !important;
+  max-width:100% !important;
+  overflow:visible !important;
+}
+.prof-head .prof-id h2{
+  white-space:normal !important;
+  word-break:normal !important;
+  overflow-wrap:anywhere !important;
+  width:auto !important;
+  max-width:100% !important;
+}
+@media (max-width:900px){
+  .prof-head{
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+    align-items:start !important;
+  }
+  .prof-head > .prof-id{
+    min-width:0 !important;
+    width:100% !important;
+  }
+  .prof-actions{
+    max-width:none !important;
+    justify-content:stretch !important;
+  }
+  body.chat-open .topbar,
+  body.chat-open .tabbar{
+    display:none !important;
+  }
+  body.chat-open .shell,
+  body.chat-open #view,
+  body.chat-open .chat-shell{
+    height:100dvh !important;
+    min-height:0 !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+  body.chat-open .chat-shell{
+    border:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+  }
+}
