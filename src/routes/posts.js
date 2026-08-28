@@ -23,7 +23,7 @@ function canPostTo(user, { group_id, community_id }) {
 }
 
 // ---------- create ----------
-r.post('/', U.requireAuth, U.rateLimit({ max: 30, windowMs: 5 * 60 * 1000, key: 'post' }), U.wrap((req, res) => {
+r.post('/', U.requireAuth, U.requirePostingAccess, U.rateLimit({ max: 30, windowMs: 5 * 60 * 1000, key: 'post' }), U.wrap((req, res) => {
   const content = U.sanitizeText(req.body.content, 5000);
   const media = Array.isArray(req.body.media) ? req.body.media.slice(0, 6) : [];
   const hub = HUBS.includes(req.body.hub) ? req.body.hub : 'general';
@@ -165,7 +165,7 @@ r.patch('/:id', U.requireAuth, U.wrap((req, res) => {
 r.delete('/:id', U.requireAuth, U.wrap((req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id=?').get(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
-  const isMod = req.user.role === 'admin';
+  const isMod = U.hasPermission(req.user, 'posts.delete');
   if (post.user_id !== req.user.id && !isMod) return res.status(403).json({ error: 'You can only delete your own posts.' });
   db.prepare('DELETE FROM posts WHERE id=?').run(post.id);
   res.json({ ok: true });
@@ -212,7 +212,7 @@ r.get('/:id/comments', U.wrap((req, res) => {
   res.json({ comments: rows });
 }));
 
-r.post('/:id/comments', U.requireAuth, U.rateLimit({ max: 60, windowMs: 5 * 60 * 1000, key: 'comment' }), U.wrap((req, res) => {
+r.post('/:id/comments', U.requireAuth, U.requirePostingAccess, U.rateLimit({ max: 60, windowMs: 5 * 60 * 1000, key: 'comment' }), U.wrap((req, res) => {
   const me = req.user.id;
   const post = F.getPost(Number(req.params.id), me);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
@@ -246,7 +246,7 @@ r.patch('/comments/:cid', U.requireAuth, U.wrap((req, res) => {
 r.delete('/comments/:cid', U.requireAuth, U.wrap((req, res) => {
   const c = db.prepare('SELECT c.*, p.user_id AS post_owner FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=?').get(req.params.cid);
   if (!c) return res.status(404).json({ error: 'Comment not found.' });
-  const allowed = c.user_id === req.user.id || c.post_owner === req.user.id || req.user.role === 'admin';
+  const allowed = c.user_id === req.user.id || c.post_owner === req.user.id || U.hasPermission(req.user, 'comments.moderate');
   if (!allowed) return res.status(403).json({ error: 'Not allowed.' });
   db.prepare('DELETE FROM comments WHERE id=?').run(c.id);
   res.json({ ok: true });
@@ -261,7 +261,7 @@ r.post('/:id/hide', U.requireAuth, U.wrap((req, res) => {
 }));
 
 // ---------- repost / save ----------
-r.post('/:id/repost', U.requireAuth, U.wrap((req, res) => {
+r.post('/:id/repost', U.requireAuth, U.requirePostingAccess, U.wrap((req, res) => {
   const id = Number(req.params.id);
   const post = F.getPost(id, req.user.id);
   if (!post) return res.status(404).json({ error: 'Post not found.' });

@@ -57,7 +57,7 @@ g.get('/:id', U.wrap((req, res) => {
 g.patch('/:id', U.requireAuth, U.wrap((req, res) => {
   const row = groupRow(Number(req.params.id), req.user.id);
   if (!row) return res.status(404).json({ error: 'Group not found.' });
-  if (!['owner', 'admin'].includes(row.my_role) && req.user.role !== 'admin') return res.status(403).json({ error: 'Only group admins can edit this group.' });
+  if (!['owner', 'admin'].includes(row.my_role) && !U.hasPermission(req.user, 'communities.manage')) return res.status(403).json({ error: 'Only group admins can edit this group.' });
   const cover = typeof req.body.cover === 'string' && req.body.cover.startsWith('/uploads/') ? req.body.cover : row.cover;
   db.prepare('UPDATE groups SET name=?, description=?, category=?, privacy=?, rules=?, cover=? WHERE id=?')
     .run(U.sanitizeText(req.body.name, 60) || row.name, U.sanitizeText(req.body.description, 800), U.sanitizeText(req.body.category, 40) || row.category,
@@ -68,7 +68,7 @@ g.patch('/:id', U.requireAuth, U.wrap((req, res) => {
 g.delete('/:id', U.requireAuth, U.wrap((req, res) => {
   const row = groupRow(Number(req.params.id), req.user.id);
   if (!row) return res.status(404).json({ error: 'Group not found.' });
-  if (row.my_role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({ error: 'Only the owner can delete this group.' });
+  if (row.my_role !== 'owner' && !U.hasPermission(req.user, 'communities.manage')) return res.status(403).json({ error: 'Only the owner can delete this group.' });
   db.prepare('DELETE FROM groups WHERE id=?').run(row.id);
   res.json({ ok: true });
 }));
@@ -291,7 +291,7 @@ e.post('/:id/share', U.requireAuth, U.wrap((req, res) => {
 e.delete('/:id', U.requireAuth, U.wrap((req, res) => {
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.id);
   if (!ev) return res.status(404).json({ error: 'Event not found.' });
-  if (ev.host_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Only the host can delete this event.' });
+  if (ev.host_id !== req.user.id && !U.hasPermission(req.user, 'communities.manage')) return res.status(403).json({ error: 'Only the host can delete this event.' });
   db.prepare('DELETE FROM events WHERE id=?').run(ev.id);
   res.json({ ok: true });
 }));

@@ -418,6 +418,89 @@ CREATE TABLE IF NOT EXISTS admin_logs (
 CREATE INDEX IF NOT EXISTS idx_admin_logs ON admin_logs(created_at);
 `);
 
+  /* ---------------------------------------------------------------- staff RBAC + moderation */
+  db.exec(`
+CREATE TABLE IF NOT EXISTS staff_roles (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  level INTEGER NOT NULL DEFAULT 0,
+  description TEXT DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS permissions (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  group_name TEXT DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_slug TEXT NOT NULL REFERENCES staff_roles(slug) ON DELETE CASCADE,
+  permission_slug TEXT NOT NULL REFERENCES permissions(slug) ON DELETE CASCADE,
+  PRIMARY KEY (role_slug, permission_slug)
+);
+CREATE TABLE IF NOT EXISTS staff_permission_overrides (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  permission_slug TEXT NOT NULL REFERENCES permissions(slug) ON DELETE CASCADE,
+  allowed INTEGER NOT NULL DEFAULT 1,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, permission_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_staff_overrides_user ON staff_permission_overrides(user_id);
+
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  target_type TEXT DEFAULT '',
+  target_id INTEGER,
+  detail TEXT DEFAULT '',
+  ip_address TEXT DEFAULT '',
+  user_agent TEXT DEFAULT '',
+  result TEXT NOT NULL DEFAULT 'success',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_time ON admin_activity_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_actor ON admin_activity_logs(actor_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS moderation_actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type TEXT NOT NULL,
+  target_id INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  reason TEXT DEFAULT '',
+  expires_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_moderation_target ON moderation_actions(target_type, target_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS user_warnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  issued_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'notice',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_warnings_user ON user_warnings(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  audience TEXT NOT NULL DEFAULT 'all',
+  status TEXT NOT NULL DEFAULT 'draft',
+  starts_at INTEGER,
+  ends_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_announcements_live ON announcements(status, starts_at, ends_at);
+`);
+
   // ---- profile columns used by the new sections (idempotent) ----
   const addColumn = (table, column, definition) => {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
@@ -426,6 +509,12 @@ CREATE INDEX IF NOT EXISTS idx_admin_logs ON admin_logs(created_at);
   addColumn('users', 'skills', "skills TEXT DEFAULT ''");
   addColumn('users', 'work_status', "work_status TEXT NOT NULL DEFAULT 'none'"); // none | freelancer | client | both
   addColumn('users', 'portfolio_url', "portfolio_url TEXT DEFAULT ''");
+  addColumn('users', 'staff_role', "staff_role TEXT NOT NULL DEFAULT ''");
+  addColumn('users', 'banned_until', 'banned_until INTEGER');
+  addColumn('users', 'ban_reason', "ban_reason TEXT DEFAULT ''");
+  addColumn('users', 'moderation_until', 'moderation_until INTEGER');
+  addColumn('users', 'moderation_reason', "moderation_reason TEXT DEFAULT ''");
+  addColumn('sessions', 'last_activity', 'last_activity INTEGER');
   addColumn('posts', 'poll_id', 'poll_id INTEGER');
   addColumn('posts', 'product_id', 'product_id INTEGER');
 }

@@ -3,6 +3,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { db } = require('../db');
 const U = require('../util');
+const RBAC = require('../rbac');
 
 const r = express.Router();
 const RESERVED = ['admin', 'root', 'genzhub', 'support', 'null', 'undefined', 'api'];
@@ -63,7 +64,7 @@ r.post('/login', U.rateLimit({ max: 15, windowMs: 10 * 60 * 1000, key: 'login' }
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Incorrect username/email or password.' });
   }
-  if (user.status === 'suspended') return res.status(403).json({ error: 'This account has been suspended.' });
+  if (user.status !== 'active') return res.status(403).json({ error: `This account is ${user.status || 'restricted'}.` });
   U.createSession(user.id, res, remember);
   res.json({ user: me(user) });
 }));
@@ -117,7 +118,8 @@ function me(u) {
   let prefs = {}; try { prefs = JSON.parse(u.notif_prefs || '{}'); } catch (e) {}
   return {
     id: u.id, username: u.username, email: u.email, full_name: u.full_name, avatar: u.avatar, cover: u.cover,
-    bio: u.bio, location: u.location, role: u.role, status: u.status, onboarded: !!u.onboarded,
+    bio: u.bio, location: u.location, role: u.role, staff_role: RBAC.staffRole(u), is_staff: RBAC.isStaff(u),
+    permissions: RBAC.permissionsFor(u.id), status: u.status, onboarded: !!u.onboarded,
     in_business: !!u.in_business, in_gaming: !!u.in_gaming, business_role: u.business_role,
     fav_games: u.fav_games, platform: u.platform, gamer_tag: u.gamer_tag,
     theme: u.theme, lang: u.lang, profile_visibility: u.profile_visibility,

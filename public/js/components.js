@@ -197,7 +197,7 @@
       ${!mine ? '<button data-hide>🙈 Not interested</button>' : ''}
       ${mine ? '<button data-edit>✏️ Edit post</button>' : ''}
       ${!mine ? '<button data-report>🚩 Report post</button>' : ''}
-      ${mine || (S.user && S.user.role === 'admin') ? '<button class="danger" data-del>🗑️ Delete post</button>' : ''}
+      ${mine || (S.user && (S.user.permissions || []).includes('posts.delete')) ? '<button class="danger" data-del>🗑️ Delete post</button>' : ''}
     </div>`);
     anchor.parentElement.appendChild(box);
     const off = (e) => { if (!box.contains(e.target)) { box.remove(); document.removeEventListener('click', off); } };
@@ -281,7 +281,7 @@
           <span>${G.timeAgo(c.created_at)}${c.updated_at ? ' · edited' : ''}</span>
           <button class="link tiny" data-reply style="background:none;border:0;padding:0">${esc(G.t('Reply'))}</button>
           ${mine ? `<button class="link tiny" data-edit style="background:none;border:0;padding:0">${esc(G.t('Edit'))}</button>` : ''}
-          ${mine || (S.user && S.user.id === p.user_id) ? `<button class="link tiny" data-del style="background:none;border:0;padding:0;color:var(--danger)">${esc(G.t('Delete'))}</button>` : `<button class="link tiny" data-rep style="background:none;border:0;padding:0">${esc(G.t('Report'))}</button>`}
+          ${mine || (S.user && (S.user.id === p.user_id || (S.user.permissions || []).includes('comments.moderate'))) ? `<button class="link tiny" data-del style="background:none;border:0;padding:0;color:var(--danger)">${esc(G.t('Delete'))}</button>` : `<button class="link tiny" data-rep style="background:none;border:0;padding:0">${esc(G.t('Report'))}</button>`}
         </div>
         <div data-replies class="reply-list"></div>
       </div></div>`);

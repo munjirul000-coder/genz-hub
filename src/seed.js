@@ -52,6 +52,9 @@ function ensureSeed() {
     }
     admin = db.prepare('SELECT * FROM users WHERE id=?').get(admin.id);
   }
+  // The configured bootstrap account is the platform owner. Keep users.role='admin'
+  // for backward compatibility while staff_role provides the new RBAC level.
+  db.prepare("UPDATE users SET role='admin', staff_role='super_admin', onboarded=1, status='active' WHERE id=?").run(admin.id);
 
   if (db.prepare('SELECT COUNT(*) n FROM users').get().n > 1) return; // demo content only on a fresh database
 

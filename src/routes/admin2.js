@@ -5,13 +5,18 @@
 const express = require('express');
 const { db } = require('../db');
 const U = require('../util');
+const RBAC = require('../rbac');
 
 const r = express.Router();
-r.use(U.requireAdmin);
+r.use(U.requireStaff);
+r.use((req, res, next) => {
+  const permission = req.path === '/overview' ? 'analytics.view'
+    : req.path === '/logs' ? 'audit_logs.view' : 'settings.manage';
+  return U.requirePermission(permission)(req, res, next);
+});
 
 function log(req, action, targetType, targetId, detail) {
-  db.prepare('INSERT INTO admin_logs (admin_id,action,target_type,target_id,detail,created_at) VALUES (?,?,?,?,?,?)')
-    .run(req.user.id, action, targetType || '', targetId || null, String(detail || '').slice(0, 500), U.now());
+  RBAC.audit(req, { action, targetType, targetId, detail });
 }
 const money = (v) => Math.max(0, Math.round(Number(v || 0) * 100));
 

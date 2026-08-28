@@ -1,6 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const { db } = require('./db');
+const RBAC = require('./rbac');
 
 const now = () => Date.now();
 
@@ -50,7 +51,7 @@ const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
 function createSession(userId, res, remember = true) {
   const t = token();
   const exp = now() + (remember ? SESSION_MS : 1000 * 60 * 60 * 12);
-  db.prepare('INSERT INTO sessions (token,user_id,created_at,expires_at) VALUES (?,?,?,?)').run(t, userId, now(), exp);
+  db.prepare('INSERT INTO sessions (token,user_id,created_at,expires_at,last_activity) VALUES (?,?,?,?,?)').run(t, userId, now(), exp, now());
   res.cookie('gz_session', t, {
     httpOnly: true, sameSite: 'lax', path: '/',
     maxAge: remember ? SESSION_MS : undefined,
@@ -63,12 +64,21 @@ function loadUser(req, res, next) {
   const t = req.cookies && req.cookies.gz_session;
   req.user = null;
   if (t) {
-    const row = db.prepare(`SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>?`).get(t, now());
+    const row = db.prepare(`SELECT s.last_activity,s.created_at AS session_created_at,u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>?`).get(t, now());
     if (row) {
-      if (row.status === 'suspended') { req.user = null; req.suspended = true; }
-      else {
+      const staffIdle = RBAC.isStaff(row) && (now() - (row.last_activity || row.session_created_at) > 2 * 3600e3);
+      if (staffIdle) {
+        db.prepare('DELETE FROM sessions WHERE token=?').run(t);
+        return next();
+      }
+      if (row.status !== 'active') {
+        req.user = null;
+        req.suspended = true;
+        req.accountStatus = row.status;
+      } else {
         req.user = row;
         db.prepare('UPDATE users SET last_seen=? WHERE id=?').run(now(), row.id);
+        db.prepare('UPDATE sessions SET last_activity=? WHERE token=?').run(now(), t);
       }
     }
   }
@@ -76,15 +86,22 @@ function loadUser(req, res, next) {
 }
 
 function requireAuth(req, res, next) {
-  if (req.suspended) return res.status(403).json({ error: 'Your account is suspended.' });
+  if (req.suspended) return res.status(403).json({ error: `Your account is ${req.accountStatus || 'restricted'}.` });
   if (!req.user) return res.status(401).json({ error: 'You must be signed in.' });
   next();
 }
-function requireAdmin(req, res, next) {
+function requirePostingAccess(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'You must be signed in.' });
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required.' });
+  if (req.user.moderation_until && req.user.moderation_until > now()) {
+    return res.status(403).json({ error: `Posting is restricted until ${new Date(req.user.moderation_until).toISOString()}.` });
+  }
   next();
 }
+function requireAdmin(req, res, next) { return RBAC.requireStaff(req, res, next); }
+function requireStaff(req, res, next) { return RBAC.requireStaff(req, res, next); }
+function requireSuperAdmin(req, res, next) { return RBAC.requireSuperAdmin(req, res, next); }
+const requirePermission = (permission) => RBAC.requirePermission(permission);
+const requireAnyPermission = (permissions) => RBAC.requireAnyPermission(permissions);
 
 // CSRF: double-submit style — require custom header on mutating requests
 function csrfGuard(req, res, next) {
@@ -147,6 +164,7 @@ function linkHashtags(postId, content) {
 
 module.exports = {
   now, escapeHtml, sanitizeText, token, HttpError, bad, wrap, rateLimit,
-  createSession, loadUser, requireAuth, requireAdmin, csrfGuard,
+  createSession, loadUser, requireAuth, requirePostingAccess, requireAdmin, requireStaff, requireSuperAdmin,
+  requirePermission, requireAnyPermission, isStaff: RBAC.isStaff, staffRole: RBAC.staffRole, hasPermission: RBAC.hasPermission, csrfGuard,
   publicUser, isBlocked, areConnected, notify, linkHashtags, extractHashtags, SESSION_MS,
 };

@@ -76,7 +76,7 @@ s.get('/:id/viewers', U.requireAuth, U.wrap((req, res) => {
 s.delete('/:id', U.requireAuth, U.wrap((req, res) => {
   const st = db.prepare('SELECT * FROM stories WHERE id=?').get(req.params.id);
   if (!st) return res.status(404).json({ error: 'Story not found.' });
-  if (st.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Not allowed.' });
+  if (st.user_id !== req.user.id && !U.hasPermission(req.user, 'posts.moderate')) return res.status(403).json({ error: 'Not allowed.' });
   db.prepare('DELETE FROM stories WHERE id=?').run(st.id);
   res.json({ ok: true });
 }));

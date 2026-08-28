@@ -101,7 +101,7 @@ r.get('/video/:uid', U.wrap((req, res) => {
 r.post('/video/:uid/retry', U.requireAuth, U.wrap((req, res) => {
   const row = jobs.getAsset(req.params.uid);
   if (!row) return res.status(404).json({ error: 'Video not found.' });
-  if (row.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Not allowed.' });
+  if (row.user_id !== req.user.id && !U.hasPermission(req.user, 'posts.moderate')) return res.status(403).json({ error: 'Not allowed.' });
   const again = jobs.retry(req.params.uid);
   if (!again) return res.status(400).json({ error: 'This video can no longer be reprocessed. Please upload it again.' });
   res.json({ asset: jobs.publicAsset(again) });
