@@ -42,9 +42,14 @@ function ensureSeed() {
       VALUES (?,?,?,?,?, 'admin',1,?,1,1,?,?)`).run('genzadmin', adminEmail, hashed, 'Gen-Z Hub Admin', '2000-01-01',
       'Platform moderation & safety.', U.now(), U.now());
     admin = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
-  } else if (admin.password_hash !== hashed) {
-    // Update password if it was changed via env (e.g. after switching from generateValue)
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashed, admin.id);
+  } else {
+    // An existing account can be promoted safely when the owner explicitly sets
+    // ADMIN_EMAIL in the deployment environment.
+    db.prepare("UPDATE users SET role='admin', onboarded=1, status='active' WHERE id=?").run(admin.id);
+    if (admin.password_hash !== hashed) {
+      // Update password if it was changed via env (e.g. after switching from generateValue)
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashed, admin.id);
+    }
     admin = db.prepare('SELECT * FROM users WHERE id=?').get(admin.id);
   }
 

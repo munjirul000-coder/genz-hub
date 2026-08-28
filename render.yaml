@@ -19,7 +19,7 @@ services:
       - key: DEMO_SEED
         value: "1"
       - key: ADMIN_EMAIL
-        value: admin@genzhub.app
+        value: munjirul000@gmail.com
       - key: ADMIN_PASSWORD
         value: "AdminGenz2026"
       # ---- video pipeline (ffmpeg ships as an npm dependency, no system package needed) ----
