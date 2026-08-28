@@ -1957,3 +1957,144 @@ html[data-theme="crimson"] body.chat-open .chat-shell{
     box-shadow:none !important;
   }
 }
+
+/* Crimson contrast pass: bright blood-red chrome keeps black labels readable. */
+html[data-theme="crimson"] .topbar{
+  background:linear-gradient(180deg,#8f0d2c 0%,#5e071b 100%) !important;
+  border-bottom-color:#ff3155 !important;
+}
+html[data-theme="crimson"] .topbar .iconbtn{
+  background:linear-gradient(145deg,#c51b42,#7b0822) !important;
+  border-color:#ff4865 !important;
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .searchbox{
+  background:linear-gradient(145deg,#dc2d50,#a70d2d) !important;
+  border-color:#ff6b7c !important;
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .searchbox input,
+html[data-theme="crimson"] .searchbox input::placeholder,
+html[data-theme="crimson"] .searchbox .si{
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .side{
+  background:linear-gradient(180deg,#810a27 0%,#560719 100%) !important;
+  border-color:#e62b4c !important;
+}
+html[data-theme="crimson"] .me-card{
+  background:linear-gradient(145deg,#bc1d42,#76091f) !important;
+  color:#070104 !important;
+  border-color:#ff4967 !important;
+  box-shadow:inset 0 1px rgba(255,190,180,.36),0 10px 28px rgba(50,0,10,.4) !important;
+}
+html[data-theme="crimson"] .me-card .bold,
+html[data-theme="crimson"] .me-card .muted,
+html[data-theme="crimson"] .me-card *{
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .nav-item{
+  background:linear-gradient(145deg,#9d1230,#68081d) !important;
+  color:#070104 !important;
+  border-color:#dd2b4d !important;
+  margin-bottom:6px;
+  box-shadow:inset 0 1px rgba(255,150,150,.2),0 5px 14px rgba(45,0,10,.25);
+}
+html[data-theme="crimson"] .nav-item .ni,
+html[data-theme="crimson"] .nav-item .cnt,
+html[data-theme="crimson"] .nav-item span:not(.cnt){
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .nav-item:hover,
+html[data-theme="crimson"] .nav-item.on{
+  background:linear-gradient(145deg,#ff3f5d,#d11038 62%,#e0a661) !important;
+  color:#070104 !important;
+  box-shadow:0 9px 25px rgba(239,35,68,.5),inset 0 1px rgba(255,220,190,.5) !important;
+}
+html[data-theme="crimson"] .greet,
+html[data-theme="crimson"] .stories,
+html[data-theme="crimson"] .composer-shell,
+html[data-theme="crimson"] .rail .card,
+html[data-theme="crimson"] .kpi,
+html[data-theme="crimson"] .project-card{
+  background:linear-gradient(145deg,#a91436 0%,#780b25 58%,#4c0618 100%) !important;
+  color:#070104 !important;
+  border-color:#ff3e5d !important;
+}
+html[data-theme="crimson"] .greet h1,
+html[data-theme="crimson"] .greet .sub,
+html[data-theme="crimson"] .greet .pill,
+html[data-theme="crimson"] .stories .nm,
+html[data-theme="crimson"] .rail .card *:not(.btn),
+html[data-theme="crimson"] .composer-shell *:not(.btn),
+html[data-theme="crimson"] .kpi *:not(.btn),
+html[data-theme="crimson"] .project-card *:not(.btn){
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .composer-trigger .ph{
+  color:#21030a !important;
+}
+html[data-theme="crimson"] .tabs{
+  background:linear-gradient(145deg,#8b0b28,#570619) !important;
+  border-color:#e52b4d !important;
+}
+html[data-theme="crimson"] .tab{
+  color:#070104 !important;
+  background:linear-gradient(145deg,#b9183d,#72091f) !important;
+}
+html[data-theme="crimson"] .tab.on,
+html[data-theme="crimson"] .tab:hover{
+  color:#070104 !important;
+  background:linear-gradient(145deg,#ff4662,#d41037 65%,#e0a661) !important;
+}
+html[data-theme="crimson"] .input,
+html[data-theme="crimson"] .textarea,
+html[data-theme="crimson"] .select{
+  background:linear-gradient(145deg,#bd1b3e,#8c0c27) !important;
+  border-color:#ff4663 !important;
+  color:#070104 !important;
+  box-shadow:inset 0 1px rgba(255,180,170,.25),0 5px 16px rgba(46,0,10,.28) !important;
+}
+html[data-theme="crimson"] .input::placeholder,
+html[data-theme="crimson"] .textarea::placeholder{
+  color:#26040b !important;
+}
+html[data-theme="crimson"] .btn-ghost,
+html[data-theme="crimson"] .iconbtn{
+  background:linear-gradient(145deg,#a91436,#70091f) !important;
+  color:#070104 !important;
+  border-color:#f03858 !important;
+}
+html[data-theme="crimson"] .btn-ghost:hover,
+html[data-theme="crimson"] .iconbtn:hover{
+  background:linear-gradient(145deg,#ff4662,#c90e34) !important;
+  color:#070104 !important;
+}
+html[data-theme="crimson"] .post{
+  background:linear-gradient(145deg,#0b0c10 0%,#12070b 66%,#08090c 100%) !important;
+  color:#f7eef0 !important;
+  border-color:#7d1d39 !important;
+}
+html[data-theme="crimson"] .post .post-actions .pa{
+  color:#ff526b !important;
+  background:transparent !important;
+}
+html[data-theme="crimson"] .post .post-actions .pa:hover,
+html[data-theme="crimson"] .post .post-actions .pa.on{
+  color:#070104 !important;
+  background:linear-gradient(145deg,#ff405d,#c60c31) !important;
+}
+html[data-theme="crimson"] .modal .modal-head,
+html[data-theme="crimson"] .modal .modal-body{
+  background:linear-gradient(145deg,#8f0d2c,#4d0617) !important;
+}
+html[data-theme="crimson"] .modal .modal-head h3,
+html[data-theme="crimson"] .modal .modal-body,
+html[data-theme="crimson"] .modal .modal-body .label,
+html[data-theme="crimson"] .modal .modal-body .small{
+  color:#070104 !important;
+}
+@media (max-width:900px){
+  html[data-theme="crimson"] .topbar{background:#7e0a25 !important}
+  html[data-theme="crimson"] .side{background:linear-gradient(180deg,#850a28,#570719) !important}
+}
