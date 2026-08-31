@@ -115,6 +115,7 @@ const auth = require('./routes/auth');
 app.use('/api/auth', auth.router);
 app.use('/api/me', require('./routes/me'));
 app.use('/api/posts', require('./routes/posts'));
+app.use('/api/shorts', require('./routes/shorts'));
 app.use('/api/recommendations', require('./routes/recommendations'));
 app.use('/api/media', require('./routes/media'));
 const users = require('./routes/users');

@@ -280,6 +280,7 @@ function cleanupActivity() {
   lastCleanup = t;
   db.prepare('DELETE FROM user_activity WHERE created_at<?').run(t - 180 * 86400000);
   db.prepare('DELETE FROM recommendation_impressions WHERE shown_at<?').run(t - 14 * 86400000);
+  db.prepare('DELETE FROM shorts_impressions WHERE shown_at<?').run(t - 14 * 86400000);
   db.prepare("DELETE FROM recommendation_feedback WHERE created_at<? AND kind='skip'").run(t - 60 * 86400000);
 }
 
@@ -571,6 +572,141 @@ function personalizedFeed({ me, where = [], params = {}, limit = 8, cursor = nul
   };
 }
 
+function shortsCategoryRows(ids) {
+  if (!ids.length) return {};
+  const out = {};
+  db.prepare(`SELECT pm.post_id,pm.duration,pm.width,pm.height,pm.type FROM post_media pm
+    WHERE pm.type='video' AND pm.post_id IN (${ids.join(',')}) ORDER BY pm.position`).all().forEach((r) => {
+    if (!out[r.post_id]) out[r.post_id] = r;
+  });
+  return out;
+}
+
+function shortsWatchRows(userId, ids) {
+  if (!ids.length) return {};
+  const out = {};
+  db.prepare(`SELECT * FROM video_watch_stats WHERE user_id=? AND post_id IN (${ids.join(',')})`).all(userId).forEach((r) => { out[r.post_id] = r; });
+  return out;
+}
+
+function rankShortsPosts(posts, userId, limit) {
+  if (!posts.length) return [];
+  ensurePostCategoriesBatch(posts);
+  const ids = posts.map((p) => Number(p.id));
+  const cats = postCategoryRows(ids);
+  const media = shortsCategoryRows(ids);
+  const watch = shortsWatchRows(userId, ids);
+  const scores = interestScores(userId);
+  const cfg = config();
+  const authors = authorStats(posts);
+  const following = new Set(db.prepare('SELECT following_id FROM follows WHERE follower_id=?').all(userId).map((r) => r.following_id));
+  const connected = connectedAuthors(userId);
+  const top = Object.values(scores).sort((a, b) => b.score - a.score).slice(0, 4).map((x) => x.category);
+  const topSet = new Set(top.slice(0, 3));
+  const nowMs = now();
+  const scored = posts.map((p) => {
+    const pc = cats[p.id] || [{ category: 'general', weight: 1 }];
+    const match = pc.reduce((n, c) => n + clamp(scores[c.category] ? scores[c.category].score : 0, -100, 100) / 100 * c.weight, 0);
+    const ageHours = Math.max(0, (nowMs - p.created_at) / 3600000);
+    const freshness = 14 * Math.pow(0.5, ageHours / Math.max(12, cfg.rec_freshness_half_life_hours));
+    const quality = Math.min(10, Math.log1p((p.reaction_count || 0) + (p.comment_count || 0) * 2 + (p.repost_count || 0) * 2));
+    const relationship = p.user_id === userId ? 8 : following.has(p.user_id) ? 8 : connected.has(p.user_id) ? 5 : 0;
+    const ownFreshness = p.user_id === userId ? Math.max(0, 55 - ageHours * 1.5) : 0;
+    const w = watch[p.id];
+    const duration = Number((media[p.id] && media[p.id].duration) || 0);
+    const completion = w ? Number(w.completion_pct || 0) : 0;
+    const watched = w ? Number(w.watched_seconds || 0) : 0;
+    const replay = w ? Number(w.replays || 0) : 0;
+    const skips = w ? Number(w.skips || 0) : 0;
+    const watchScore = Math.min(20, completion * 0.12 + Math.min(8, watched / Math.max(10, duration || 30) * 8) + Math.min(4, replay * 2)) - Math.min(8, skips * 2);
+    const small = authors[p.user_id] && (authors[p.user_id].posts <= 15 || authors[p.user_id].followers <= 50) && p.user_id !== userId ? cfg.rec_small_creator_boost : 0;
+    const portrait = media[p.id] && media[p.id].width && media[p.id].height && media[p.id].height > media[p.id].width ? 2 : 0;
+    return { post: p, categories: pc, score: 28 * match + quality + freshness + relationship + ownFreshness + watchScore + small + portrait, top: pc.some((c) => topSet.has(c.category)) };
+  });
+  const selected = [];
+  const remaining = scored.slice();
+  const explorationCount = Math.min(Math.floor(limit * clamp(cfg.rec_exploration_pct, 0.1, 0.2)), Math.max(0, limit - 1));
+  const explore = remaining.filter((x) => !x.top).sort((a, b) => b.score - a.score);
+  const slots = new Set();
+  for (let i = 0; i < explorationCount; i++) slots.add(Math.min(limit - 1, Math.round((i + 1) * limit / (explorationCount + 1))));
+  const creatorCount = {}, categoryCount = {};
+  const primary = (x) => {
+    const list = x && x.categories ? x.categories : (x ? (cats[x.id] || []) : []);
+    return list.slice().sort((a, b) => b.weight - a.weight)[0]?.category;
+  };
+  for (let slot = 0; slot < limit && remaining.length; slot++) {
+    let pool = slots.has(slot) && explore.length ? explore.filter((x) => remaining.includes(x)) : remaining;
+    if (!pool.length) pool = remaining;
+    if (selected.length) {
+      const lastAuthor = selected[selected.length - 1].user_id;
+      const altCreator = pool.filter((x) => x.post.user_id !== lastAuthor);
+      if (altCreator.length) pool = altCreator;
+      const lastCat = primary(selected[selected.length - 1]);
+      let run = 0;
+      for (let i = selected.length - 1; i >= 0 && primary(selected[i]) === lastCat; i--) run++;
+      if (run >= 3) {
+        const altCategory = pool.filter((x) => primary(x) !== lastCat);
+        if (altCategory.length) pool = altCategory;
+      }
+    }
+    pool.sort((a, b) => {
+      const catA = Math.max(...a.categories.map((c) => categoryCount[c.category] || 0));
+      const catB = Math.max(...b.categories.map((c) => categoryCount[c.category] || 0));
+      const sa = a.score - (creatorCount[a.post.user_id] || 0) * cfg.rec_creator_penalty - catA * cfg.rec_diversity_penalty;
+      const sb = b.score - (creatorCount[b.post.user_id] || 0) * cfg.rec_creator_penalty - catB * cfg.rec_diversity_penalty;
+      return sb - sa;
+    });
+    const pick = pool[0];
+    remaining.splice(remaining.indexOf(pick), 1);
+    const ei = explore.indexOf(pick); if (ei >= 0) explore.splice(ei, 1);
+    selected.push(pick.post);
+    creatorCount[pick.post.user_id] = (creatorCount[pick.post.user_id] || 0) + 1;
+    pick.categories.forEach((c) => { categoryCount[c.category] = (categoryCount[c.category] || 0) + 1; });
+  }
+  return selected;
+}
+
+function markShortsImpressions(userId, posts) {
+  if (!userId || !posts.length) return;
+  const stmt = db.prepare(`INSERT INTO shorts_impressions (user_id,post_id,shown_at,view_count) VALUES (?,?,?,1)
+    ON CONFLICT(user_id,post_id) DO UPDATE SET shown_at=excluded.shown_at,view_count=view_count+1`);
+  const t = now();
+  db.transaction(() => posts.forEach((p) => stmt.run(userId, p.id, t)))();
+}
+
+function shortsFeed({ me, scope = 'for-you', limit = 6, cursor = null }) {
+  init();
+  const take = clamp(Number(limit) || 6, 1, 12);
+  const where = ["EXISTS (SELECT 1 FROM post_media pm WHERE pm.post_id=p.id AND pm.type='video')", 'p.group_id IS NULL'];
+  const params = {};
+  if (scope === 'following') where.push('(p.user_id=@me OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=@me AND f.following_id=p.user_id))');
+  let token = decodeCursor(cursor);
+  let rows = [], rankedIds = [], nextBase = null, consumed = 0;
+  if (token && token.ids.length && token.offset < token.ids.length) {
+    const requested = token.ids.slice(token.offset);
+    rows = rowsForIds(me, requested, where, params);
+    rankedIds = token.ids; nextBase = token.next || null; consumed = Math.min(take, requested.length);
+  } else {
+    const baseCursor = token && token.next ? token.next : null;
+    const extra = [
+      "NOT EXISTS (SELECT 1 FROM recommendation_feedback rf WHERE rf.user_id=@me AND rf.post_id=p.id AND rf.kind IN ('hide','report'))",
+      'NOT EXISTS (SELECT 1 FROM shorts_impressions si WHERE si.user_id=@me AND si.post_id=p.id AND si.shown_at>@shorts_cooldown)',
+    ];
+    params.shorts_cooldown = now() - 6 * 3600000;
+    const candidates = F.queryPosts({ me, where: where.concat(extra), params, limit: Math.min(100, Math.max(30, take * 8)), cursor: baseCursor, order: 'p.created_at DESC, p.id DESC' });
+    rows = rankShortsPosts(candidates.posts, me, Math.max(take, candidates.posts.length));
+    rankedIds = rows.map((p) => Number(p.id)); nextBase = candidates.nextCursor;
+    // Do not recycle already-shown Shorts immediately. An empty result means the
+    // viewer is caught up; the next fresh upload will appear on the next request.
+    token = { ids: rankedIds, offset: 0, next: nextBase };
+  }
+  const page = rows.slice(0, take);
+  const offset = (token.offset || 0) + (consumed || page.length);
+  const hasMore = offset < rankedIds.length || !!nextBase;
+  if (page.length) markShortsImpressions(me, page);
+  return { posts: page, nextCursor: hasMore ? encodeCursor({ ids: rankedIds, offset, next: nextBase }) : null, personalized: true, shorts: true, recommendationCategories: topCategories(me) };
+}
+
 function topCategories(userId) {
   return Object.values(interestScores(userId)).sort((a, b) => b.score - a.score).slice(0, 5).map((x) => ({ category: x.category, score: Math.round(x.score * 10) / 10 }));
 }
@@ -602,6 +738,7 @@ function reset(userId) {
     db.prepare('DELETE FROM user_activity WHERE user_id=?').run(userId);
     db.prepare('DELETE FROM user_interest_scores WHERE user_id=?').run(userId);
     db.prepare('DELETE FROM recommendation_impressions WHERE user_id=?').run(userId);
+    db.prepare('DELETE FROM shorts_impressions WHERE user_id=?').run(userId);
     db.prepare('DELETE FROM recommendation_feedback WHERE user_id=?').run(userId);
     db.prepare('DELETE FROM video_watch_stats WHERE user_id=?').run(userId);
   });
@@ -617,5 +754,5 @@ module.exports = {
   CATEGORIES, CATEGORY_NAMES, DEFAULT_SETTINGS, ACTIONS, CLIENT_ACTIONS, init, config, classifyPost,
   categoryForText, categoryForHub, categoriesForInterest, categoriesForUser, ensurePostCategories, refreshPostCategories, ensurePostCategoriesBatch,
   interestScores, topCategories, recordActivity, markImpressions, feedback, reset, hashQuery,
-  personalizedFeed, fallbackFeed,
+  personalizedFeed, shortsFeed, fallbackFeed,
 };

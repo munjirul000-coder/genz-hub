@@ -368,6 +368,15 @@ CREATE TABLE IF NOT EXISTS recommendation_impressions (
 );
 CREATE INDEX IF NOT EXISTS idx_rec_impressions_user_time ON recommendation_impressions(user_id, shown_at DESC);
 
+CREATE TABLE IF NOT EXISTS shorts_impressions (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  shown_at INTEGER NOT NULL,
+  view_count INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, post_id)
+);
+CREATE INDEX IF NOT EXISTS idx_shorts_impressions_user_time ON shorts_impressions(user_id, shown_at DESC);
+
 CREATE TABLE IF NOT EXISTS recommendation_feedback (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
