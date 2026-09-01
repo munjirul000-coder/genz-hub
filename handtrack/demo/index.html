@@ -3,92 +3,208 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>handtrack python — live demo</title>
+<title>SIGMA CAM - Gen-Z Hub Project</title>
 <style>
-  :root{--bg:#0b0d12;--card:#12151d;--line:#242a38;--ink:#f2f4f8;--mut:#9aa3b5;--grn:#4ade80;--cyn:#7dd3fc;--red:#fe2c55}
+  :root{--bg:#05060a;--card:#0d1017;--line:#1c2230;--ink:#f2f4f8;--mut:#8b94a7;
+        --grn:#22ff88;--red:#fe2c55;--cyn:#39d5ff;--gold:#ffd23f;--vio:#c084fc}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,'Segoe UI',sans-serif;min-height:100vh}
-  .wrap{max-width:1080px;margin:0 auto;padding:28px 18px 80px}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red)}
-  h1{font-size:26px;letter-spacing:.3px}
-  h1 small{color:var(--mut);font-size:14px;font-weight:400}
-  .sub{color:var(--mut);margin-bottom:22px}
-  .grid{display:grid;grid-template-columns:1fr;gap:22px}
-  @media(min-width:960px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-  .card h2{font-size:15px;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
-  .card h2 .tag{margin-left:auto;font-size:11px;color:var(--mut);font-weight:400}
-  canvas.output{display:block;width:100%;background:#000;aspect-ratio:16/9;object-fit:cover}
-  /* video ta decode hoye jate — oder dei window er baire 1px e rakhkhi (display:none korle
-     kichu browser frame decode bondho kore dey) */
-  #cam{position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:.01;pointer-events:none}
-  .pad{padding:14px 16px}
-  .btn{appearance:none;border:1px solid var(--line);background:#1a1f2b;color:var(--ink);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
-  .btn:hover{border-color:#3b4459;transform:translateY(-1px)}
-  .btn.primary{background:var(--red);border-color:transparent}
-  .btn.on{background:#17301f;border-color:var(--grn);color:var(--grn)}
-  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .status{font-size:13px;color:var(--mut)}
-  .status b{color:var(--grn)}
-  .fps{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--mut);font-size:12px}
-  .hint{color:var(--mut);font-size:13px}
-  .hint b{color:var(--ink)}
-  kbd{background:#1a1f2b;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px}
-  code{background:#1a1f2b;border-radius:6px;padding:2px 8px;font-size:13px;color:#a5d6ff}
-  .note{margin-top:26px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;color:var(--mut);font-size:13.5px}
-  .note b{color:var(--ink)}
-  a{color:var(--cyn)}
-  .badge{display:inline-block;background:#13202b;color:var(--cyn);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700}
-  #err{display:none;margin-top:10px;padding:10px 12px;border:1px solid #7f1d2b;background:#22090e;color:#fda4af;border-radius:10px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
-  #shot{display:none;width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,'Segoe UI',sans-serif}
+
+  /* ================= LANDING (home) ================= */
+  #home{position:relative;z-index:10;min-height:100vh}
+  .nav{display:flex;align-items:center;gap:10px;padding:16px 26px;border-bottom:1px solid var(--line);
+       position:sticky;top:0;background:rgba(5,6,10,.85);backdrop-filter:blur(8px);z-index:20}
+  .nav .logo{font-weight:900;letter-spacing:2px;font-size:17px;display:flex;align-items:center;gap:8px}
+  .nav .sig{color:var(--gold);font-size:22px}
+  .nav .badge{font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--cyn);
+       border:1px solid var(--line);background:#0e1420;padding:3px 9px;border-radius:99px}
+  .nav .sp{flex:1}
+  .nav a{color:var(--mut);text-decoration:none;font-size:13px;font-weight:600}
+  .nav a:hover{color:var(--ink)}
+
+  .hero{text-align:center;padding:70px 20px 40px;max-width:860px;margin:0 auto}
+  .hero .pill{display:inline-block;font-size:12px;font-weight:800;letter-spacing:2px;color:var(--grn);
+       border:1px solid #14351f;background:#0a1c10;padding:6px 16px;border-radius:99px;margin-bottom:22px}
+  .hero h1{font-size:clamp(44px,8vw,84px);font-weight:900;letter-spacing:4px;line-height:1}
+  .hero h1 .g{color:var(--gold)}
+  .hero p.sub{color:var(--mut);font-size:16.5px;margin:20px auto 8px;max-width:560px}
+  .hero p.sub b{color:var(--ink)}
+
+  /* THE camera button */
+  .cambtn{margin-top:34px;appearance:none;border:0;cursor:pointer;
+       font-size:20px;font-weight:900;letter-spacing:1.5px;color:#fff;
+       padding:20px 46px;border-radius:16px;
+       background:linear-gradient(135deg,#fe2c55,#ff5e3a);
+       box-shadow:0 0 0 0 rgba(254,44,85,.5),0 14px 40px rgba(254,44,85,.35);
+       animation:pulse 2.2s infinite;transition:transform .15s}
+  .cambtn:hover{transform:translateY(-2px) scale(1.02)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(254,44,85,.45),0 14px 40px rgba(254,44,85,.35)}
+                   70%{box-shadow:0 0 0 22px rgba(254,44,85,0),0 14px 40px rgba(254,44,85,.35)}
+                   100%{box-shadow:0 0 0 0 rgba(254,44,85,0),0 14px 40px rgba(254,44,85,.35)}}
+  .under{margin-top:16px;font-size:13px;color:var(--mut)}
+  .under kbd{background:#161b26;border:1px solid var(--line);border-bottom-width:2px;
+       border-radius:5px;padding:1px 7px;font-size:11.5px;color:var(--ink)}
+
+  /* error + new-tab fallback */
+  .errbox{display:none;max-width:620px;margin:26px auto 0;background:#1c0e14;border:1px solid #582034;
+       border-radius:14px;padding:18px 20px;text-align:left}
+  .errbox.show{display:block}
+  .errbox .t{color:#fda4af;font-weight:800;font-size:13.5px;letter-spacing:.5px}
+  .errbox .m{color:var(--mut);font-size:13px;margin-top:8px;white-space:pre-wrap;word-break:break-word}
+  .newtab{display:none;margin-top:14px;width:100%;appearance:none;border:0;cursor:pointer;
+       font-size:15px;font-weight:800;color:#05060a;background:var(--gold);
+       padding:13px 18px;border-radius:10px}
+  .newtab.show{display:block}
+  .newtab:hover{filter:brightness(1.08)}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;
+       max-width:900px;margin:56px auto 0;padding:0 20px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;text-align:left}
+  .step .n{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+       font-weight:900;font-size:15px;margin-bottom:12px}
+  .step:nth-child(1) .n{background:#2a0d16;color:var(--red)}
+  .step:nth-child(2) .n{background:#0a2418;color:var(--grn)}
+  .step:nth-child(3) .n{background:#10263a;color:var(--cyn)}
+  .step h3{font-size:15px;margin-bottom:6px}
+  .step p{font-size:13px;color:var(--mut)}
+
+  /* feature cards */
+  .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;
+       max-width:900px;margin:18px auto 70px;padding:0 20px}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;text-align:left}
+  .feat .ic{font-size:26px}
+  .feat h4{font-size:14px;margin:8px 0 4px}
+  .feat p{font-size:12.5px;color:var(--mut)}
+  footer{text-align:center;color:var(--mut);font-size:12px;padding:26px;border-top:1px solid var(--line)}
+
+  /* ================= APP (4-kona grid) ================= */
+  #app{position:fixed;inset:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .35s}
+  #app.on{opacity:1;pointer-events:auto}
+  .top{position:absolute;inset:0 0 auto 0;z-index:50;display:flex;align-items:center;gap:10px;padding:10px 14px;
+       background:linear-gradient(180deg,rgba(5,6,10,.92),rgba(5,6,10,.55) 70%,transparent)}
+  .top *{position:relative}
+  .top .logo{display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:2px}
+  .top .sig{color:var(--gold);font-size:20px}
+  .rec{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--red)}
+  .rec .d{width:9px;height:9px;border-radius:50%;background:var(--red);animation:blink 1.1s infinite}
+  @keyframes blink{50%{opacity:.15}}
+  .top .sp{flex:1}
+  .btn{appearance:none;border:1px solid var(--line);background:#12161f;color:var(--ink);
+       padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:#33405c}
+  .btn.on{background:#0e2a1a;border-color:var(--grn);color:var(--grn)}
+  .btn.quit{color:#fda4af}
+  .grid{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;padding:6px}
+  .cell{position:relative;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+  .cell canvas,.cell video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .cell .tag{position:absolute;left:10px;top:8px;z-index:5;font-size:11px;font-weight:800;letter-spacing:1.5px;
+       color:#fff;background:rgba(0,0,0,.55);padding:3px 9px;border-radius:6px;backdrop-filter:blur(4px)}
+  .cell .corner{position:absolute;width:26px;height:26px;border:3px solid var(--grn);z-index:4;opacity:0;transition:opacity .25s}
+  .cell.locked .corner{opacity:1}
+  .c-tl{left:8px;top:8px;border-right:0;border-bottom:0}
+  .c-tr{right:8px;top:8px;border-left:0;border-bottom:0}
+  .c-bl{left:8px;bottom:8px;border-right:0;border-top:0}
+  .c-br{right:8px;bottom:8px;border-left:0;border-top:0}
+  .cell::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
+       background:radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.42) 100%)}
+  .cell .rd{position:absolute;right:10px;top:10px;z-index:5;display:none;align-items:center;gap:5px;
+       font-size:10px;font-weight:800;color:var(--red)}
+  .cell .rd i{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.1s infinite}
+  body.rec-on .cell .rd{display:flex}
+  .bot{position:absolute;inset:auto 0 0 0;z-index:50;display:flex;align-items:center;gap:8px;
+       padding:10px 14px;justify-content:center;
+       background:linear-gradient(0deg,rgba(5,6,10,.92),rgba(5,6,10,.5) 70%,transparent)}
+  .stat{font-size:12px;color:var(--mut)}
+  .stat b{color:var(--grn)}
+  .fps{font-variant-numeric:tabular-nums}
+  .strip{position:absolute;right:12px;bottom:64px;z-index:60;display:flex;flex-direction:column;gap:8px}
+  .strip img{width:130px;border-radius:10px;border:2px solid var(--grn);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .flash{position:absolute;inset:0;z-index:90;pointer-events:none;background:#fff;opacity:0}
+  .flash.go{animation:fl .5s ease}
+  @keyframes fl{0%{opacity:.85}100%{opacity:0}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <span class="dot"></span>
-    <h1>handtrack python <small>· OpenCV + MediaPipe · live demo</small></h1>
-  </header>
-  <p class="sub">Real-time face box + hand skeleton + frame gesture + <b style="color:var(--grn)">FACE LOCKED</b> — sob browser ei, kono install lage na 👇</p>
+
+<!-- ==================== LANDING ==================== -->
+<section id="home">
+  <nav class="nav">
+    <div class="logo"><span class="sig">&#931;</span> SIGMA CAM</div>
+    <span class="badge">GEN-Z HUB PROJECT</span>
+    <div class="sp"></div>
+    <a href="#kivabe">kivabe kaj kore</a>
+  </nav>
+
+  <div class="hero">
+    <div class="pill">&#9654; LIVE PROJECT - BROWSER CAMERA</div>
+    <h1>SIGMA <span class="g">CAMERA</span></h1>
+    <p class="sub">4 kona ek sathe: <b>RAW</b>, <b>hand skeleton</b>, <b>face-lock frame</b> ar <b>sigma mode</b>.
+      Niche button e click koro &mdash; browser nije camera permission chaibe, <b>Allow</b> dilei shuru!</p>
+
+    <button class="cambtn" id="bStart">&#9654; CAMERA ON</button>
+    <div class="under">Click korlei popup ashbe &rarr; <b>Allow</b> chapo &rarr; 4-kona grid khule jabe.<br>
+      Keys: <kbd>S</kbd> photo &middot; <kbd>R</kbd> record &middot; <kbd>G</kbd> full screen</div>
+
+    <div class="errbox" id="errbox">
+      <div class="t" id="errt">PROBLEM HOYECHE</div>
+      <div class="m" id="errm"></div>
+      <button class="newtab" id="bNewTab">&#128279; NOTUN TAB E KHULO (ekhane 100% kaj korbe)</button>
+    </div>
+  </div>
+
+  <div class="steps" id="kivabe">
+    <div class="step"><div class="n">1</div><h3>CAMERA ON chapo</h3><p>Niche boro lal button ta click koro. Browser nije permission popup dekhabe.</p></div>
+    <div class="step"><div class="n">2</div><h3>Allow dan koro</h3><p>Popup e "Allow" selected thakbe &mdash; sudhu Allow button e click koro.</p></div>
+    <div class="step"><div class="n">3</div><h3>4 Kona Grid!</h3><p>Sathe sathe 4 ta live feed chalu &mdash; dui haat diye frame banao, FACE LOCKED dekhao.</p></div>
+  </div>
+
+  <div class="feats">
+    <div class="feat"><div class="ic">&#128400;</div><h4>RAW feed</h4><p>Sadharan mirror camera view.</p></div>
+    <div class="feat"><div class="ic">&#9997;</div><h4>Hand skeleton</h4><p>21 point er colorful skeleton tracking.</p></div>
+    <div class="feat"><div class="ic">&#128274;</div><h4>Frame lock</h4><p>Dui haat frame mukhe rakhle FACE LOCKED.</p></div>
+    <div class="feat"><div class="ic">&#931;</div><h4>Sigma mode</h4><p>BW + red skeleton + grain + scanlines.</p></div>
+  </div>
+
+  <footer>SIGMA CAM &middot; genz-hub handtrack project &middot; mediapipe (local, offline models)</footer>
+</section>
+
+<!-- ==================== APP ==================== -->
+<section id="app">
+  <div class="top">
+    <div class="logo"><span class="sig">&#931;</span> SIGMA CAMERA</div>
+    <div class="rec" id="recBadge" style="display:none"><span class="d"></span>REC</div>
+    <div class="sp"></div>
+    <button class="btn" id="bShot">&#128248; Shot (S)</button>
+    <button class="btn" id="bRec">&#11044; Record (R)</button>
+    <button class="btn on" id="bGrid">&#9638; 4 Kona</button>
+    <button class="btn" id="bSolo">&#9974; Full</button>
+    <button class="btn quit" id="bHome">&#10005; Off</button>
+  </div>
 
   <div class="grid">
-    <section class="card">
-      <h2>📷 Live demo — tomar nijer camera <span class="tag">kono install lage na</span></h2>
-      <video id="cam" playsinline autoplay muted></video>
-      <canvas id="out" class="output" width="1280" height="720"></canvas>
-      <img id="shot" alt="screenshot">
-      <div class="pad">
-        <div class="row" id="controls" style="visibility:hidden">
-          <button class="btn" id="bBlur">🌫️ Blur (B)</button>
-          <button class="btn" id="bGray">⬛ Gray (G)</button>
-          <button class="btn" id="bRoi">🔍 ROI (R)</button>
-          <button class="btn" id="bShot">📸 Shot (S)</button>
-          <span class="status" id="status">…</span>
-          <span class="fps" id="fps"></span>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn primary" id="bStart">▶ Camera on koro</button>
-          <button class="btn" id="bTab" title="Preview iframe er baire, notun tab e khulo — camera 100% kaj korbe">🔓 New tab e khulo</button>
-          <span class="status" id="pre">Camera permission chaiga — allow koro, ar dui haat diye frame banao! 😎</span>
-        </div>
-        <div id="err"></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>🖼️ Python version er output <span class="tag">ami banaiyechi</span></h2>
-      <img src="sample/demo_lock.jpg" alt="FACE LOCKED demo output" style="display:block;width:100%">
-      <div class="pad hint">Upore: <b>dui haat frame gesture</b> → sobuj <b>FACE LOCKED</b> box, hand skeleton (21 landmark), sadha face box, corner e ROI inset — <b>Python + OpenCV + MediaPipe</b> diye generate.</div>
-    </section>
+    <div class="cell" id="cell1"><video id="cam" playsinline muted autoplay></video><canvas id="cv1"></canvas>
+      <span class="tag">RAW</span><span class="rd"><i></i>REC</span>
+      <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span></div>
+    <div class="cell" id="cell2"><canvas id="cv2"></canvas><span class="tag">SKELETON</span><span class="rd"><i></i>REC</span>
+      <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span></div>
+    <div class="cell" id="cell3"><canvas id="cv3"></canvas><span class="tag">FRAME LOCK</span><span class="rd"><i></i>REC</span>
+      <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span></div>
+    <div class="cell" id="cell4"><canvas id="cv4"></canvas><span class="tag">SIGMA MODE</span><span class="rd"><i></i>REC</span>
+      <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span></div>
   </div>
 
-  <div class="note">
-    <b>Gesture guide:</b> dui haat er <b>thumb + index</b> diye boro frame banao → cyan viewfinder 🔲 · frame ta mukher dike anaO → <b style="color:var(--grn)">FACE LOCKED</b> · ek haate <b>pinch (OK sign)</b> → chhoto mini-frame.<br>
-    <b>Shortcut:</b> <kbd>B</kbd> blur · <kbd>G</kbd> gray · <kbd>R</kbd> roi · <kbd>S</kbd> screenshot<br>
-    <b>Nijer laptop e (PyCharm):</b> <span class="badge">ZIP download</span> <a href="handtrack-python.zip" download>handtrack-python.zip</a> → unzip → PyCharm e Open → <code>pip install -r requirements.txt</code> → <code>python handtrack.py</code>
+  <div class="bot">
+    <span class="stat">&#128400; hands: <b id="hNum">0</b></span>
+    <span class="stat">&#128578; faces: <b id="fNum">0</b></span>
+    <span class="stat" id="lockStat">&#128275; searching...</span>
+    <span class="stat fps" id="fps"></span>
   </div>
-</div>
+
+  <div class="strip" id="strip"></div>
+  <div class="flash" id="flash"></div>
+</section>
 
 <script src="lib/hands/hands.js"></script>
 <script src="lib/face_detection/face_detection.js"></script>
@@ -96,75 +212,52 @@
 (function () {
   'use strict';
   const $ = (s) => document.querySelector(s);
-  const cam = $('#cam'), out = $('#out'), ctx = out.getContext('2d');
-  const statusEl = $('#status'), fpsEl = $('#fps'), preEl = $('#pre'), controls = $('#controls');
-  const errBox = $('#err'), shotImg = $('#shot');
+  const home = $('#home'), app = $('#app'), cam = $('#cam');
+  const errbox = $('#errbox'), errt = $('#errt'), errm = $('#errm'), bNewTab = $('#bNewTab');
+  const cells = [$('#cell1'), $('#cell2'), $('#cell3'), $('#cell4')];
+  const cvs = [$('#cv1'), $('#cv2'), $('#cv3'), $('#cv4')];
+  const ctxs = cvs.map((c) => c.getContext('2d'));
+  const hNum = $('#hNum'), fNum = $('#fNum'), lockStat = $('#lockStat'), fpsEl = $('#fps');
+  const strip = $('#strip'), flash = $('#flash');
 
-  const GRN = '#4ade80', CYN = '#7dd3fc', WHT = '#fff', MUT = '#9aa3b5';
-  const state = { blur: false, gray: false, roi: true, faces: [], hands: [], frame: null, locked: false, smooth: {} };
+  const GRN = '#22ff88', CYN = '#39d5ff', WHT = '#fff', RED = '#fe2c55', GOLD = '#ffd23f';
+  const state = { grid: true, recOn: false, mediaRec: null, hands: [], faces: [], frame: null, locked: false, smooth: {} };
+  const inIframe = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
 
-  function showErr(msg) {
-    errBox.style.display = 'block';
-    errBox.textContent = '⚠ ' + msg;
-  }
-  function hideErr() { errBox.style.display = 'none'; }
-
-  /* ---------------- model load (with visible progress + error) ------------- */
+  /* ---------- mediapipe (local offline models) ---------- */
   let hands = null, face = null, ready = 0;
-  function setPre(t) { preEl.textContent = t; }
-
   function initModels() {
-    try {
-      setPre('Model load hocche… (1-2 second)');
-      hands = new Hands({ locateFile: (f) => `lib/hands/${f}` });
-      hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
-      hands.onResults((r) => { state.hands = r.multiHandLandmarks || []; if (!(ready & 1)) { ready |= 1; checkReady(); } });
-
-      face = new FaceDetection({ locateFile: (f) => `lib/face_detection/${f}` });
-      face.setOptions({ model: 'short', minDetectionConfidence: 0.55 });
-      face.onResults((r) => { state.faces = r.detections || []; if (!(ready & 2)) { ready |= 2; checkReady(); } });
-    } catch (e) { showErr('Model init fail: ' + (e && e.message || e)); }
+    hands = new Hands({ locateFile: (f) => 'lib/hands/' + f });
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+    hands.onResults((r) => { state.hands = r.multiHandLandmarks || []; ready |= 1; });
+    face = new FaceDetection({ locateFile: (f) => 'lib/face_detection/' + f });
+    face.setOptions({ model: 'short', minDetectionConfidence: 0.55 });
+    face.onResults((r) => { state.faces = r.detections || []; ready |= 2; });
   }
 
-  function checkReady() {
-    if (ready === 3) { setPre('Ready! Dui haat diye frame banao 🔲'); }
-  }
-
-  /* warm-up: ekta chhoto dummy frame diye model gulo first-run compile kori,
-     na hole first dike kisu draw hoy na ar user bhabe kaj kore na */
-  const warm = document.createElement('canvas'); warm.width = warm.height = 64;
-  warm.getContext('2d').fillRect(0, 0, 64, 64);
-  async function warmUp() {
-    try {
-      await face.send({ image: warm });
-      await hands.send({ image: warm });
-    } catch (e) { showErr('Model warm-up fail: ' + (e && e.message || e)); }
-  }
-
-  /* ---------------- helpers ---------------- */
-  const mx = (x) => out.width - x * out.width;
-  const my = (y) => y * out.height;
-  const smooth = (k, v, a = 0.45) => {
+  const mx = (x, W) => W - x * W;
+  const my = (y, H) => y * H;
+  const smooth = (k, v, a) => {
+    a = a || 0.45;
     const p = state.smooth[k];
     const o = (p === undefined) ? v : p.map((pv, i) => a * v[i] + (1 - a) * pv);
     state.smooth[k] = o; return o;
   };
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
 
-  function analyze() {
+  function analyze(W, H) {
     const faces = state.faces.map((d) => {
       const bb = d.locationData.relativeBoundingBox;
-      return { x1: mx(bb.xmin + bb.width), y1: my(bb.ymin), x2: mx(bb.xmin), y2: my(bb.ymin + bb.height), s: d.score[0] };
+      return { x1: mx(bb.xmin + bb.width, W), y1: my(bb.ymin, H), x2: mx(bb.xmin, W), y2: my(bb.ymin + bb.height, H), s: d.score[0] };
     });
-    const handsPx = state.hands.map((lms) => lms.map((l) => ({ x: mx(l.x), y: my(l.y) })));
+    const handsPx = state.hands.map((lms) => lms.map((l) => ({ x: mx(l.x, W), y: my(l.y, H) })));
     let frame = null, locked = false;
-
     if (handsPx.length >= 2) {
       const tips = [];
       handsPx.slice(0, 2).forEach((pts) => { tips.push(pts[4], pts[8]); });
       const xs = tips.map((p) => p.x), ys = tips.map((p) => p.y);
-      const x1 = Math.min(...xs) - 10, y1 = Math.min(...ys) - 10;
-      const x2 = Math.max(...xs) + 10, y2 = Math.max(...ys) + 10;
+      const x1 = Math.min.apply(null, xs) - 10, y1 = Math.min.apply(null, ys) - 10;
+      const x2 = Math.max.apply(null, xs) + 10, y2 = Math.max.apply(null, ys) + 10;
       if (x2 - x1 > 80 && y2 - y1 > 60) {
         const a = smooth('f1', [x1, y1]), b = smooth('f2', [x2, y2]);
         frame = { x1: a[0], y1: a[1], x2: b[0], y2: b[1] };
@@ -179,181 +272,259 @@
         frame = { x1: cx - side / 2, y1: cy - side / 2, x2: cx + side / 2, y2: cy + side / 2 };
       }
     }
-
     if (frame && faces.length) {
       for (const f of faces) {
-        const ex1 = f.x1, ex2 = f.x2, ey1 = f.y1, ey2 = f.y1 + (f.y2 - f.y1) / 2;
-        const ix = Math.max(0, Math.min(frame.x2, ex2) - Math.max(frame.x1, ex1));
-        const iy = Math.max(0, Math.min(frame.y2, ey2) - Math.max(frame.y1, ey1));
-        if ((ix * iy) / Math.max(1, (ex2 - ex1) * (ey2 - ey1)) >= 0.30) { locked = true; break; }
+        const ey2 = f.y1 + (f.y2 - f.y1) / 2;
+        const ix = Math.max(0, Math.min(frame.x2, f.x2) - Math.max(frame.x1, f.x1));
+        const iy = Math.max(0, Math.min(frame.y2, ey2) - Math.max(frame.y1, f.y1));
+        if ((ix * iy) / Math.max(1, (f.x2 - f.x1) * (ey2 - f.y1)) >= 0.30) { locked = true; break; }
       }
     }
-    return { faces, handsPx, frame, locked };
+    return { faces: faces, handsPx: handsPx, frame: frame, locked: locked };
   }
 
-  /* ---------------- renderer ---------------- */
-  function render(det) {
-    const W = out.width, H = out.height;
+  const HC = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+              [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  const DC = ['#fe2c55','#39d5ff','#22ff88','#ffd23f','#c084fc'];
 
+  function drawSkeleton(ctx, det, W, H) {
+    det.handsPx.forEach((pts) => {
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (const [a, b] of HC) { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
+      for (let i = 0; i < pts.length; i++) {
+        ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, i % 4 === 0 ? 6 : 4, 0, 7);
+        ctx.fillStyle = DC[Math.floor(i / 4) % 5]; ctx.fill();
+      }
+    });
+    det.faces.forEach((f) => {
+      ctx.strokeStyle = WHT; ctx.lineWidth = 2.5;
+      ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1);
+    });
+  }
+
+  function drawFrameLock(ctx, det, W, H) {
+    ctx.drawImage(cam, 0, 0, W, H);
+    if (det.frame) {
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.rect(det.frame.x1, det.frame.y1, det.frame.x2 - det.frame.x1, det.frame.y2 - det.frame.y1);
+      ctx.fill('evenodd');
+      const x1 = det.frame.x1, y1 = det.frame.y1, x2 = det.frame.x2, y2 = det.frame.y2;
+      ctx.strokeStyle = det.locked ? GRN : CYN; ctx.lineWidth = det.locked ? 7 : 3;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      if (det.locked) {
+        ctx.font = '800 26px system-ui'; ctx.fillStyle = GRN;
+        ctx.fillText('FACE LOCKED', x1, Math.max(30, y1 - 12));
+        const c = 24; ctx.lineWidth = 4;
+        [[x1,y1,1,1],[x2,y1,-1,1],[x1,y2,1,-1],[x2,y2,-1,-1]].forEach((q) => {
+          ctx.beginPath(); ctx.moveTo(q[0]+c*q[2], q[1]); ctx.lineTo(q[0], q[1]); ctx.lineTo(q[0], q[1]+c*q[3]); ctx.stroke();
+        });
+      }
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H);
+      ctx.font = '700 22px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.textAlign = 'center';
+      ctx.fillText('dui haat diye frame banao', W / 2, H / 2);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function drawSigma(ctx, det, W, H, t) {
     ctx.save();
-    ctx.translate(W, 0); ctx.scale(-1, 1);
-    ctx.filter = state.gray ? 'grayscale(1)' : 'none';
+    ctx.filter = 'grayscale(1) contrast(1.45) brightness(1.02)';
     ctx.drawImage(cam, 0, 0, W, H);
     ctx.restore();
-    ctx.filter = 'none';
-
-    const gate = det.frame || (det.faces[0] || null);
-    if (state.blur && gate) {
-      ctx.save();
-      ctx.filter = 'blur(16px)';
-      ctx.drawImage(out, 0, 0);
-      ctx.restore();
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(gate.x1, gate.y1, gate.x2 - gate.x1, gate.y2 - gate.y1);
-      ctx.clip();
-      ctx.drawImage(out, 0, 0);
-      ctx.restore();
-    }
-
-    det.faces.forEach((f) => {
-      ctx.strokeStyle = WHT; ctx.lineWidth = 3;
-      ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1);
-      ctx.font = '600 15px system-ui'; ctx.fillStyle = WHT;
-      ctx.fillText(`face ${Math.round(f.s * 100)}%`, f.x1, Math.max(18, f.y1 - 10));
-    });
-
     det.handsPx.forEach((pts) => {
-      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      for (const [a, b] of HAND_CONNECTIONS) {
-        ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke();
-      }
+      ctx.strokeStyle = RED; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+      for (const [a, b] of HC) { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
       for (let i = 0; i < pts.length; i++) {
-        ctx.beginPath();
-        ctx.arc(pts[i].x, pts[i].y, i % 4 === 0 ? 6 : 4.5, 0, 7);
-        ctx.fillStyle = ['#fe2c55', '#facc15', '#4ade80', '#60a5fa', '#c084fc'][Math.floor(i / 4) % 5];
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, i % 4 === 0 ? 5.5 : 3.5, 0, 7);
+        ctx.fillStyle = WHT; ctx.fill();
       }
     });
-
-    if (det.frame) {
-      const { x1, y1, x2, y2 } = det.frame;
-      if (det.locked) {
-        ctx.strokeStyle = GRN; ctx.lineWidth = 7;
-        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        ctx.font = '800 30px system-ui'; ctx.fillStyle = GRN;
-        ctx.fillText('FACE LOCKED', x1, Math.max(34, y1 - 14));
-        const c = 30;
-        ctx.lineWidth = 4;
-        [[x1, y1, 1, 1], [x2, y1, -1, 1], [x1, y2, 1, -1], [x2, y2, -1, -1]].forEach(([cx, cy, sx, sy]) => {
-          ctx.beginPath(); ctx.moveTo(cx + c * sx, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + c * sy); ctx.stroke();
-        });
-      } else {
-        ctx.strokeStyle = CYN; ctx.lineWidth = 3;
-        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-      }
+    det.faces.forEach((f) => {
+      ctx.strokeStyle = RED; ctx.lineWidth = 3;
+      ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1);
+    });
+    ctx.fillStyle = 'rgba(0,0,0,.14)';
+    for (let y = (t * 2) % 4; y < H; y += 4) ctx.fillRect(0, y, W, 1.5);
+    ctx.globalAlpha = .06;
+    for (let i = 0; i < 260; i++) {
+      ctx.fillStyle = Math.random() > .5 ? '#fff' : '#000';
+      ctx.fillRect(Math.random() * W, Math.random() * H, 2, 2);
     }
-
-    if (state.roi && det.faces.length) {
-      const f = det.faces[0];
-      const cw = f.x2 - f.x1, chh = f.y2 - f.y1;
-      const iw = 170, ih = Math.max(1, chh * iw / cw);
-      ctx.drawImage(out, f.x1, f.y1, cw, chh, W - iw - 14, 52, iw, ih);
-      ctx.strokeStyle = WHT; ctx.lineWidth = 3;
-      ctx.strokeRect(W - iw - 14, 52, iw, ih);
+    ctx.globalAlpha = 1;
+    ctx.font = '900 30px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillText('\u03A3', 16, H - 18);
+    if (det.locked) {
+      ctx.font = '900 30px system-ui'; ctx.fillStyle = GOLD; ctx.textAlign = 'center';
+      ctx.fillText('SIGMA LOCKED', W / 2, 52); ctx.textAlign = 'left';
     }
-
-    ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(0, 0, W, 44);
-    ctx.font = '600 17px system-ui'; ctx.fillStyle = WHT;
-    ctx.fillText('handtrack python  ·  browser live demo', 14, 29);
-    const stTxt = det.locked ? 'FACE LOCKED' : (det.frame ? 'frame' : 'search');
-    ctx.fillStyle = det.locked ? GRN : (det.frame ? CYN : MUT);
-    const tw = ctx.measureText(stTxt).width;
-    ctx.fillText(stTxt, W - tw - 14, 29);
   }
 
-  /* ---------------- loop (busy-guard, error surface) ---------------- */
+  function fit(cv) {
+    const r = cv.parentElement.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  }
+
+  /* ---------- main loop ---------- */
   let running = false, busy = false, frames = 0, t0 = 0;
   async function loop() {
     if (!running) return;
+    const W = cv1.width, H = cv1.height;
     if (!busy && ready === 3 && cam.videoWidth) {
       busy = true;
       try {
         await face.send({ image: cam });
         await hands.send({ image: cam });
-        const det = analyze();
-        render(det);
-        statusEl.innerHTML = det.locked ? '<b>FACE LOCKED 😈</b>' : (det.frame ? 'frame gesture' : 'searching…');
+        const det = analyze(W, H);
+        cvs.forEach(fit);
+        const c1 = ctxs[0];
+        c1.save(); c1.translate(W, 0); c1.scale(-1, 1);
+        c1.drawImage(cam, 0, 0, W, H); c1.restore();
+        const c2 = ctxs[1];
+        c2.save(); c2.translate(W, 0); c2.scale(-1, 1);
+        c2.drawImage(cam, 0, 0, W, H); c2.restore();
+        drawSkeleton(c2, det, W, H);
+        const c3 = ctxs[2]; drawFrameLock(c3, det, W, H);
+        const c4 = ctxs[3]; drawSigma(c4, det, W, H, performance.now() / 100);
+        cells[0].classList.toggle('locked', det.locked);
+        cells[2].classList.toggle('locked', det.locked);
+        cells[3].classList.toggle('locked', det.locked);
+        hNum.textContent = det.handsPx.length; fNum.textContent = det.faces.length;
+        lockStat.innerHTML = det.locked ? '<b>&#128274; FACE LOCKED</b>' : (det.frame ? 'frame...' : '&#128275; searching...');
         frames++;
         const now = performance.now();
         if (now - t0 > 700) { fpsEl.textContent = Math.round(frames * 1000 / (now - t0)) + ' fps'; frames = 0; t0 = now; }
-      } catch (e) { showErr('Loop error: ' + (e && e.message || e)); }
+      } catch (e) { showError('MODEL ERROR', e && e.message || String(e)); }
       busy = false;
-    } else if (running && ready !== 3) {
-      statusEl.textContent = 'model load hocche…';
     }
     requestAnimationFrame(loop);
   }
 
-  /* ---------------- start ---------------- */
+  /* ---------- errors + new-tab fallback ---------- */
+  function showError(title, msg, showNewTab) {
+    errt.textContent = title;
+    errm.textContent = msg;
+    errbox.classList.add('show');
+    bNewTab.classList.toggle('show', !!showNewTab);
+  }
+  bNewTab.onclick = () => { window.open(location.href, '_blank'); };
+
+  /* ---------- start: click -> permission prompt ---------- */
   $('#bStart').onclick = async () => {
-    hideErr();
-    const btn = $('#bStart');
-    btn.disabled = true;
+    errbox.classList.remove('show');
+    const b = $('#bStart');
+    b.textContent = '... PERMISSION ASCHHE';
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Ei browser e camera API nei — Chrome/Edge/Safari er notun version use koro (ba https na http hote pare).');
+        throw new Error('Ei browser e camera API nei. Chrome ba Edge er notun version use koro.');
       }
-      setPre('Camera permission…');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false
       });
       cam.srcObject = stream;
       await cam.play();
       if (!hands) initModels();
-      controls.style.visibility = 'visible';
-      btn.textContent = '✓ Camera cholche';
+      home.style.display = 'none';
+      app.classList.add('on');
       running = true; t0 = performance.now();
-      setPre('Model load hocche…');
-      await warmUp();
       loop();
     } catch (e) {
+      b.textContent = '\u25B6 CAMERA ON';
       const n = e && e.name || '';
-      let hint = e && e.message || String(e);
-      if (n === 'NotAllowedError') hint = 'Browser camera block korche. Ai page er address bar er camera icon e click kore Allow dao, tarpor page Reload koro (permission on korar por reload lagbe!). Ar kaj na korle niche "🔓 New tab e khulo" button e chapo — notun tab e direct camera prompt ashbe.';
-      if (n === 'NotFoundError') hint = 'Kono camera khuje pai nai. Onno device/browser e try koro.';
-      if (n === 'NotReadableError') hint = 'Camera onno app e busy (Zoom/Meet?). Oigulo bondho kore abar try koro.';
-      showErr(hint);
-      setPre('Somossa holo — upore error dekho.');
-      btn.disabled = false;
+      if (n === 'NotAllowedError') {
+        if (inIframe) {
+          showError('PERMISSION POPUP ASHE NAI?',
+            'Ei preview window er bhitore browser camera block koreche.' +
+            ' Niche golden button e click koro - notun tab e site khulbe,' +
+            ' sekhane CAMERA ON dile normal permission popup ashbe.',
+            true);
+        } else {
+          showError('CAMERA BLOCKED',
+            'Tumi aghe "Block" diyechile.' +
+            ' Address bar er lock icon e click koro > Camera > Allow > tarpor page reload (Ctrl+Shift+R) koro.',
+            false);
+        }
+      } else if (n === 'NotFoundError') {
+        showError('CAMERA PAI NAI', 'Tumar device e kono camera detect hoy nai.', false);
+      } else {
+        showError('PROBLEM HOYECHE', (e && e.message) || String(e), inIframe);
+      }
     }
   };
 
-  /* preview iframe er baire notun tab e khular option — sekhane camera
-     permission direct e prompt hoy, embedder policy ar kono badha thake na */
-  $('#bTab').onclick = () => window.open(location.href, '_blank');
+  /* ---------- off button ---------- */
+  $('#bHome').onclick = () => {
+    running = false;
+    if (cam.srcObject) { cam.srcObject.getTracks().forEach((t) => t.stop()); cam.srcObject = null; }
+    app.classList.remove('on');
+    home.style.display = '';
+    $('#bStart').textContent = '\u25B6 CAMERA ON';
+  };
 
-  /* ---------------- controls ---------------- */
-  const tgl = (sel, key) => {
-    $(sel).onclick = () => { state[key] = !state[key]; $(sel).classList.toggle('on', state[key]); };
-  };
-  tgl('#bBlur', 'blur'); tgl('#bGray', 'gray'); tgl('#bRoi', 'roi');
-  $('#bRoi').classList.add('on');
-  $('#bShot').onclick = () => {
-    try {
-      shotImg.src = out.toDataURL('image/png');
-      shotImg.style.display = 'block';
+  /* ---------- shot / record ---------- */
+  function shot() {
+    const a = document.createElement('a');
+    a.download = 'sigma_' + Date.now() + '.png';
+    a.href = cvs[3].toDataURL('image/png');
+    a.click();
+    const img = document.createElement('img');
+    img.src = cvs[3].toDataURL('image/png');
+    strip.prepend(img);
+    flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
+  }
+  $('#bShot').onclick = shot;
+
+  $('#bRec').onclick = () => {
+    if (state.mediaRec && state.recOn) { state.mediaRec.stop(); return; }
+    const stream = cvs[3].captureStream(30);
+    let rec;
+    try { rec = new MediaRecorder(stream, { mimeType: 'video/webm' }); }
+    catch (e) { rec = new MediaRecorder(stream); }
+    state.mediaRec = rec;
+    const chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.onstop = () => {
+      state.recOn = false;
+      document.body.classList.remove('rec-on');
+      $('#bRec').classList.remove('on'); $('#bRec').innerHTML = '&#11044; Record (R)';
+      $('#recBadge').style.display = 'none';
+      const blob = new Blob(chunks, { type: 'video/webm' });
       const a = document.createElement('a');
-      a.download = `handtrack_shot_${Date.now()}.png`;
-      a.href = shotImg.src;
+      a.href = URL.createObjectURL(blob);
+      a.download = 'sigma_' + Date.now() + '.webm';
       a.click();
-    } catch (e) { showErr('Screenshot fail: ' + (e && e.message || e)); }
+    };
+    rec.start();
+    state.recOn = true;
+    document.body.classList.add('rec-on');
+    $('#bRec').classList.add('on'); $('#bRec').innerHTML = '&#9209; Stop (R)';
+    $('#recBadge').style.display = 'flex';
   };
+
+  /* ---------- grid <-> full ---------- */
+  $('#bGrid').onclick = () => setSolo(-1);
+  $('#bSolo').onclick = () => setSolo(3);
+  function setSolo(idx) {
+    state.grid = (idx === -1);
+    if (idx === -1) {
+      cells.forEach((c) => { c.style.display = ''; });
+      $('#bGrid').classList.add('on'); $('#bSolo').classList.remove('on');
+    } else {
+      cells.forEach((c, i) => { c.style.display = (i === idx) ? '' : 'none'; });
+      $('#bGrid').classList.remove('on'); $('#bSolo').classList.add('on');
+    }
+  }
+
   addEventListener('keydown', (e) => {
+    if (app.classList.contains('on') !== true) return;
     const k = e.key.toLowerCase();
-    const map = { b: ['#bBlur', 'blur'], g: ['#bGray', 'gray'], r: ['#bRoi', 'roi'] };
-    if (map[k]) { const [sel, key] = map[k]; state[key] = !state[key]; $(sel).classList.toggle('on', state[key]); }
-    if (k === 's') $('#bShot').click();
+    if (k === 's') shot();
+    if (k === 'r') $('#bRec').click();
+    if (k === 'g') { (state.grid ? setSolo(3) : setSolo(-1)); }
   });
 })();
 </script>
