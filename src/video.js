@@ -19,20 +19,25 @@ const { spawn, spawnSync } = require('child_process');
 const crypto = require('crypto');
 
 /* ---------------------------------------------------------------- binaries */
-function resolveBin(envName, mod, fallback) {
+function resolveBin(envName, mods, fallback) {
   if (process.env[envName] && fs.existsSync(process.env[envName])) return process.env[envName];
-  try {
-    const m = require(mod);
-    const p = typeof m === 'string' ? m : (m && m.path);
-    if (p && fs.existsSync(p)) { try { fs.chmodSync(p, 0o755); } catch (e) {} return p; }
-  } catch (e) { /* module not installed → PATH */ }
+  for (const mod of (Array.isArray(mods) ? mods : [mods])) {
+    try {
+      const m = require(mod);
+      const p = typeof m === 'string' ? m : (m && m.path);
+      if (p && fs.existsSync(p)) { try { fs.chmodSync(p, 0o755); } catch (e) {} return p; }
+    } catch (e) { /* module not installed → try next */ }
+  }
   const which = spawnSync('sh', ['-c', `command -v ${fallback}`], { encoding: 'utf8' });
   const p = (which.stdout || '').trim();
   return p || null;
 }
 
-const FFMPEG = resolveBin('FFMPEG_PATH', 'ffmpeg-static', 'ffmpeg');
-const FFPROBE = resolveBin('FFPROBE_PATH', 'ffprobe-static', 'ffprobe');
+// ffmpeg-static / ffprobe-static download their binaries at install time and can fail on
+// locked-down networks; @ffmpeg-installer / @ffprobe-installer ship the binaries inside the
+// npm tarball, so they are kept as a guaranteed fallback (and then PATH).
+const FFMPEG = resolveBin('FFMPEG_PATH', ['ffmpeg-static', '@ffmpeg-installer/ffmpeg'], 'ffmpeg');
+const FFPROBE = resolveBin('FFPROBE_PATH', ['ffprobe-static', '@ffprobe-installer/ffprobe'], 'ffprobe');
 const AVAILABLE = !!(FFMPEG && FFPROBE);
 const PRESET = process.env.VIDEO_PRESET || 'veryfast';
 const TRANSCODE = process.env.VIDEO_TRANSCODE !== '0';
