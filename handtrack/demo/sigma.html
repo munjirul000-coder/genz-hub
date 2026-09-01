@@ -287,7 +287,7 @@
   async function loop() {
     if (!running) return;
     const W = cv1.width, H = cv1.height;
-    if (!busy && ready === 3 && cam.videoWidth) {
+    if (!busy && cam.videoWidth) {
       busy = true;
       try {
         await face.send({ image: cam });
