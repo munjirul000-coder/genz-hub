@@ -19,7 +19,10 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
   .card h2{font-size:15px;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
   .card h2 .tag{margin-left:auto;font-size:11px;color:var(--mut);font-weight:400}
-  video,canvas.output{display:block;width:100%;background:#000;aspect-ratio:16/9;object-fit:cover}
+  canvas.output{display:block;width:100%;background:#000;aspect-ratio:16/9;object-fit:cover}
+  /* video ta decode hoye jate — oder dei window er baire 1px e rakhkhi (display:none korle
+     kichu browser frame decode bondho kore dey) */
+  #cam{position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:.01;pointer-events:none}
   .pad{padding:14px 16px}
   .btn{appearance:none;border:1px solid var(--line);background:#1a1f2b;color:var(--ink);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
   .btn:hover{border-color:#3b4459;transform:translateY(-1px)}
@@ -37,6 +40,7 @@
   .note b{color:var(--ink)}
   a{color:var(--cyn)}
   .badge{display:inline-block;background:#13202b;color:var(--cyn);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700}
+  #err{display:none;margin-top:10px;padding:10px 12px;border:1px solid #7f1d2b;background:#22090e;color:#fda4af;border-radius:10px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
   #shot{display:none;width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
 </style>
 </head>
@@ -51,7 +55,7 @@
   <div class="grid">
     <section class="card">
       <h2>📷 Live demo — tomar nijer camera <span class="tag">kono install lage na</span></h2>
-      <video id="cam" playsinline muted style="display:none"></video>
+      <video id="cam" playsinline autoplay muted></video>
       <canvas id="out" class="output" width="1280" height="720"></canvas>
       <img id="shot" alt="screenshot">
       <div class="pad">
@@ -67,11 +71,12 @@
           <button class="btn primary" id="bStart">▶ Camera on koro</button>
           <span class="status" id="pre">Camera permission chaiga — allow koro, ar dui haat diye frame banao! 😎</span>
         </div>
+        <div id="err"></div>
       </div>
     </section>
 
     <section class="card">
-      <h2>🖼️ Ami banaiyechi <span class="tag">Python version er output</span></h2>
+      <h2>🖼️ Python version er output <span class="tag">ami banaiyechi</span></h2>
       <img src="sample/demo_lock.jpg" alt="FACE LOCKED demo output" style="display:block;width:100%">
       <div class="pad hint">Upore: <b>dui haat frame gesture</b> → sobuj <b>FACE LOCKED</b> box, hand skeleton (21 landmark), sadha face box, corner e ROI inset — <b>Python + OpenCV + MediaPipe</b> diye generate.</div>
     </section>
@@ -91,21 +96,51 @@
   'use strict';
   const $ = (s) => document.querySelector(s);
   const cam = $('#cam'), out = $('#out'), ctx = out.getContext('2d');
-  const status = $('#status'), fpsEl = $('#fps'), pre = $('#pre'), controls = $('#controls'), shotImg = $('#shot');
+  const statusEl = $('#status'), fpsEl = $('#fps'), preEl = $('#pre'), controls = $('#controls');
+  const errBox = $('#err'), shotImg = $('#shot');
 
   const GRN = '#4ade80', CYN = '#7dd3fc', WHT = '#fff', MUT = '#9aa3b5';
   const state = { blur: false, gray: false, roi: true, faces: [], hands: [], frame: null, locked: false, smooth: {} };
 
+  function showErr(msg) {
+    errBox.style.display = 'block';
+    errBox.textContent = '⚠ ' + msg;
+  }
+  function hideErr() { errBox.style.display = 'none'; }
+
+  /* ---------------- model load (with visible progress + error) ------------- */
   let hands = null, face = null, ready = 0;
+  function setPre(t) { preEl.textContent = t; }
+
   function initModels() {
-    hands = new Hands({ locateFile: (f) => `lib/hands/${f}` });
-    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
-    hands.onResults((r) => { state.hands = r.multiHandLandmarks || []; ready |= 1; });
-    face = new FaceDetection({ locateFile: (f) => `lib/face_detection/${f}` });
-    face.setOptions({ model: 'short', minDetectionConfidence: 0.55 });
-    face.onResults((r) => { state.faces = r.detections || []; ready |= 2; });
+    try {
+      setPre('Model load hocche… (1-2 second)');
+      hands = new Hands({ locateFile: (f) => `lib/hands/${f}` });
+      hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+      hands.onResults((r) => { state.hands = r.multiHandLandmarks || []; if (!(ready & 1)) { ready |= 1; checkReady(); } });
+
+      face = new FaceDetection({ locateFile: (f) => `lib/face_detection/${f}` });
+      face.setOptions({ model: 'short', minDetectionConfidence: 0.55 });
+      face.onResults((r) => { state.faces = r.detections || []; if (!(ready & 2)) { ready |= 2; checkReady(); } });
+    } catch (e) { showErr('Model init fail: ' + (e && e.message || e)); }
   }
 
+  function checkReady() {
+    if (ready === 3) { setPre('Ready! Dui haat diye frame banao 🔲'); }
+  }
+
+  /* warm-up: ekta chhoto dummy frame diye model gulo first-run compile kori,
+     na hole first dike kisu draw hoy na ar user bhabe kaj kore na */
+  const warm = document.createElement('canvas'); warm.width = warm.height = 64;
+  warm.getContext('2d').fillRect(0, 0, 64, 64);
+  async function warmUp() {
+    try {
+      await face.send({ image: warm });
+      await hands.send({ image: warm });
+    } catch (e) { showErr('Model warm-up fail: ' + (e && e.message || e)); }
+  }
+
+  /* ---------------- helpers ---------------- */
   const mx = (x) => out.width - x * out.width;
   const my = (y) => y * out.height;
   const smooth = (k, v, a = 0.45) => {
@@ -116,7 +151,6 @@
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
 
   function analyze() {
-    const W = out.width, H = out.height;
     const faces = state.faces.map((d) => {
       const bb = d.locationData.relativeBoundingBox;
       return { x1: mx(bb.xmin + bb.width), y1: my(bb.ymin), x2: mx(bb.xmin), y2: my(bb.ymin + bb.height), s: d.score[0] };
@@ -128,8 +162,8 @@
       const tips = [];
       handsPx.slice(0, 2).forEach((pts) => { tips.push(pts[4], pts[8]); });
       const xs = tips.map((p) => p.x), ys = tips.map((p) => p.y);
-      let x1 = Math.min(...xs) - 10, y1 = Math.min(...ys) - 10;
-      let x2 = Math.max(...xs) + 10, y2 = Math.max(...ys) + 10;
+      const x1 = Math.min(...xs) - 10, y1 = Math.min(...ys) - 10;
+      const x2 = Math.max(...xs) + 10, y2 = Math.max(...ys) + 10;
       if (x2 - x1 > 80 && y2 - y1 > 60) {
         const a = smooth('f1', [x1, y1]), b = smooth('f2', [x2, y2]);
         frame = { x1: a[0], y1: a[1], x2: b[0], y2: b[1] };
@@ -156,6 +190,7 @@
     return { faces, handsPx, frame, locked };
   }
 
+  /* ---------------- renderer ---------------- */
   function render(det) {
     const W = out.width, H = out.height;
 
@@ -164,8 +199,9 @@
     ctx.filter = state.gray ? 'grayscale(1)' : 'none';
     ctx.drawImage(cam, 0, 0, W, H);
     ctx.restore();
+    ctx.filter = 'none';
 
-    const gate = det.frame || (det.faces[0] ? { x1: det.faces[0].x1, y1: det.faces[0].y1, x2: det.faces[0].x2, y2: det.faces[0].y2 } : null);
+    const gate = det.frame || (det.faces[0] || null);
     if (state.blur && gate) {
       ctx.save();
       ctx.filter = 'blur(16px)';
@@ -220,7 +256,7 @@
     if (state.roi && det.faces.length) {
       const f = det.faces[0];
       const cw = f.x2 - f.x1, chh = f.y2 - f.y1;
-      const iw = 170, ih = chh * iw / cw;
+      const iw = 170, ih = Math.max(1, chh * iw / cw);
       ctx.drawImage(out, f.x1, f.y1, cw, chh, W - iw - 14, 52, iw, ih);
       ctx.strokeStyle = WHT; ctx.lineWidth = 3;
       ctx.strokeRect(W - iw - 14, 52, iw, ih);
@@ -235,47 +271,78 @@
     ctx.fillText(stTxt, W - tw - 14, 29);
   }
 
-  let running = false, frames = 0, t0 = 0;
+  /* ---------------- loop (busy-guard, error surface) ---------------- */
+  let running = false, busy = false, frames = 0, t0 = 0;
   async function loop() {
     if (!running) return;
-    if (ready === 3 && cam.videoWidth) {
-      try { await face.send({ image: cam }); await hands.send({ image: cam }); } catch (e) {}
-      const det = analyze();
-      render(det);
-      state.locked = det.locked;
-      status.innerHTML = det.locked ? '<b>FACE LOCKED 😈</b>' : (det.frame ? 'frame gesture' : 'searching… (dui haat frame banao)');
-      frames++;
-      const now = performance.now();
-      if (now - t0 > 700) { fpsEl.textContent = Math.round(frames * 1000 / (now - t0)) + ' fps'; frames = 0; t0 = now; }
+    if (!busy && ready === 3 && cam.videoWidth) {
+      busy = true;
+      try {
+        await face.send({ image: cam });
+        await hands.send({ image: cam });
+        const det = analyze();
+        render(det);
+        statusEl.innerHTML = det.locked ? '<b>FACE LOCKED 😈</b>' : (det.frame ? 'frame gesture' : 'searching…');
+        frames++;
+        const now = performance.now();
+        if (now - t0 > 700) { fpsEl.textContent = Math.round(frames * 1000 / (now - t0)) + ' fps'; frames = 0; t0 = now; }
+      } catch (e) { showErr('Loop error: ' + (e && e.message || e)); }
+      busy = false;
+    } else if (running && ready !== 3) {
+      statusEl.textContent = 'model load hocche…';
     }
     requestAnimationFrame(loop);
   }
 
+  /* ---------------- start ---------------- */
   $('#bStart').onclick = async () => {
+    hideErr();
+    const btn = $('#bStart');
+    btn.disabled = true;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' }, audio: false });
-      cam.srcObject = stream; await cam.play();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Ei browser e camera API nei — Chrome/Edge/Safari er notun version use koro (ba https na http hote pare).');
+      }
+      setPre('Camera permission…');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false
+      });
+      cam.srcObject = stream;
+      await cam.play();
       if (!hands) initModels();
       controls.style.visibility = 'visible';
-      pre.textContent = 'Cholche! Dui haat diye frame banao 🔲';
+      btn.textContent = '✓ Camera cholche';
       running = true; t0 = performance.now();
+      setPre('Model load hocche…');
+      await warmUp();
       loop();
     } catch (e) {
-      pre.textContent = 'Camera permission lagbe — browser er address bar er lock icon theke allow koro.';
+      const n = e && e.name || '';
+      let hint = e && e.message || String(e);
+      if (n === 'NotAllowedError') hint = 'Camera permission deya hoyni. Address bar er pashe camera icon e click kore "Allow" koro, tarpor abar button e chapo.';
+      if (n === 'NotFoundError') hint = 'Kono camera khuje pai nai. Onno device/browser e try koro.';
+      if (n === 'NotReadableError') hint = 'Camera onno app e busy (Zoom/Meet?). Oigulo bondho kore abar try koro.';
+      showErr(hint);
+      setPre('Somossa holo — upore error dekho.');
+      btn.disabled = false;
     }
   };
+
+  /* ---------------- controls ---------------- */
   const tgl = (sel, key) => {
     $(sel).onclick = () => { state[key] = !state[key]; $(sel).classList.toggle('on', state[key]); };
   };
   tgl('#bBlur', 'blur'); tgl('#bGray', 'gray'); tgl('#bRoi', 'roi');
   $('#bRoi').classList.add('on');
   $('#bShot').onclick = () => {
-    shotImg.src = out.toDataURL('image/png');
-    shotImg.style.display = 'block';
-    const a = document.createElement('a');
-    a.download = `handtrack_shot_${Date.now()}.png`;
-    a.href = shotImg.src;
-    a.click();
+    try {
+      shotImg.src = out.toDataURL('image/png');
+      shotImg.style.display = 'block';
+      const a = document.createElement('a');
+      a.download = `handtrack_shot_${Date.now()}.png`;
+      a.href = shotImg.src;
+      a.click();
+    } catch (e) { showErr('Screenshot fail: ' + (e && e.message || e)); }
   };
   addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
