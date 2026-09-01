@@ -1,21 +1,13 @@
 #!/usr/bin/env python3
-"""
-sigmacamera.py — real-time Hand Tracking + Face Framing demo
-------------------------------------------------------------
-**MediaPipe Tasks API** version (mediapipe 0.10.30+ / 0.10.35 e jonno —
-pura `solutions` API nai, oi gulo theke remove hoye geche).
-
-  * Webcam (mirror) → cvtColor(BGR→RGB) → HandLandmarker + FaceDetector
-  * Mukher charpashe sadha bounding box
-  * Haat er 21-ta landmark skeleton
-  * FRAME GESTURE: dui haat diye frame → FACE LOCKED 😈
-  * Keys: B=blur  G=gray  R=roi  S=screenshot  Q=quit
-
-Prothom run e 2 ta model file auto-download hobe (~10 MB, ekbar e lage,
-internet lagbe). Er por offline chole.
-
-Run: python sigmacamera.py
-"""
+# sigmacamera.py - real-time Hand Tracking + Face Framing demo
+# MediaPipe Tasks API version (mediapipe 0.10.30+ / 0.10.35 - solutions API removed)
+#
+# * Webcam (mirror) -> cvtColor(BGR->RGB) -> HandLandmarker + FaceDetector
+# * Face bounding box + 21-point hand skeleton
+# * FRAME GESTURE: dui haat diye frame -> FACE LOCKED
+# * Keys: B=blur  G=gray  R=roi  S=screenshot  Q=quit
+#
+# First run downloads 2 model files (~10 MB, one time). After that offline.
 
 import os
 import sys
@@ -24,7 +16,7 @@ import platform
 import traceback
 import urllib.request
 
-# ------------------------------------------------------------- imports (per-module diagnostics)
+# ------------------------------------------------ imports (per-module check)
 try:
     import cv2
     print("[i] OpenCV", cv2.__version__)
@@ -46,19 +38,19 @@ try:
     print("[i] mediapipe", mp.__version__)
 except Exception:
     traceback.print_exc()
-    print("[x] mediapipe load hoy nai — upore asol error dekho")
+    print("[x] mediapipe load hoy nai - upore asol error dekho")
     sys.exit(1)
 
 try:
     from mediapipe.tasks.python import vision
 except Exception:
     traceback.print_exc()
-    print("[x] mediapipe.tasks load hoy nai — upore asol error dekho")
+    print("[x] mediapipe.tasks load hoy nai - upore asol error dekho")
     sys.exit(1)
 
 print("[i] sob module load hoise")
 
-# ------------------------------------------------------------- model files
+# ------------------------------------------------ model files
 HERE = os.path.dirname(os.path.abspath(__file__))
 HAND_MODEL = os.path.join(HERE, "hand_landmarker.task")
 FACE_MODEL = os.path.join(HERE, "blaze_face_short_range.tflite")
@@ -78,7 +70,7 @@ def ensure_models():
     for path in missing:
         url = MODEL_URLS[path]
         tmp = path + ".part"
-        print(f"    {os.path.basename(path)} ...")
+        print("    " + os.path.basename(path) + " ...")
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
@@ -88,11 +80,12 @@ def ensure_models():
                         break
                     f.write(chunk)
             os.replace(tmp, path)
-            print(f"    [ok] {os.path.basename(path)} ({os.path.getsize(path) // 1024} KB)")
+            print("    [ok] " + os.path.basename(path) + " (" + str(os.path.getsize(path) // 1024) + " KB)")
         except Exception as e:
-            print(f"[x] download fail: {e}\n"
-                  f"    Manual download koro ei link theke:\n    {url}\n"
-                  f"    File rakho ekhane: {path}")
+            print("[x] download fail: " + str(e))
+            print("    Manual download koro ei link theke:")
+            print("    " + url)
+            print("    File rakho ekhane: " + path)
             sys.exit(1)
 
 
@@ -108,17 +101,18 @@ HAND_CONNECTIONS = [(0, 1), (1, 2), (2, 3), (3, 4),
                     (13, 17), (17, 18), (18, 19), (19, 20),
                     (0, 17)]
 
+DOT_COLORS = [(255, 80, 80), (80, 180, 255), (120, 220, 120), (240, 200, 60), (200, 120, 240)]
 
-# ------------------------------------------------------------- detector
+
+# ------------------------------------------------ detector
 class FrameDetector:
-    """Tasks API HandLandmarker + FaceDetector — dui jon VIDEO mode e."""
+    """Tasks API HandLandmarker + FaceDetector, VIDEO mode."""
 
-    def __init__(self, complexity: int = 1):
+    def __init__(self, complexity=1):
         ensure_models()
-        base_h = vision.RunningMode.VIDEO
         hand_opts = vision.HandLandmarkerOptions(
             base_options=mp.tasks.BaseOptions(model_asset_path=HAND_MODEL),
-            running_mode=base_h,
+            running_mode=vision.RunningMode.VIDEO,
             num_hands=2,
             min_hand_detection_confidence=0.6,
             min_hand_presence_confidence=0.5,
@@ -127,7 +121,7 @@ class FrameDetector:
 
         face_opts = vision.FaceDetectorOptions(
             base_options=mp.tasks.BaseOptions(model_asset_path=FACE_MODEL),
-            running_mode=base_h,
+            running_mode=vision.RunningMode.VIDEO,
             min_detection_confidence=0.55)
         self.face = vision.FaceDetector.create_from_options(face_opts)
 
@@ -138,10 +132,6 @@ class FrameDetector:
         self._ts += 33  # ~30fps ms timestamp (monotonic)
         return mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(rgb))
 
-    @staticmethod
-    def px(x, y, w, h):
-        return np.array([int(x * w), int(y * h)])
-
     def smooth_key(self, key, val, alpha=0.45):
         prev = self.smooth.get(key)
         out = val if prev is None else (alpha * val + (1 - alpha) * np.array(prev, float)).astype(int)
@@ -149,7 +139,6 @@ class FrameDetector:
         return out
 
     def analyze(self, frame):
-        """Ek frame process kore sob result dict e ferot day."""
         h, w = frame.shape[:2]
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_img = self._mp_image(rgb)
@@ -159,7 +148,7 @@ class FrameDetector:
 
         out = {"faces": [], "hands": [], "pinches": [], "frame_rect": None, "locked": False}
 
-        # faces (Tasks API: FaceDetectorResult.detections)
+        # faces
         for det in (fres.detections or []):
             bb = det.bounding_box
             x1, y1 = max(0, int(bb.origin_x * w)), max(0, int(bb.origin_y * h))
@@ -168,7 +157,7 @@ class FrameDetector:
             if x2 - x1 > 10 and y2 - y1 > 10:
                 out["faces"].append((x1, y1, x2, y2, score))
 
-        # hands (Tasks API: landmarks normalised list)
+        # hands
         for hand_lms in (hres.hand_landmarks or []):
             pts = np.array([[int(l.x * w), int(l.y * h)] for l in hand_lms])
             scale = float(np.linalg.norm(pts[WRIST] - pts[MIDDLE_MCP])) or 1.0
@@ -178,7 +167,7 @@ class FrameDetector:
             out["hands"].append({"pts": pts})
             out["pinches"].append({"on": pinched, "mid": mid, "scale": scale})
 
-        # gesture 1: dui haat → filmmaker frame (4 fingertip = 4 kony)
+        # gesture 1: dui haat -> filmmaker frame (4 fingertip = 4 kony)
         if len(out["hands"]) >= 2:
             tips = []
             for hand in out["hands"][:2]:
@@ -194,7 +183,7 @@ class FrameDetector:
                 x2, y2 = self.smooth_key("fx2", np.array([x2, y2]))
                 out["frame_rect"] = (int(x1), int(y1), int(x2), int(y2))
 
-        # gesture 2: ek haati pinch → mini frame
+        # gesture 2: ek haati pinch -> mini frame
         else:
             for p in out["pinches"]:
                 if p["on"]:
@@ -219,13 +208,13 @@ class FrameDetector:
         return out
 
 
-# ------------------------------------------------------------- renderer
+# ------------------------------------------------ renderer
 def draw_hud(canvas, st, fps, flags):
     h, w = canvas.shape[:2]
     title = "handtrack python  |  OpenCV + MediaPipe Tasks"
     status = "FACE LOCKED" if st["locked"] else ("frame" if st["frame_rect"] else "search")
     color = GREEN if st["locked"] else (CYAN if st["frame_rect"] else (170, 170, 170))
-    txt = f"{status}  hands:{len(st['hands'])}" + (f"  {fps:4.1f} fps" if fps else "")
+    txt = status + "  hands:" + str(len(st["hands"])) + (("  " + format(fps, "4.1f") + " fps") if fps else "")
 
     (tw1, _), _ = cv2.getTextSize(title, cv2.FONT_HERSHEY_DUPLEX, 0.62, 1)
     (tw2, _), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_DUPLEX, 0.62, 1)
@@ -257,7 +246,7 @@ def render(frame, st, fps, flags):
 
     for (x1, y1, x2, y2, score) in st["faces"]:
         cv2.rectangle(canvas, (x1, y1), (x2, y2), WHITE, 2, cv2.LINE_AA)
-        cv2.putText(canvas, f"face {score:.0%}", (x1, max(16, y1 - 8)),
+        cv2.putText(canvas, "face " + str(int(score * 100)) + "%", (x1, max(16, y1 - 8)),
                     cv2.FONT_HERSHEY_DUPLEX, 0.5, WHITE, 1, cv2.LINE_AA)
 
     for hand in st["hands"]:
@@ -265,19 +254,19 @@ def render(frame, st, fps, flags):
         for (a, b) in HAND_CONNECTIONS:
             cv2.line(canvas, tuple(pts[a]), tuple(pts[b]), WHITE, 2, cv2.LINE_AA)
         for i, p in enumerate(pts):
-            cv2.circle(canvas, tuple(p), i % 4 == 0 and 6 or 4,
-                       [(255, 80, 80), (80, 180, 255), (120, 220, 120), (240, 200, 60), (200, 120, 240)][(i // 4) % 5],
-                       -1, cv2.LINE_AA)
+            r = 6 if i % 4 == 0 else 4
+            cv2.circle(canvas, tuple(p), r, DOT_COLORS[(i // 4) % 5], -1, cv2.LINE_AA)
 
     if st["frame_rect"]:
         if st["locked"]:
             cv2.rectangle(canvas, (fx1, fy1), (fx2, fy2), GREEN, 5, cv2.LINE_AA)
             cv2.putText(canvas, "FACE LOCKED", (fx1, max(28, fy1 - 12)),
                         cv2.FONT_HERSHEY_DUPLEX, 0.85, GREEN, 2, cv2.LINE_AA)
-            for (a, b) in [((fx1, fy1), (fx1 + 26, fy1)), ((fx1, fy1), (fx1, fy1 + 26)),
-                           ((fx2, fy1), (fx2 - 26, fy1)), ((fx2, fy1), (fx2, fy1 + 26)),
-                           ((fx1, fy2), (fx1 + 26, fy2)), ((fx1, fy2), (fx1, fy2 - 26)),
-                           ((fx2, fy2), (fx2 - 26, fy2)), ((fx2, fy2), (fx2, fy2 - 26))]:
+            corners = [((fx1, fy1), (fx1 + 26, fy1)), ((fx1, fy1), (fx1, fy1 + 26)),
+                       ((fx2, fy1), (fx2 - 26, fy1)), ((fx2, fy1), (fx2, fy1 + 26)),
+                       ((fx1, fy2), (fx1 + 26, fy2)), ((fx1, fy2), (fx1, fy2 - 26)),
+                       ((fx2, fy2), (fx2 - 26, fy2)), ((fx2, fy2), (fx2, fy2 - 26))]
+            for (a, b) in corners:
                 cv2.line(canvas, a, b, GREEN, 2, cv2.LINE_AA)
         else:
             cv2.rectangle(canvas, (fx1, fy1), (fx2, fy2), CYAN, 2, cv2.LINE_AA)
@@ -297,7 +286,7 @@ def render(frame, st, fps, flags):
     return canvas
 
 
-# ------------------------------------------------------------- main
+# ------------------------------------------------ main
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="Hand tracking + face framing demo (Tasks API)")
@@ -312,12 +301,12 @@ def main():
 
     print("[i] model loader calteche...")
     det = FrameDetector(args.complexity)
-    print("[i] model ready — camera khulte jacche...")
+    print("[i] model ready - camera khulte jacche...")
 
     backend = cv2.CAP_DSHOW if platform.system() == "Windows" else cv2.CAP_ANY
     cap = cv2.VideoCapture(args.camera, backend)
     if not cap.isOpened():
-        print("[x] camera khula jacche na — onno camera:  python sigmacamera.py --camera 1")
+        print("[x] camera khula jacche na - onno camera:  python sigmacamera.py --camera 1")
         sys.exit(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
@@ -329,7 +318,7 @@ def main():
         while True:
             ok, frame = cap.read()
             if not ok or frame is None:
-                print("[x] frame ashe nai — camera busy? (Zoom/Meet bondho koro)")
+                print("[x] frame ashe nai - camera busy? (Zoom/Meet bondho koro)")
                 break
             frame = cv2.flip(frame, 1)
 
@@ -340,7 +329,7 @@ def main():
                 fps, t0, n = n / (now - t0), now, 0
             out = render(frame, st, fps, flags)
 
-            cv2.imshow("handtrack python — q:quit  b:blur  g:gray  r:roi  s:shot", out)
+            cv2.imshow("handtrack python - q:quit  b:blur  g:gray  r:roi  s:shot", out)
             k = cv2.waitKey(1) & 0xFF
             if k in (ord('q'), 27):
                 break
@@ -352,9 +341,9 @@ def main():
                 flags["roi"] = not flags["roi"]
             elif k == ord('s'):
                 os.makedirs(args.out_dir, exist_ok=True)
-                p = os.path.join(args.out_dir, f"shot_{int(time.time())}.jpg")
+                p = os.path.join(args.out_dir, "shot_" + str(int(time.time())) + ".jpg")
                 cv2.imwrite(p, out)
-                print(f"[ok] screenshot → {p}")
+                print("[ok] screenshot -> " + p)
     except KeyboardInterrupt:
         pass
     finally:
