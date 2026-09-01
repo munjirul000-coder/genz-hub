@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>handtrack python — live demo</title>
+<style>
+  :root{--bg:#0b0d12;--card:#12151d;--line:#242a38;--ink:#f2f4f8;--mut:#9aa3b5;--grn:#4ade80;--cyn:#7dd3fc;--red:#fe2c55}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,'Segoe UI',sans-serif;min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 18px 80px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red)}
+  h1{font-size:26px;letter-spacing:.3px}
+  h1 small{color:var(--mut);font-size:14px;font-weight:400}
+  .sub{color:var(--mut);margin-bottom:22px}
+  .grid{display:grid;grid-template-columns:1fr;gap:22px}
+  @media(min-width:960px){.grid{grid-template-columns:1fr 1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .card h2{font-size:15px;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .card h2 .tag{margin-left:auto;font-size:11px;color:var(--mut);font-weight:400}
+  video,canvas.output{display:block;width:100%;background:#000;aspect-ratio:16/9;object-fit:cover}
+  .pad{padding:14px 16px}
+  .btn{appearance:none;border:1px solid var(--line);background:#1a1f2b;color:var(--ink);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:#3b4459;transform:translateY(-1px)}
+  .btn.primary{background:var(--red);border-color:transparent}
+  .btn.on{background:#17301f;border-color:var(--grn);color:var(--grn)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .status{font-size:13px;color:var(--mut)}
+  .status b{color:var(--grn)}
+  .fps{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--mut);font-size:12px}
+  .hint{color:var(--mut);font-size:13px}
+  .hint b{color:var(--ink)}
+  kbd{background:#1a1f2b;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px}
+  code{background:#1a1f2b;border-radius:6px;padding:2px 8px;font-size:13px;color:#a5d6ff}
+  .note{margin-top:26px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;color:var(--mut);font-size:13.5px}
+  .note b{color:var(--ink)}
+  a{color:var(--cyn)}
+  .badge{display:inline-block;background:#13202b;color:var(--cyn);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700}
+  #shot{display:none;width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="dot"></span>
+    <h1>handtrack python <small>· OpenCV + MediaPipe · live demo</small></h1>
+  </header>
+  <p class="sub">Real-time face box + hand skeleton + frame gesture + <b style="color:var(--grn)">FACE LOCKED</b> — sob browser ei, kono install lage na 👇</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>📷 Live demo — tomar nijer camera <span class="tag">kono install lage na</span></h2>
+      <video id="cam" playsinline muted style="display:none"></video>
+      <canvas id="out" class="output" width="1280" height="720"></canvas>
+      <img id="shot" alt="screenshot">
+      <div class="pad">
+        <div class="row" id="controls" style="visibility:hidden">
+          <button class="btn" id="bBlur">🌫️ Blur (B)</button>
+          <button class="btn" id="bGray">⬛ Gray (G)</button>
+          <button class="btn" id="bRoi">🔍 ROI (R)</button>
+          <button class="btn" id="bShot">📸 Shot (S)</button>
+          <span class="status" id="status">…</span>
+          <span class="fps" id="fps"></span>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="bStart">▶ Camera on koro</button>
+          <span class="status" id="pre">Camera permission chaiga — allow koro, ar dui haat diye frame banao! 😎</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🖼️ Ami banaiyechi <span class="tag">Python version er output</span></h2>
+      <img src="sample/demo_lock.jpg" alt="FACE LOCKED demo output" style="display:block;width:100%">
+      <div class="pad hint">Upore: <b>dui haat frame gesture</b> → sobuj <b>FACE LOCKED</b> box, hand skeleton (21 landmark), sadha face box, corner e ROI inset — <b>Python + OpenCV + MediaPipe</b> diye generate.</div>
+    </section>
+  </div>
+
+  <div class="note">
+    <b>Gesture guide:</b> dui haat er <b>thumb + index</b> diye boro frame banao → cyan viewfinder 🔲 · frame ta mukher dike anaO → <b style="color:var(--grn)">FACE LOCKED</b> · ek haate <b>pinch (OK sign)</b> → chhoto mini-frame.<br>
+    <b>Shortcut:</b> <kbd>B</kbd> blur · <kbd>G</kbd> gray · <kbd>R</kbd> roi · <kbd>S</kbd> screenshot<br>
+    <b>Nijer laptop e (PyCharm):</b> <span class="badge">ZIP download</span> <a href="handtrack-python.zip" download>handtrack-python.zip</a> → unzip → PyCharm e Open → <code>pip install -r requirements.txt</code> → <code>python handtrack.py</code>
+  </div>
+</div>
+
+<script src="lib/hands/hands.js"></script>
+<script src="lib/face_detection/face_detection.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const cam = $('#cam'), out = $('#out'), ctx = out.getContext('2d');
+  const status = $('#status'), fpsEl = $('#fps'), pre = $('#pre'), controls = $('#controls'), shotImg = $('#shot');
+
+  const GRN = '#4ade80', CYN = '#7dd3fc', WHT = '#fff', MUT = '#9aa3b5';
+  const state = { blur: false, gray: false, roi: true, faces: [], hands: [], frame: null, locked: false, smooth: {} };
+
+  let hands = null, face = null, ready = 0;
+  function initModels() {
+    hands = new Hands({ locateFile: (f) => `lib/hands/${f}` });
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+    hands.onResults((r) => { state.hands = r.multiHandLandmarks || []; ready |= 1; });
+    face = new FaceDetection({ locateFile: (f) => `lib/face_detection/${f}` });
+    face.setOptions({ model: 'short', minDetectionConfidence: 0.55 });
+    face.onResults((r) => { state.faces = r.detections || []; ready |= 2; });
+  }
+
+  const mx = (x) => out.width - x * out.width;
+  const my = (y) => y * out.height;
+  const smooth = (k, v, a = 0.45) => {
+    const p = state.smooth[k];
+    const o = (p === undefined) ? v : p.map((pv, i) => a * v[i] + (1 - a) * pv);
+    state.smooth[k] = o; return o;
+  };
+  const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+
+  function analyze() {
+    const W = out.width, H = out.height;
+    const faces = state.faces.map((d) => {
+      const bb = d.locationData.relativeBoundingBox;
+      return { x1: mx(bb.xmin + bb.width), y1: my(bb.ymin), x2: mx(bb.xmin), y2: my(bb.ymin + bb.height), s: d.score[0] };
+    });
+    const handsPx = state.hands.map((lms) => lms.map((l) => ({ x: mx(l.x), y: my(l.y) })));
+    let frame = null, locked = false;
+
+    if (handsPx.length >= 2) {
+      const tips = [];
+      handsPx.slice(0, 2).forEach((pts) => { tips.push(pts[4], pts[8]); });
+      const xs = tips.map((p) => p.x), ys = tips.map((p) => p.y);
+      let x1 = Math.min(...xs) - 10, y1 = Math.min(...ys) - 10;
+      let x2 = Math.max(...xs) + 10, y2 = Math.max(...ys) + 10;
+      if (x2 - x1 > 80 && y2 - y1 > 60) {
+        const a = smooth('f1', [x1, y1]), b = smooth('f2', [x2, y2]);
+        frame = { x1: a[0], y1: a[1], x2: b[0], y2: b[1] };
+      }
+    } else if (handsPx.length === 1) {
+      const pts = handsPx[0];
+      const scale = dist(pts[0].x, pts[0].y, pts[9].x, pts[9].y) || 1;
+      const d = dist(pts[4].x, pts[4].y, pts[8].x, pts[8].y);
+      if (d < 0.32 * scale) {
+        const side = Math.max(70, 2.4 * scale);
+        const cx = (pts[4].x + pts[8].x) / 2, cy = (pts[4].y + pts[8].y) / 2;
+        frame = { x1: cx - side / 2, y1: cy - side / 2, x2: cx + side / 2, y2: cy + side / 2 };
+      }
+    }
+
+    if (frame && faces.length) {
+      for (const f of faces) {
+        const ex1 = f.x1, ex2 = f.x2, ey1 = f.y1, ey2 = f.y1 + (f.y2 - f.y1) / 2;
+        const ix = Math.max(0, Math.min(frame.x2, ex2) - Math.max(frame.x1, ex1));
+        const iy = Math.max(0, Math.min(frame.y2, ey2) - Math.max(frame.y1, ey1));
+        if ((ix * iy) / Math.max(1, (ex2 - ex1) * (ey2 - ey1)) >= 0.30) { locked = true; break; }
+      }
+    }
+    return { faces, handsPx, frame, locked };
+  }
+
+  function render(det) {
+    const W = out.width, H = out.height;
+
+    ctx.save();
+    ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.filter = state.gray ? 'grayscale(1)' : 'none';
+    ctx.drawImage(cam, 0, 0, W, H);
+    ctx.restore();
+
+    const gate = det.frame || (det.faces[0] ? { x1: det.faces[0].x1, y1: det.faces[0].y1, x2: det.faces[0].x2, y2: det.faces[0].y2 } : null);
+    if (state.blur && gate) {
+      ctx.save();
+      ctx.filter = 'blur(16px)';
+      ctx.drawImage(out, 0, 0);
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(gate.x1, gate.y1, gate.x2 - gate.x1, gate.y2 - gate.y1);
+      ctx.clip();
+      ctx.drawImage(out, 0, 0);
+      ctx.restore();
+    }
+
+    det.faces.forEach((f) => {
+      ctx.strokeStyle = WHT; ctx.lineWidth = 3;
+      ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1);
+      ctx.font = '600 15px system-ui'; ctx.fillStyle = WHT;
+      ctx.fillText(`face ${Math.round(f.s * 100)}%`, f.x1, Math.max(18, f.y1 - 10));
+    });
+
+    det.handsPx.forEach((pts) => {
+      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (const [a, b] of HAND_CONNECTIONS) {
+        ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke();
+      }
+      for (let i = 0; i < pts.length; i++) {
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, i % 4 === 0 ? 6 : 4.5, 0, 7);
+        ctx.fillStyle = ['#fe2c55', '#facc15', '#4ade80', '#60a5fa', '#c084fc'][Math.floor(i / 4) % 5];
+        ctx.fill();
+      }
+    });
+
+    if (det.frame) {
+      const { x1, y1, x2, y2 } = det.frame;
+      if (det.locked) {
+        ctx.strokeStyle = GRN; ctx.lineWidth = 7;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+        ctx.font = '800 30px system-ui'; ctx.fillStyle = GRN;
+        ctx.fillText('FACE LOCKED', x1, Math.max(34, y1 - 14));
+        const c = 30;
+        ctx.lineWidth = 4;
+        [[x1, y1, 1, 1], [x2, y1, -1, 1], [x1, y2, 1, -1], [x2, y2, -1, -1]].forEach(([cx, cy, sx, sy]) => {
+          ctx.beginPath(); ctx.moveTo(cx + c * sx, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + c * sy); ctx.stroke();
+        });
+      } else {
+        ctx.strokeStyle = CYN; ctx.lineWidth = 3;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      }
+    }
+
+    if (state.roi && det.faces.length) {
+      const f = det.faces[0];
+      const cw = f.x2 - f.x1, chh = f.y2 - f.y1;
+      const iw = 170, ih = chh * iw / cw;
+      ctx.drawImage(out, f.x1, f.y1, cw, chh, W - iw - 14, 52, iw, ih);
+      ctx.strokeStyle = WHT; ctx.lineWidth = 3;
+      ctx.strokeRect(W - iw - 14, 52, iw, ih);
+    }
+
+    ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(0, 0, W, 44);
+    ctx.font = '600 17px system-ui'; ctx.fillStyle = WHT;
+    ctx.fillText('handtrack python  ·  browser live demo', 14, 29);
+    const stTxt = det.locked ? 'FACE LOCKED' : (det.frame ? 'frame' : 'search');
+    ctx.fillStyle = det.locked ? GRN : (det.frame ? CYN : MUT);
+    const tw = ctx.measureText(stTxt).width;
+    ctx.fillText(stTxt, W - tw - 14, 29);
+  }
+
+  let running = false, frames = 0, t0 = 0;
+  async function loop() {
+    if (!running) return;
+    if (ready === 3 && cam.videoWidth) {
+      try { await face.send({ image: cam }); await hands.send({ image: cam }); } catch (e) {}
+      const det = analyze();
+      render(det);
+      state.locked = det.locked;
+      status.innerHTML = det.locked ? '<b>FACE LOCKED 😈</b>' : (det.frame ? 'frame gesture' : 'searching… (dui haat frame banao)');
+      frames++;
+      const now = performance.now();
+      if (now - t0 > 700) { fpsEl.textContent = Math.round(frames * 1000 / (now - t0)) + ' fps'; frames = 0; t0 = now; }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  $('#bStart').onclick = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' }, audio: false });
+      cam.srcObject = stream; await cam.play();
+      if (!hands) initModels();
+      controls.style.visibility = 'visible';
+      pre.textContent = 'Cholche! Dui haat diye frame banao 🔲';
+      running = true; t0 = performance.now();
+      loop();
+    } catch (e) {
+      pre.textContent = 'Camera permission lagbe — browser er address bar er lock icon theke allow koro.';
+    }
+  };
+  const tgl = (sel, key) => {
+    $(sel).onclick = () => { state[key] = !state[key]; $(sel).classList.toggle('on', state[key]); };
+  };
+  tgl('#bBlur', 'blur'); tgl('#bGray', 'gray'); tgl('#bRoi', 'roi');
+  $('#bRoi').classList.add('on');
+  $('#bShot').onclick = () => {
+    shotImg.src = out.toDataURL('image/png');
+    shotImg.style.display = 'block';
+    const a = document.createElement('a');
+    a.download = `handtrack_shot_${Date.now()}.png`;
+    a.href = shotImg.src;
+    a.click();
+  };
+  addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    const map = { b: ['#bBlur', 'blur'], g: ['#bGray', 'gray'], r: ['#bRoi', 'roi'] };
+    if (map[k]) { const [sel, key] = map[k]; state[key] = !state[key]; $(sel).classList.toggle('on', state[key]); }
+    if (k === 's') $('#bShot').click();
+  });
+})();
+</script>
+</body>
+</html>

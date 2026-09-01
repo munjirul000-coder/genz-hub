@@ -1,0 +1,5 @@
+# Hand Tracking / Face Framing demo — Python + OpenCV + MediaPipe
+# Python 3.9–3.12 supported
+mediapipe==0.10.21
+opencv-python==4.11.0.86
+numpy>=1.24,<2.3
