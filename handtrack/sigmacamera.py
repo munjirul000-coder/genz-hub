@@ -2,24 +2,29 @@
 """
 sigmacamera.py — real-time Hand Tracking + Face Framing demo
 ------------------------------------------------------------
-Python + OpenCV + MediaPipe (0.10.35) er jonno ready version.
+**MediaPipe Tasks API** version (mediapipe 0.10.30+ / 0.10.35 e jonno —
+pura `solutions` API nai, oi gulo theke remove hoye geche).
 
-  * Webcam (mirror) → cvtColor(BGR→RGB) → MediaPipe Hands + FaceDetection
+  * Webcam (mirror) → cvtColor(BGR→RGB) → HandLandmarker + FaceDetector
   * Mukher charpashe sadha bounding box
   * Haat er 21-ta landmark skeleton
   * FRAME GESTURE: dui haat diye frame → FACE LOCKED 😈
   * Keys: B=blur  G=gray  R=roi  S=screenshot  Q=quit
 
+Prothom run e 2 ta model file auto-download hobe (~10 MB, ekbar e lage,
+internet lagbe). Er por offline chole.
+
 Run: python sigmacamera.py
 """
 
+import os
 import sys
 import time
 import platform
 import traceback
+import urllib.request
 
-# ------------------------------------------------------------- imports
-# Prottek import alada try-e — kon ta problem seta exact dekhabe.
+# ------------------------------------------------------------- imports (per-module diagnostics)
 try:
     import cv2
     print("[i] OpenCV", cv2.__version__)
@@ -41,59 +46,101 @@ try:
     print("[i] mediapipe", mp.__version__)
 except Exception:
     traceback.print_exc()
-    print("[x] mediapipe load hoy nai — upore asol error ta dekho")
+    print("[x] mediapipe load hoy nai — upore asol error dekho")
     sys.exit(1)
 
 try:
-    from mediapipe import solutions
-    from mediapipe.framework.formats import landmark_pb2
+    from mediapipe.tasks.python import vision
 except Exception:
     traceback.print_exc()
-    print("[x] mediapipe solutions load hoy nai — upore asol error ta dekho")
+    print("[x] mediapipe.tasks load hoy nai — upore asol error dekho")
     sys.exit(1)
 
-print("[i] sob module load hoise — camera khulte jacche...\n")
+print("[i] sob module load hoise")
+
+# ------------------------------------------------------------- model files
+HERE = os.path.dirname(os.path.abspath(__file__))
+HAND_MODEL = os.path.join(HERE, "hand_landmarker.task")
+FACE_MODEL = os.path.join(HERE, "blaze_face_short_range.tflite")
+
+MODEL_URLS = {
+    HAND_MODEL: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+    FACE_MODEL: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+}
+
+
+def ensure_models():
+    missing = [p for p in MODEL_URLS if not os.path.exists(p)]
+    if not missing:
+        print("[i] model files ready")
+        return
+    print("[i] prothom bar model download hocche (~10 MB, ekbar e lage)...")
+    for path in missing:
+        url = MODEL_URLS[path]
+        tmp = path + ".part"
+        print(f"    {os.path.basename(path)} ...")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+                while True:
+                    chunk = r.read(1 << 16)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            os.replace(tmp, path)
+            print(f"    [ok] {os.path.basename(path)} ({os.path.getsize(path) // 1024} KB)")
+        except Exception as e:
+            print(f"[x] download fail: {e}\n"
+                  f"    Manual download koro ei link theke:\n    {url}\n"
+                  f"    File rakho ekhane: {path}")
+            sys.exit(1)
+
 
 THUMB_TIP, INDEX_TIP = 4, 8
 WRIST, MIDDLE_MCP = 0, 9
 WHITE, GREEN, CYAN = (255, 255, 255), (80, 220, 80), (255, 240, 120)
 
-mp_hands = solutions.hands
-mp_face = solutions.face_detection
-mp_draw = solutions.drawing_utils
-mp_styles = solutions.drawing_styles
-
-
-def has_display() -> bool:
-    if platform.system() in ("Windows", "Darwin"):
-        return True
-    return bool(platform.system() == "Linux" and __import__("os").environ.get("DISPLAY"))
+# MediaPipe hand skeleton connections (21 landmark)
+HAND_CONNECTIONS = [(0, 1), (1, 2), (2, 3), (3, 4),
+                    (0, 5), (5, 6), (6, 7), (7, 8),
+                    (5, 9), (9, 10), (10, 11), (11, 12),
+                    (9, 13), (13, 14), (14, 15), (15, 16),
+                    (13, 17), (17, 18), (18, 19), (19, 20),
+                    (0, 17)]
 
 
 # ------------------------------------------------------------- detector
 class FrameDetector:
-    """Face box + hand landmarks + frame-gesture — sob ek jaygay."""
+    """Tasks API HandLandmarker + FaceDetector — dui jon VIDEO mode e."""
 
     def __init__(self, complexity: int = 1):
-        self.hands = mp_hands.Hands(
-            static_image_mode=False, max_num_hands=2,
-            min_detection_confidence=0.6, min_tracking_confidence=0.5,
-            model_complexity=complexity)
-        self.face = mp_face.FaceDetection(
-            model_selection=0, min_detection_confidence=0.55)
+        ensure_models()
+        base_h = vision.RunningMode.VIDEO
+        hand_opts = vision.HandLandmarkerOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_path=HAND_MODEL),
+            running_mode=base_h,
+            num_hands=2,
+            min_hand_detection_confidence=0.6,
+            min_hand_presence_confidence=0.5,
+            min_tracking_confidence=0.5)
+        self.hands = vision.HandLandmarker.create_from_options(hand_opts)
+
+        face_opts = vision.FaceDetectorOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_path=FACE_MODEL),
+            running_mode=base_h,
+            min_detection_confidence=0.55)
+        self.face = vision.FaceDetector.create_from_options(face_opts)
+
+        self._ts = 0
         self.smooth = {}
 
-    @staticmethod
-    def px(lm, w, h):
-        return np.array([int(lm.x * w), int(lm.y * h)])
+    def _mp_image(self, rgb):
+        self._ts += 33  # ~30fps ms timestamp (monotonic)
+        return mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(rgb))
 
-    def pinch(self, lms, w, h):
-        """Thumb+index pinch ki na. Returns (pinched, mid, scale)."""
-        pts = [self.px(l, w, h) for l in lms.landmark]
-        scale = float(np.linalg.norm(pts[WRIST] - pts[MIDDLE_MCP])) or 1.0
-        d = float(np.linalg.norm(pts[THUMB_TIP] - pts[INDEX_TIP]))
-        mid = (pts[THUMB_TIP] + pts[INDEX_TIP]) // 2
-        return (d < 0.32 * scale), mid, scale
+    @staticmethod
+    def px(x, y, w, h):
+        return np.array([int(x * w), int(y * h)])
 
     def smooth_key(self, key, val, alpha=0.45):
         prev = self.smooth.get(key)
@@ -105,33 +152,38 @@ class FrameDetector:
         """Ek frame process kore sob result dict e ferot day."""
         h, w = frame.shape[:2]
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        fres = self.face.process(rgb)
-        hres = self.hands.process(rgb)
+        mp_img = self._mp_image(rgb)
+
+        fres = self.face.detect_for_video(mp_img, self._ts)
+        hres = self.hands.detect_for_video(mp_img, self._ts)
 
         out = {"faces": [], "hands": [], "pinches": [], "frame_rect": None, "locked": False}
 
-        if fres.detections:
-            for det in fres.detections:
-                bb = det.location_data.relative_bounding_box
-                x1, y1 = max(0, int(bb.xmin * w)), max(0, int(bb.ymin * h))
-                x2, y2 = min(w, int((bb.xmin + bb.width) * w)), min(h, int((bb.ymin + bb.height) * h))
-                if x2 - x1 > 10 and y2 - y1 > 10:
-                    out["faces"].append((x1, y1, x2, y2, float(det.score[0])))
+        # faces (Tasks API: FaceDetectorResult.detections)
+        for det in (fres.detections or []):
+            bb = det.bounding_box
+            x1, y1 = max(0, int(bb.origin_x * w)), max(0, int(bb.origin_y * h))
+            x2, y2 = min(w, int((bb.origin_x + bb.width) * w)), min(h, int((bb.origin_y + bb.height) * h))
+            score = float(det.categories[0].score) if det.categories else 0.0
+            if x2 - x1 > 10 and y2 - y1 > 10:
+                out["faces"].append((x1, y1, x2, y2, score))
 
-        if hres.multi_hand_landmarks:
-            for lms in hres.multi_hand_landmarks:
-                pts = np.array([[int(l.x * w), int(l.y * h)] for l in lms.landmark])
-                pinched, mid, scale = self.pinch(lms, w, h)
-                out["hands"].append({"pts": pts, "scale": scale, "lms": lms})
-                out["pinches"].append({"on": pinched, "mid": mid, "scale": scale})
+        # hands (Tasks API: landmarks normalised list)
+        for hand_lms in (hres.hand_landmarks or []):
+            pts = np.array([[int(l.x * w), int(l.y * h)] for l in hand_lms])
+            scale = float(np.linalg.norm(pts[WRIST] - pts[MIDDLE_MCP])) or 1.0
+            d = float(np.linalg.norm(pts[THUMB_TIP] - pts[INDEX_TIP]))
+            pinched = d < 0.32 * scale
+            mid = (pts[THUMB_TIP] + pts[INDEX_TIP]) // 2
+            out["hands"].append({"pts": pts})
+            out["pinches"].append({"on": pinched, "mid": mid, "scale": scale})
 
         # gesture 1: dui haat → filmmaker frame (4 fingertip = 4 kony)
-        if len(hres.multi_hand_landmarks or []) >= 2:
+        if len(out["hands"]) >= 2:
             tips = []
-            for lms in hres.multi_hand_landmarks[:2]:
-                tips.append(self.px(lms.landmark[THUMB_TIP], w, h))
-                tips.append(self.px(lms.landmark[INDEX_TIP], w, h))
+            for hand in out["hands"][:2]:
+                tips.append(hand["pts"][THUMB_TIP])
+                tips.append(hand["pts"][INDEX_TIP])
             tips = np.array(tips)
             x1, y1 = tips.min(axis=0)
             x2, y2 = tips.max(axis=0)
@@ -170,7 +222,7 @@ class FrameDetector:
 # ------------------------------------------------------------- renderer
 def draw_hud(canvas, st, fps, flags):
     h, w = canvas.shape[:2]
-    title = "handtrack python  |  OpenCV + MediaPipe"
+    title = "handtrack python  |  OpenCV + MediaPipe Tasks"
     status = "FACE LOCKED" if st["locked"] else ("frame" if st["frame_rect"] else "search")
     color = GREEN if st["locked"] else (CYAN if st["frame_rect"] else (170, 170, 170))
     txt = f"{status}  hands:{len(st['hands'])}" + (f"  {fps:4.1f} fps" if fps else "")
@@ -209,9 +261,13 @@ def render(frame, st, fps, flags):
                     cv2.FONT_HERSHEY_DUPLEX, 0.5, WHITE, 1, cv2.LINE_AA)
 
     for hand in st["hands"]:
-        mp_draw.draw_landmarks(canvas, hand["lms"], mp_hands.HAND_CONNECTIONS,
-                               mp_styles.get_default_hand_landmarks_style(),
-                               mp_styles.get_default_hand_connections_style())
+        pts = hand["pts"]
+        for (a, b) in HAND_CONNECTIONS:
+            cv2.line(canvas, tuple(pts[a]), tuple(pts[b]), WHITE, 2, cv2.LINE_AA)
+        for i, p in enumerate(pts):
+            cv2.circle(canvas, tuple(p), i % 4 == 0 and 6 or 4,
+                       [(255, 80, 80), (80, 180, 255), (120, 220, 120), (240, 200, 60), (200, 120, 240)][(i // 4) % 5],
+                       -1, cv2.LINE_AA)
 
     if st["frame_rect"]:
         if st["locked"]:
@@ -244,7 +300,7 @@ def render(frame, st, fps, flags):
 # ------------------------------------------------------------- main
 def main():
     import argparse
-    ap = argparse.ArgumentParser(description="Hand tracking + face framing demo")
+    ap = argparse.ArgumentParser(description="Hand tracking + face framing demo (Tasks API)")
     ap.add_argument("--camera", type=int, default=0)
     ap.add_argument("--width", type=int, default=960)
     ap.add_argument("--height", type=int, default=540)
@@ -253,6 +309,10 @@ def main():
     args = ap.parse_args()
 
     flags = {"blur": False, "gray": False, "roi": True}
+
+    print("[i] model loader calteche...")
+    det = FrameDetector(args.complexity)
+    print("[i] model ready — camera khulte jacche...")
 
     backend = cv2.CAP_DSHOW if platform.system() == "Windows" else cv2.CAP_ANY
     cap = cv2.VideoCapture(args.camera, backend)
@@ -263,7 +323,6 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
 
     print("[i] Camera cholche!  Keys:  B=blur  G=gray  R=roi  S=shot  Q=quit")
-    det = FrameDetector(args.complexity)
 
     fps, t0, n = 0.0, time.time(), 0
     try:
@@ -292,7 +351,6 @@ def main():
             elif k == ord('r'):
                 flags["roi"] = not flags["roi"]
             elif k == ord('s'):
-                import os
                 os.makedirs(args.out_dir, exist_ok=True)
                 p = os.path.join(args.out_dir, f"shot_{int(time.time())}.jpg")
                 cv2.imwrite(p, out)
