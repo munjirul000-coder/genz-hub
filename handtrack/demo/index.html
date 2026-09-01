@@ -69,6 +69,7 @@
         </div>
         <div class="row" style="margin-top:10px">
           <button class="btn primary" id="bStart">▶ Camera on koro</button>
+          <button class="btn" id="bTab" title="Preview iframe er baire, notun tab e khulo — camera 100% kaj korbe">🔓 New tab e khulo</button>
           <span class="status" id="pre">Camera permission chaiga — allow koro, ar dui haat diye frame banao! 😎</span>
         </div>
         <div id="err"></div>
@@ -319,7 +320,7 @@
     } catch (e) {
       const n = e && e.name || '';
       let hint = e && e.message || String(e);
-      if (n === 'NotAllowedError') hint = 'Camera permission deya hoyni. Address bar er pashe camera icon e click kore "Allow" koro, tarpor abar button e chapo.';
+      if (n === 'NotAllowedError') hint = 'Browser camera block korche. Ai page er address bar er camera icon e click kore Allow dao, tarpor page Reload koro (permission on korar por reload lagbe!). Ar kaj na korle niche "🔓 New tab e khulo" button e chapo — notun tab e direct camera prompt ashbe.';
       if (n === 'NotFoundError') hint = 'Kono camera khuje pai nai. Onno device/browser e try koro.';
       if (n === 'NotReadableError') hint = 'Camera onno app e busy (Zoom/Meet?). Oigulo bondho kore abar try koro.';
       showErr(hint);
@@ -327,6 +328,10 @@
       btn.disabled = false;
     }
   };
+
+  /* preview iframe er baire notun tab e khular option — sekhane camera
+     permission direct e prompt hoy, embedder policy ar kono badha thake na */
+  $('#bTab').onclick = () => window.open(location.href, '_blank');
 
   /* ---------------- controls ---------------- */
   const tgl = (sel, key) => {
