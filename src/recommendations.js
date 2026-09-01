@@ -688,12 +688,16 @@ function shortsFeed({ me, scope = 'for-you', limit = 6, cursor = null }) {
     rankedIds = token.ids; nextBase = token.next || null; consumed = Math.min(take, requested.length);
   } else {
     const baseCursor = token && token.next ? token.next : null;
+    // Recently-shown Shorts rest after a short cooldown so a session always feels fresh —
+    // but if the cooldown would leave the feed EMPTY we recycle them instead. An empty
+    // result should mean "no Shorts exist at all", never "the feed forgot them".
     const extra = [
       "NOT EXISTS (SELECT 1 FROM recommendation_feedback rf WHERE rf.user_id=@me AND rf.post_id=p.id AND rf.kind IN ('hide','report'))",
       'NOT EXISTS (SELECT 1 FROM shorts_impressions si WHERE si.user_id=@me AND si.post_id=p.id AND si.shown_at>@shorts_cooldown)',
     ];
-    params.shorts_cooldown = now() - 6 * 3600000;
-    const candidates = F.queryPosts({ me, where: where.concat(extra), params, limit: Math.min(100, Math.max(30, take * 8)), cursor: baseCursor, order: 'p.created_at DESC, p.id DESC' });
+    params.shorts_cooldown = now() - 30 * 60000; // 30-minute rest
+    let candidates = F.queryPosts({ me, where: where.concat(extra), params, limit: Math.min(100, Math.max(30, take * 8)), cursor: baseCursor, order: 'p.created_at DESC, p.id DESC' });
+    if (!candidates.posts.length) candidates = F.queryPosts({ me, where, params, limit: Math.min(100, Math.max(30, take * 8)), cursor: baseCursor, order: 'p.created_at DESC, p.id DESC' });
     rows = rankShortsPosts(candidates.posts, me, Math.max(take, candidates.posts.length));
     rankedIds = rows.map((p) => Number(p.id)); nextBase = candidates.nextCursor;
     // Do not recycle already-shown Shorts immediately. An empty result means the

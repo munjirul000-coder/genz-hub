@@ -53,8 +53,10 @@ const POST_FIELDS = `
   (SELECT COUNT(*) FROM reactions rr WHERE rr.post_id=p.id) AS reaction_count,
   (SELECT COUNT(*) FROM comments cc WHERE cc.post_id=p.id AND cc.removed=0) AS comment_count,
   (SELECT COUNT(*) FROM posts sp WHERE sp.repost_of=p.id AND sp.removed=0) AS repost_count,
+  (SELECT COUNT(*) FROM saved_items sc WHERE sc.item_type='post' AND sc.item_id=p.id) AS save_count,
   (SELECT type FROM reactions rr WHERE rr.post_id=p.id AND rr.user_id=@me) AS my_reaction,
   (SELECT 1 FROM saved_items si WHERE si.user_id=@me AND si.item_type='post' AND si.item_id=p.id) AS is_saved,
+  EXISTS (SELECT 1 FROM follows ff WHERE ff.follower_id=@me AND ff.following_id=p.user_id) AS is_following,
   g.name AS group_name, cm.name AS community_name, cm.slug AS community_slug
 `;
 
