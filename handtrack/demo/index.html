@@ -147,6 +147,8 @@
     <div class="under">Click korlei popup ashbe &rarr; <b>Allow</b> chapo &rarr; 4-kona grid khule jabe.<br>
       Keys: <kbd>S</kbd> photo &middot; <kbd>R</kbd> record &middot; <kbd>G</kbd> full screen</div>
 
+    <button class="newtab" id="bTab" style="max-width:360px;margin:18px auto 0">&#128279; NOTUN TAB E KHULO (100% kaj korbe)</button>
+
     <div class="errbox" id="errbox">
       <div class="t" id="errt">PROBLEM HOYECHE</div>
       <div class="m" id="errm"></div>
@@ -435,19 +437,22 @@
     } catch (e) {
       b.textContent = '\u25B6 CAMERA ON';
       const n = e && e.name || '';
-      if (n === 'NotAllowedError') {
-        if (inIframe) {
-          showError('PERMISSION POPUP ASHE NAI?',
-            'Ei preview window er bhitore browser camera block koreche.' +
-            ' Niche golden button e click koro - notun tab e site khulbe,' +
-            ' sekhane CAMERA ON dile normal permission popup ashbe.',
-            true);
-        } else {
-          showError('CAMERA BLOCKED',
-            'Tumi aghe "Block" diyechile.' +
-            ' Address bar er lock icon e click koro > Camera > Allow > tarpor page reload (Ctrl+Shift+R) koro.',
-            false);
-        }
+      if (inIframe && n !== '') {
+        /* preview iframe: browser camera block kore jekono bhabe ->
+           auto notun tab khulo (top-level page e popup 100% ase) */
+        let opened = false;
+        try { opened = !!window.open(location.href, '_blank'); } catch (e2) { opened = false; }
+        showError('PERMISSION POPUP EKHANE ASHE NA',
+          'Ei preview box er bhitore browser camera block kore.' +
+          (opened
+            ? ' Notun tab open hoyeche! Oikhane abar CAMERA ON click koro - permission popup ashbe, Allow dao.'
+            : ' Niche golden button e click koro - notun tab e site khulbe, sekhane CAMERA ON dile popup ashbe.'),
+          true);
+      } else if (n === 'NotAllowedError') {
+        showError('CAMERA BLOCKED',
+          'Tumi aghe "Block" diyechile.' +
+          ' Address bar er lock icon e click koro > Camera > Allow > tarpor page reload (Ctrl+Shift+R) koro.',
+          false);
       } else if (n === 'NotFoundError') {
         showError('CAMERA PAI NAI', 'Tumar device e kono camera detect hoy nai.', false);
       } else {
@@ -455,6 +460,13 @@
       }
     }
   };
+
+  /* preview iframe hole golden button sob somoy dekhao */
+  const bTab = $('#bTab');
+  if (inIframe) {
+    bTab.style.display = 'block';
+    bTab.onclick = () => window.open(location.href, '_blank');
+  }
 
   /* ---------- off button ---------- */
   $('#bHome').onclick = () => {
