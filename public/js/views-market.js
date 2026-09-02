@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Marketplace: shop, product, cart, checkout, orders, wishlist, seller studio.
+/* Bloom — Marketplace: shop, product, cart, checkout, orders, wishlist, seller studio.
    Uses the existing VOLT design system only (card / btn / chip / greet / empty / grid classes). */
 (function () {
   'use strict';
@@ -285,7 +285,7 @@
     const view = G.mountShell();
     view.innerHTML = '<div class="card">' + G.skeletonList(3) + '</div>';
     const d = await G.get('/market/orders');
-    view.innerHTML = `<section class="greet rise"><h1>Your orders</h1><div class="sub">Track everything you bought on Gen-Z Hub.</div></section>
+    view.innerHTML = `<section class="greet rise"><h1>Your orders</h1><div class="sub">Track everything you bought on Bloom.</div></section>
       <div style="margin-top:16px">${d.orders.length ? d.orders.map((o) => `
         <div class="card" style="margin-bottom:12px">
           <div class="between wrap"><div><div class="bold">${esc(o.code)}</div>
@@ -318,7 +318,7 @@
 
     if (!d.store) {
       view.innerHTML = `<section class="greet rise"><h1>Open your store 🏪</h1>
-        <div class="sub">Sell to the Gen-Z Hub community — set it up in under a minute.</div></section>
+        <div class="sub">Sell to the Bloom community — set it up in under a minute.</div></section>
         <div class="card" style="margin-top:16px">
           <div class="field"><label class="label" for="st-name">Store name</label><input class="input" id="st-name" maxlength="60" placeholder="e.g. Dhaka Sneaker Lab"></div>
           <div class="field"><label class="label" for="st-tag">Tagline</label><input class="input" id="st-tag" maxlength="120" placeholder="What do you sell?"></div>

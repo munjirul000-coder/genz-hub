@@ -204,7 +204,7 @@ async function makeRendition(input, outFile, src, rung, onProgress) {
     '-vf', `scale=${rung.w}:${rung.h}:flags=lanczos`,
     '-g', String(gop), '-keyint_min', String(Math.round(gop / 2)), '-sc_threshold', '40',
     ...audioArgs(src, rung.ab),
-    '-movflags', '+faststart', '-map_metadata', '-1', '-metadata', 'title=Gen-Z Hub',
+    '-movflags', '+faststart', '-map_metadata', '-1', '-metadata', 'title=Bloom',
     outFile,
   ];
   await run(args, { duration: src.duration, onProgress });

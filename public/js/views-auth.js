@@ -1,10 +1,10 @@
-/* Gen-Z Hub — auth + onboarding views */
+/* Bloom — auth + onboarding views */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
 
   const ART = `<div class="auth-art">
-      <div class="logo" style="font-size:22px"><span class="logo-mark" style="width:38px;height:38px;font-size:19px">Z</span> GEN-Z HUB</div>
+      <div class="logo" style="font-size:22px"><span class="logo-mark" style="width:38px;height:38px;font-size:19px">B</span> BLOOM</div>
       <h1 style="font-size:40px;line-height:1.1;margin:8px 0 0;letter-spacing:-.03em">Connect. Build.<br>Play. Grow.</h1>
       <p style="opacity:.8;max-width:420px;margin:0">The social platform built for the generation that is starting businesses, learning skills and dominating lobbies — all in the same feed.</p>
       <div class="stack" style="gap:14px;margin-top:10px">
@@ -38,7 +38,7 @@
 
   function loginForm(panel) {
     panel.innerHTML = `<h2 style="margin:0 0 4px;letter-spacing:-.02em">Welcome back 👋</h2>
-      <p class="muted small" style="margin:0 0 18px">Log in to your Gen-Z Hub account.</p>
+      <p class="muted small" style="margin:0 0 18px">Log in to your Bloom account.</p>
       <form id="lf" novalidate>
         <div class="field"><label class="label" for="li">Email or username</label>
           <input class="input" id="li" autocomplete="username" required></div>
@@ -92,7 +92,7 @@
   }
 
   function signupForm(panel) {
-    panel.innerHTML = `<h2 style="margin:0 0 4px;letter-spacing:-.02em">Join Gen-Z Hub</h2>
+    panel.innerHTML = `<h2 style="margin:0 0 4px;letter-spacing:-.02em">Join Bloom</h2>
       <p class="muted small" style="margin:0 0 18px">Free forever. You must be 13 or older.</p>
       <form id="sf" novalidate>
         <div class="field"><label class="label" for="sn">Full name</label><input class="input" id="sn" autocomplete="name" required></div>
@@ -106,7 +106,7 @@
         <div class="field"><label class="label" for="sd">Date of birth</label><input class="input" id="sd" type="date" required></div>
         <div class="err" id="serr" hidden></div>
         <button class="btn btn-primary btn-block" type="submit">Create account</button>
-        <p class="tiny muted center" style="margin-top:12px">By joining you agree to keep Gen-Z Hub respectful and safe.</p>
+        <p class="tiny muted center" style="margin-top:12px">By joining you agree to keep Bloom respectful and safe.</p>
       </form>`;
     const uInput = G.qs('#su', panel), hint = G.qs('#suh', panel);
     let tmr;
@@ -189,7 +189,7 @@
     const chosen = new Set((S.user.interests || []).map((i) => i.id));
     let hubs = { business: !!S.user.in_business, gaming: !!S.user.in_gaming };
     const view = G.mountFull(`<div style="max-width:640px;margin:0 auto;padding:28px 16px">
-      <div class="logo" style="justify-content:center;margin-bottom:18px"><span class="logo-mark">Z</span> GEN-Z HUB</div>
+      <div class="logo" style="justify-content:center;margin-bottom:18px"><span class="logo-mark">B</span> BLOOM</div>
       <div class="card pad" id="ob"></div></div>`);
     const box = G.qs('#ob', view);
 
@@ -200,7 +200,7 @@
     function draw() {
       if (step === 1) {
         box.innerHTML = bar() + `<h2 style="margin:0 0 6px">Welcome, ${esc(S.user.full_name.split(' ')[0])} 🎉</h2>
-          <p class="muted">Gen-Z Hub is where you build a business, level up skills and find your squad — in one feed.</p>
+          <p class="muted">Bloom is where you build a business, level up skills and find your squad — in one feed.</p>
           <ul class="small muted" style="line-height:1.9">
             <li>Post text, photos and videos</li><li>Join communities and groups</li>
             <li>Discover Business Hub and Gaming Hub</li><li>Message people privately</li></ul>
@@ -253,7 +253,7 @@
           <p class="muted small">Follow a few accounts and join communities to fill your feed.</p>
           <div id="sug">${G.skeletonList(3)}</div>
           <div id="coms" class="stack" style="margin-top:14px"></div>
-          <button class="btn btn-primary btn-block" id="done" style="margin-top:18px">Finish and enter Gen-Z Hub 🚀</button>`;
+          <button class="btn btn-primary btn-block" id="done" style="margin-top:18px">Finish and enter Bloom 🚀</button>`;
         G.qs('#done', box).onclick = async () => {
           try { const r = await G.post('/me/onboarding/complete'); S.user = r.user; } catch (e) {}
           location.hash = '#/'; location.reload();

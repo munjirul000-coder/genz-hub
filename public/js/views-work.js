@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Work: job marketplace, proposals, freelancer profiles, job packages. */
+/* Bloom — Work: job marketplace, proposals, freelancer profiles, job packages. */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -160,7 +160,7 @@
         <div class="row wrap" style="gap:14px;align-items:flex-start">
           ${G.avatar(d.user, 64)}
           <div class="grow"><h1 style="margin:0">${esc(d.user.full_name)}</h1>
-            <div class="sub">${esc(f.headline || d.user.bio || 'Gen-Z Hub member')}</div>
+            <div class="sub">${esc(f.headline || d.user.bio || 'Bloom member')}</div>
             <div class="row wrap" style="gap:6px;margin-top:10px">
               ${(f.skills || d.user.skills || '').split(',').filter(Boolean).map((s) => `<span class="pill">${esc(s.trim())}</span>`).join('')}
             </div></div>

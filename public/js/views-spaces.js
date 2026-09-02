@@ -1,4 +1,4 @@
-/* Gen-Z Hub — groups, communities, events, saved, settings */
+/* Bloom — groups, communities, events, saved, settings */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -211,7 +211,7 @@
     const view = G.mountShell();
     const q = query.q || '';
     view.innerHTML = `<div class="card pad between wrap"><div><h2 style="margin:0;font-size:19px">${esc(G.t('Communities'))}</h2>
-        <p class="muted small" style="margin:4px 0 0">Topic-focused spaces open to everyone on Gen-Z Hub.</p></div>
+        <p class="muted small" style="margin:4px 0 0">Topic-focused spaces open to everyone on Bloom.</p></div>
       <button class="btn btn-primary" id="newc">＋ Create community</button></div>
       <form class="card pad row" id="cf" style="margin:14px 0"><input class="input grow" id="cq" placeholder="Search communities" value="${esc(q)}">
         <button class="btn btn-ghost">Search</button></form>
@@ -497,7 +497,7 @@
     } else if (tab === 'privacy') {
       box.innerHTML = `<div class="card pad stack">
         <div><div class="label" >Profile visibility</div>
-          <select class="select" id="s-pv"><option value="public" ${u.profile_visibility === 'public' ? 'selected' : ''}>Public — anyone on Gen-Z Hub</option>
+          <select class="select" id="s-pv"><option value="public" ${u.profile_visibility === 'public' ? 'selected' : ''}>Public — anyone on Bloom</option>
             <option value="connections" ${u.profile_visibility === 'connections' ? 'selected' : ''}>Connections only</option></select></div>
         <div><div class="label">Default post privacy</div>
           <select class="select" id="s-dp">${['public', 'connections', 'private'].map((x) => `<option value="${x}" ${u.default_post_privacy === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>

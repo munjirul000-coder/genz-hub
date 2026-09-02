@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Business Hub, Gaming Hub, Admin panel, 404 */
+/* Bloom — Business Hub, Gaming Hub, Admin panel, 404 */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -326,7 +326,7 @@
           ['rec_weight_skip', 'Fast-skip penalty', '-2', '', '0.1'],
         ];
         box.innerHTML = `<div class="card pad stack">
-          <div><div class="label">Platform</div><div class="small">Gen-Z Hub · Connect. Build. Play. Grow.</div></div>
+          <div><div class="label">Platform</div><div class="small">Bloom · Connect. Build. Play. Grow.</div></div>
           <div><div class="label">Storage</div><div class="small">${G.num(s.posts)} posts · ${G.num(s.messages)} messages · uploads stored on the server file system.</div></div>
           <div><div class="label">Recommendation controls</div><p class="small muted">Rules-based controls only — no AI/API dependency. Changes apply within about 30 seconds.</p>
             <form id="rec-config" class="stack">${fields.map(([key, label, fallback, hint, step]) => `<label class="field"><span class="label">${label}</span><input class="input" type="number" step="${step}" data-rec="${key}" value="${esc(v[key] == null ? fallback : v[key])}">${hint ? `<span class="tiny muted">${hint}</span>` : ''}</label>`).join('')}
@@ -355,7 +355,7 @@
   /* ---------------- 404 ---------------- */
   G.route('404', async () => {
     const view = S.user ? G.mountShell() : G.mountFull('');
-    view.innerHTML = G.emptyState('🧭', 'Page not found', 'That link does not exist on Gen-Z Hub.',
+    view.innerHTML = G.emptyState('🧭', 'Page not found', 'That link does not exist on Bloom.',
       '<div style="margin-top:12px"><a class="btn btn-primary btn-sm" href="#/">Go home</a></div>');
   });
 })();

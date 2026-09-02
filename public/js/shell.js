@@ -1,4 +1,4 @@
-/* Gen-Z Hub — app shell: topbar, sidebar, mobile tabbar, boot */
+/* Bloom — app shell: topbar, sidebar, mobile tabbar, boot */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -44,11 +44,11 @@
     root.innerHTML = `
       <header class="topbar">
         <div class="topbar-in">
-          <a class="logo" href="#/" aria-label="Gen-Z Hub home">
-            <span class="logo-mark" aria-hidden="true">Z</span><span class="txt">GEN-Z HUB</span></a>
+          <a class="logo" href="#/" aria-label="Bloom home">
+            <span class="logo-mark" aria-hidden="true">B</span><span class="txt">BLOOM</span></a>
           <form class="searchbox" id="topsearch" role="search">
             <span class="si" aria-hidden="true">${G.icon('search', 17)}</span>
-            <input type="search" id="q" placeholder="${esc(G.t('Search'))} people, posts, #tags…" aria-label="Search Gen-Z Hub">
+            <input type="search" id="q" placeholder="${esc(G.t('Search'))} people, posts, #tags…" aria-label="Search Bloom">
           </form>
           <div class="row" style="margin-left:auto;gap:8px">
             <button class="iconbtn" id="nav-theme" title="Toggle theme" aria-label="Toggle colour theme">${G.icon('theme', 19)}</button>
@@ -83,7 +83,7 @@
       </div>
       <button class="btn btn-primary btn-block" id="side-create" style="margin-top:14px">${G.icon('edit', 18)} ${esc(G.t('Create'))} ${esc(G.t('Post'))}</button>
       ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" style="margin-top:8px" href="#/admin">' + G.icon('shield', 18) + ' Admin Panel</a>' : ''}
-      <p class="tiny muted" style="margin:14px 6px 0">Gen-Z Hub · Connect. Build. Play. Grow.</p>`;
+      <p class="tiny muted" style="margin:14px 6px 0">Bloom · Connect. Build. Play. Grow.</p>`;
 
     G.qs('#topsearch').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -173,7 +173,7 @@
       S.user = data.user; S.interests = data.interests; S.counts = data.counts;
     } catch (e) {
       G.qs('#root').innerHTML = `<div class="empty" style="padding:80px 20px"><div class="ico">🔌</div>
-        <div class="bold">Cannot reach the Gen-Z Hub server.</div><button class="btn btn-primary" style="margin-top:14px" onclick="location.reload()">Retry</button></div>`;
+        <div class="bold">Cannot reach the Bloom server.</div><button class="btn btn-primary" style="margin-top:14px" onclick="location.reload()">Retry</button></div>`;
       return;
     }
     G.applyTheme();

@@ -1,4 +1,4 @@
-/* Gen-Z Hub — shared components: post card, composer, comments, feeds, cards */
+/* Bloom — shared components: post card, composer, comments, feeds, cards */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -182,7 +182,9 @@
           const res = await G.post(`/posts/${p.id}/react`, { type: b.dataset.r });
           p.my_reaction = res.my_reaction;
           anchor.classList.toggle("on", !!res.my_reaction);
-          anchor.innerHTML = `${res.my_reaction ? REACTIONS[res.my_reaction] : G.icon("heart",18)} <span class=\"lbl\">${esc(G.t("Like"))}</span>`;
+          anchor.innerHTML = anchor.classList.contains('short-action')
+            ? `${res.my_reaction ? REACTIONS[res.my_reaction] : '♡'}<small data-count-r>${G.num(res.reaction_count)}</small>`
+            : `${res.my_reaction ? REACTIONS[res.my_reaction] : G.icon("heart",18)} <span class=\"lbl\">${esc(G.t("Like"))}</span>`;
           const c = G.qs("[data-count-r]", node);
           if (c) c.textContent = G.num(res.reaction_count) + " reactions";
         } catch(e) { G.err(e); }
@@ -190,6 +192,8 @@
       };
     });
   }
+  // Shorts reuses this exact picker and reaction API instead of creating a second system.
+  G.openReactionPicker = reactionPicker;
   function postMenu(anchor, p, node, mine) {
     const box = G.el(`<div class="menu" role="menu">
       <button data-copy>🔗 Copy link</button>

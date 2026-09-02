@@ -1,4 +1,4 @@
-/* Gen-Z Hub — public website: landing page + static site pages (about, privacy, terms, guidelines, contact) */
+/* Bloom — public website: landing page + static site pages (about, privacy, terms, guidelines, contact) */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -7,7 +7,7 @@
 
   const NAVBAR = () => `<header class="site-nav">
     <div class="site-wrap row">
-      <a class="logo" href="#/welcome"><span class="logo-mark">Z</span><span class="txt">GEN-Z HUB</span></a>
+      <a class="logo" href="#/welcome"><span class="logo-mark">B</span><span class="txt">BLOOM</span></a>
       <nav class="row site-links" aria-label="Site">
         <a href="#/welcome">Home</a><a href="#/about">About</a><a href="#/guidelines">Guidelines</a><a href="#/contact">Contact</a>
       </nav>
@@ -21,7 +21,7 @@
     <div class="site-wrap">
       <div class="foot-grid">
         <div>
-          <div class="logo" style="margin-bottom:8px"><span class="logo-mark">Z</span><span class="txt">GEN-Z HUB</span></div>
+          <div class="logo" style="margin-bottom:8px"><span class="logo-mark">B</span><span class="txt">BLOOM</span></div>
           <p class="small muted" style="max-width:280px">Connect. Build. Play. Grow. The social platform for the generation building businesses and winning lobbies.</p>
         </div>
         <div><b class="small">Platform</b>
@@ -33,7 +33,7 @@
       </div>
       <div class="divider"></div>
       <div class="between wrap small muted">
-        <span>© ${YEAR} Gen-Z Hub. An original platform — not affiliated with any other social network.</span>
+        <span>© ${YEAR} Bloom. An original platform — not affiliated with any other social network.</span>
         <span>Made for Gen-Z · 13+ only</span>
       </div>
     </div></footer>`;
@@ -145,7 +145,7 @@
             .map(([n, t, d]) => `<div class="step"><span class="step-n">${n}</span><b>${t}</b><p class="small muted">${d}</p></div>`).join('')}
         </div>
         <div class="cta">
-          <div><h3 style="margin:0 0 4px">Ready to join Gen-Z Hub?</h3>
+          <div><h3 style="margin:0 0 4px">Ready to join Bloom?</h3>
             <p class="small" style="margin:0;opacity:.85">Free forever. Light and dark mode. English and বাংলা.</p></div>
           <a class="btn btn-accent" href="#/auth?mode=signup">Create account</a>
         </div>
@@ -154,15 +154,15 @@
 
   /* ---------------- static pages ---------------- */
   const PAGES = {
-    about: ['About Gen-Z Hub', `
-      <p class="lede-dark">Gen-Z Hub is an original social platform built for young people who are doing two things at once: building something real, and having fun doing it.</p>
+    about: ['About Bloom', `
+      <p class="lede-dark">Bloom is an original social platform built for young people who are doing two things at once: building something real, and having fun doing it.</p>
       <h3>Why we exist</h3>
-      <p>Most social platforms make you choose an identity. Business networks feel formal and old. Gaming spaces are fragmented across a dozen chat servers. General social feeds are noise. Gen-Z Hub keeps one profile, one feed and one messaging inbox — with two specialised ecosystems inside it: <b>Business Hub</b> and <b>Gaming Hub</b>.</p>
+      <p>Most social platforms make you choose an identity. Business networks feel formal and old. Gaming spaces are fragmented across a dozen chat servers. General social feeds are noise. Bloom keeps one profile, one feed and one messaging inbox — with two specialised ecosystems inside it: <b>Business Hub</b> and <b>Gaming Hub</b>.</p>
       <h3>What we do not do</h3>
       <ul><li>Full Marketplace + Shop, Work + Freelance jobs, Arena challenges, Interest Hubs, XP — all live and functional.</li>
         <li>No AI chatbot, AI assistant or AI content generator — everything you read here is written by people.</li>
         <li>No betting or gambling features in Gaming Hub.</li>
-        <li>No copying another company's branding or interface. Gen-Z Hub is its own design system.</li></ul>
+        <li>No copying another company's branding or interface. Bloom is its own design system.</li></ul>
       <h3>How it is built</h3>
       <p>A Node.js and Express backend with a relational database, server-side authorisation on every action, bcrypt password hashing, session cookies, rate limiting and file-upload validation. The interface is a lightweight single-page app that works on phones, tablets, laptops and desktops with light and dark themes.</p>
       <h3>Who it is for</h3>
@@ -192,11 +192,11 @@
       <h3>1. Your account</h3>
       <p>You must be 13 or older, provide accurate information and keep your password secure. One person, one account. You are responsible for activity under your account.</p>
       <h3>2. Your content</h3>
-      <p>You keep ownership of everything you post. By posting, you allow Gen-Z Hub to display and distribute that content inside the platform according to the privacy setting you chose.</p>
+      <p>You keep ownership of everything you post. By posting, you allow Bloom to display and distribute that content inside the platform according to the privacy setting you chose.</p>
       <h3>3. Acceptable use</h3>
       <p>Do not post illegal content, harassment, hate speech, sexual content involving minors, spam, scams, malware, impersonation or content that violates someone else's rights. Do not attempt to break, overload or gain unauthorised access to the platform.</p>
       <h3>4. No marketplace, no gambling</h3>
-      <p>Gen-Z Hub has a full Marketplace + Work section. No gambling or betting.</p>
+      <p>Bloom has a full Marketplace + Work section. No gambling or betting.</p>
       <h3>5. Moderation</h3>
       <p>Reported content is reviewed by moderators. We may hide or delete content, restrict features, suspend or remove accounts that break these terms. Serious or repeated violations lead to permanent removal.</p>
       <h3>6. Availability</h3>
@@ -205,7 +205,7 @@
       <p>You can delete your account at any time from Settings. We may terminate accounts that violate these terms.</p>`],
 
     guidelines: ['Community guidelines', `
-      <p class="lede-dark">Gen-Z Hub only works if it stays useful and safe. These are the rules everyone agrees to.</p>
+      <p class="lede-dark">Bloom only works if it stays useful and safe. These are the rules everyone agrees to.</p>
       <h3>Be real</h3><p>Use your real identity or a consistent handle. Do not impersonate other people, brands or organisations.</p>
       <h3>Be useful</h3><p>Share what you learned, what worked and what failed. In Business Hub, specifics beat motivational quotes. In Gaming Hub, help new players instead of flaming them.</p>
       <h3>Zero tolerance</h3>

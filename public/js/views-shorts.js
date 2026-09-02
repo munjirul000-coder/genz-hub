@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Shorts: full-screen vertical video feed built on the existing VOLT player. */
+/* Bloom — Shorts: full-screen vertical video feed built on the existing VOLT player. */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -28,9 +28,13 @@
     </article>`);
     const react = node.querySelector('[data-react]');
     react.onclick = async () => {
-      try { const r = await G.post(`/posts/${p.id}/react`, { type: 'like' }); p.my_reaction = r.my_reaction; react.classList.toggle('on', !!r.my_reaction); react.firstChild.textContent = r.my_reaction ? '❤️' : '♡'; node.querySelector('[data-count-r]').textContent = G.num(r.reaction_count); }
+      try { const r = await G.post(`/posts/${p.id}/react`, { type: 'like' }); p.my_reaction = r.my_reaction; react.classList.toggle('on', !!r.my_reaction); react.innerHTML = `${r.my_reaction ? '❤️' : '♡'}<small data-count-r>${G.num(r.reaction_count)}</small>`; }
       catch (e) { G.err(e); }
     };
+    let pressTimer = null;
+    react.addEventListener('contextmenu', (e) => { e.preventDefault(); if (G.openReactionPicker) G.openReactionPicker(react, p, node); });
+    react.addEventListener('touchstart', () => { pressTimer = setTimeout(() => G.openReactionPicker && G.openReactionPicker(react, p, node), 450); }, { passive: true });
+    react.addEventListener('touchend', () => clearTimeout(pressTimer));
     node.querySelector('[data-comment]').onclick = () => G.toggleComments(node, p);
     node.querySelector('[data-share]').onclick = async () => {
       const url = location.origin + '/#/post/' + p.id;

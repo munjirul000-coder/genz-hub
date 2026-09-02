@@ -1,4 +1,4 @@
-/* Gen-Z Hub — functional RBAC admin UI. Loaded after the legacy hub views so it owns #/admin. */
+/* Bloom — functional RBAC admin UI. Loaded after the legacy hub views so it owns #/admin. */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;

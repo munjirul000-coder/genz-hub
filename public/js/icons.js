@@ -1,4 +1,4 @@
-/* Gen-Z Hub — premium monochrome icon set (inline SVG, inherits currentColor) */
+/* Bloom — premium monochrome icon set (inline SVG, inherits currentColor) */
 (function () {
   'use strict';
   const G = window.GZ;

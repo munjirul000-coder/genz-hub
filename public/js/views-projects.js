@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Projects showcase (portfolio-style view over collaboration/team posts) */
+/* Bloom — Projects showcase (portfolio-style view over collaboration/team posts) */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;

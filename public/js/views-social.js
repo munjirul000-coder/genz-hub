@@ -1,4 +1,4 @@
-/* Gen-Z Hub — messages, notifications, network */
+/* Bloom — messages, notifications, network */
 (function () {
   'use strict';
   const G = window.GZ, S = G.state, esc = G.esc;
@@ -214,7 +214,7 @@
         box.innerHTML = '';
         if (!list.length) {
           box.innerHTML = G.emptyState('🤝', tab === 'connections' ? 'No connections yet' : tab === 'incoming' ? 'No pending requests' : 'No sent requests',
-            'Connect with people to build your Gen-Z Hub network.',
+            'Connect with people to build your Bloom network.',
             '<div style="margin-top:10px"><a class="btn btn-sm btn-primary" href="#/network?tab=suggested">See suggestions</a></div>');
           return;
         }

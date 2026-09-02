@@ -1,6 +1,6 @@
-/* Gen-Z Hub — feed video engine  ("VOLT Player")
+/* Bloom — feed video engine  ("VOLT Player")
    ---------------------------------------------------------------------------
-   একটাই লক্ষ্য: TikTok/Reels-এর মতো স্মুথ স্ক্রল, কিন্তু Gen-Z Hub-এর নিজস্ব UI।
+   একটাই লক্ষ্য: TikTok/Reels-এর মতো স্মুথ স্ক্রল, কিন্তু Bloom-এর নিজস্ব UI।
 
    • Lazy: ভিডিও এলিমেন্ট তৈরিই হয় না যতক্ষণ না viewport-এর কাছাকাছি আসে (আগে শুধু poster)
    • একসাথে সর্বোচ্চ ৩টি <video> DOM-এ থাকে — বাকিগুলো detach (memory + network বাঁচে)

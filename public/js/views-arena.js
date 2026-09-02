@@ -1,4 +1,4 @@
-/* Gen-Z Hub — Arena: XP dashboard, daily missions, badges, leaderboards, challenges,
+/* Bloom — Arena: XP dashboard, daily missions, badges, leaderboards, challenges,
    Poll Arena, Idea Arena and the interest-hub directory. Same VOLT design language. */
 (function () {
   'use strict';

@@ -1,4 +1,4 @@
-/* Gen-Z Hub — core: state, API client, helpers, i18n, UI primitives */
+/* Bloom — core: state, API client, helpers, i18n, UI primitives */
 (function () {
   'use strict';
   const G = window.GZ = {};
@@ -21,9 +21,9 @@
     const ctype = res.headers.get('content-type') || '';
     if (ctype.includes('application/json')) { try { data = await res.json(); } catch (e) {} }
     else if (!res.ok) {
-      // A proxy/CDN answered instead of Gen-Z Hub (e.g. Cloudflare 5xx while the demo link sleeps)
+      // A proxy/CDN answered instead of Bloom (e.g. Cloudflare 5xx while the demo link sleeps)
       data.error = res.status >= 500
-        ? 'Gen-Z Hub server is not reachable right now (error ' + res.status + '). The demo link may be asleep — refresh in a moment, or use the backup link.'
+        ? 'Bloom server is not reachable right now (error ' + res.status + '). The demo link may be asleep — refresh in a moment, or use the backup link.'
         : 'Unexpected response from the server (' + res.status + ').';
     }
     if (!res.ok) {
