@@ -138,7 +138,11 @@
     st.ui.quality.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(st); });
     bindSeek(st);
 
-    if (data.status === 'processing') pollProcessing(st);
+    // Newly uploaded assets are public immediately with an Original variant while the
+    // quality ladder renders in the background. Keep polling those too so the player can
+    // switch to the high-quality rendition without a page refresh.
+    const originalOnly = (data.variants || []).length && (data.variants || []).every((v) => v.source === 'original');
+    if (data.status === 'processing' || (data.asset_uid && (data.stage !== 'done' || originalOnly))) pollProcessing(st);
     attachObservers(box);
     order = [];
     return st;
@@ -454,11 +458,24 @@
         .then((d) => {
           const a = d.asset;
           if (!a) return;
-          if (a.status === 'ready' && a.variants.length) {
+          const working = a.stage && !['done', 'failed'].includes(a.stage);
+          if (a.status === 'ready' && a.variants && a.variants.length) {
+            st.data.status = a.status;
+            st.data.stage = a.stage || st.data.stage;
             st.data.variants = a.variants;
             st.data.poster = a.poster || st.data.poster;
+            st.data.width = a.width || st.data.width;
+            st.data.height = a.height || st.data.height;
+            st.data.duration = a.duration || st.data.duration;
             st.ui.badge.hidden = true;
             if (a.poster && st.ui.poster && st.ui.poster.tagName === 'IMG') st.ui.poster.src = a.poster;
+            // If the video was already playing the immediate Original fallback, replace it
+            // in-place with the first honest rendition and keep the current playhead.
+            if (st.video && !st.pinned) {
+              const better = chooseVariant(st);
+              if (better && better.url && better.url !== st.video.currentSrc) switchTo(st, better);
+            }
+            if (working) setTimeout(tick, 2500);
           } else if (a.status === 'failed') {
             st.ui.badge.hidden = false; st.ui.badge.textContent = 'Video processing failed.';
           } else {

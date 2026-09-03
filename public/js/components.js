@@ -30,7 +30,7 @@
     const data = {
       url: m.url, poster: m.poster || '', width: m.width || 0, height: m.height || 0,
       duration: m.duration || 0, variants: m.variants || [], asset_uid: m.asset_uid || '',
-      status: m.status || 'ready',
+      status: m.status || 'ready', stage: m.stage || '',
     };
     const ar = data.width && data.height ? data.width / data.height : 16 / 9;
     return `<div class="gzv${ar < 0.95 ? ' is-portrait' : ''}" style="--gzv-ar:${ar.toFixed(4)}" data-gzv="${esc(JSON.stringify(data))}"></div>`;
@@ -338,7 +338,9 @@
         holder.appendChild(commentNode(comment, p, box, node));
         if (parentId) f.remove();
         p.comment_count = (p.comment_count || 0) + 1;
-        const cc = G.qs('[data-count-c]', node); if (cc) cc.textContent = G.num(p.comment_count) + ' comments';
+        const cc = G.qs('[data-count-c]', node);
+        if (cc) cc.textContent = node.querySelector('.short-action') ? G.num(p.comment_count) : G.num(p.comment_count) + ' comments';
+        if (G.onCommentAdded) G.onCommentAdded(p);
       } catch (err) { G.err(err); }
       btn.disabled = false;
     };

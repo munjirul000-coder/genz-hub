@@ -5,19 +5,22 @@
 
   function videoShell(m) {
     const data = { url: m.url, poster: m.poster || '', width: m.width || 0, height: m.height || 0,
-      duration: m.duration || 0, variants: m.variants || [], asset_uid: m.asset_uid || '', status: m.status || 'ready' };
+      duration: m.duration || 0, variants: m.variants || [], asset_uid: m.asset_uid || '', status: m.status || 'ready', stage: m.stage || '' };
     const ar = data.width && data.height ? data.width / data.height : 9 / 16;
     return `<div class="short-video gzv${ar < 0.95 ? ' is-portrait' : ''}" style="--gzv-ar:${ar.toFixed(4)}" data-gzv="${esc(JSON.stringify(data))}"></div>`;
   }
 
   function shortCard(p) {
     const node = G.el(`<article class="short-card" data-post="${p.id}">
-      <div class="short-media">${videoShell(p.media[0])}</div>
-      <div class="short-shade"></div>
-      <div class="short-top"><a href="#/u/${esc(p.username)}" class="short-creator">${G.avatar(p, 42)}<span><b>@${esc(p.username)}</b><small>${esc(p.full_name)}</small></span></a>
-        <button class="short-follow btn btn-sm btn-primary" data-follow>${p.user_id === (S.user && S.user.id) ? 'You' : '+ Follow'}</button></div>
-      <div class="short-copy">${p.content ? `<div>${G.linkify(p.content)}</div>` : '<div class="short-caption-muted">Short video</div>'}</div>
+      <div class="short-card-stage">
+        <div class="short-media">${videoShell(p.media[0])}</div>
+        <div class="short-shade"></div>
+        <div class="short-top"><a href="#/u/${esc(p.username)}" class="short-creator">${G.avatar(p, 42)}<span><b>@${esc(p.username)}</b><small>${esc(p.full_name)}</small></span></a>
+          <button class="short-follow btn btn-sm btn-primary" data-follow>${p.user_id === (S.user && S.user.id) ? 'You' : '+ Follow'}</button></div>
+        <div class="short-copy">${p.content ? `<div>${G.linkify(p.content)}</div>` : '<div class="short-caption-muted">Short video</div>'}</div>
+      </div>
       <div class="short-actions">
+        <a class="short-action short-profile-action" href="#/u/${esc(p.username)}" aria-label="Open profile">${G.avatar(p, 38)}<span class="short-profile-plus">+</span></a>
         <button class="short-action ${p.my_reaction ? 'on' : ''}" data-react aria-label="Like">${G.icon('heart', 25)}<small data-count-r>${G.num(p.reaction_count || 0)}</small></button>
         <button class="short-action" data-comment aria-label="Comments">${G.icon('comment', 25)}<small data-count-c>${G.num(p.comment_count || 0)}</small></button>
         <button class="short-action" data-share aria-label="Share">${G.icon('send', 25)}<small>Share</small></button>
@@ -158,11 +161,35 @@
     publish.onclick = async () => {
       error.hidden = true; publish.disabled = true; progress.hidden = false;
       try {
-        const edited = await exportEditedVideo(file, { start: G.qs('#se-start', m.body).value, end: end.value, speed: G.qs('#se-speed', m.body).value, filter: filter.value, overlay: G.qs('#se-overlay', m.body).value }, (label, pct) => { bar.style.width = pct + '%'; ptext.textContent = `${label} — ${pct}%`; });
-        ptext.textContent = 'Uploading video…'; const asset = await G.uploadVideo(edited, (pct) => { bar.style.width = pct * .6 + '%'; ptext.textContent = `Uploading video — ${pct}%`; });
+        const start = Number(G.qs('#se-start', m.body).value) || 0;
+        const finish = Number(end.value) || 0;
+        const speed = Number(G.qs('#se-speed', m.body).value) || 1;
+        const overlay = G.qs('#se-overlay', m.body).value.trim();
+        const noEdits = video.duration > 0 && start <= 0.05 && finish >= video.duration - 0.05 && speed === 1 && filter.value === 'none' && !overlay;
+        // Upload the source bytes unchanged when the viewer did not edit anything.
+        // This avoids a slow canvas re-encode and prevents quality loss on normal uploads.
+        const uploadFile = noEdits ? file : await exportEditedVideo(file, { start, end: finish, speed, filter: filter.value, overlay }, (label, pct) => {
+          bar.style.width = pct + '%'; ptext.textContent = `${label} — ${pct}%`;
+        });
+        ptext.textContent = 'Uploading video…';
+        const asset = await G.uploadVideo(uploadFile, (pct) => { bar.style.width = (noEdits ? pct : pct * .6) + '%'; ptext.textContent = `Uploading video — ${pct}%`; });
         const caption = G.qs('#se-caption', m.body).value.trim();
-        await G.post('/posts', { content: caption, hub: 'general', privacy: 'public', media: [{ type: 'video', asset_uid: asset.uid }] });
-        m.close(); G.toast('Short published 🎉', 'ok'); G.render();
+        const created = await G.post('/posts', { content: caption, hub: 'general', privacy: 'public', media: [{ type: 'video', asset_uid: asset.uid }] });
+        m.close(); G.toast('Short published 🎉', 'ok');
+
+        // Do not throw away the current feed after publishing. Insert the returned post
+        // immediately so the other Shorts stay visible and no Home → Shorts detour is needed.
+        if (S.route.name === 'shorts' && created.post && G.qs('#shorts-feed')) {
+          const feed = G.qs('#shorts-feed');
+          feed.querySelectorAll('.empty,.shorts-loading').forEach((el) => el.remove());
+          const card = shortCard(created.post);
+          const sentinel = feed.querySelector('.shorts-sentinel');
+          if (sentinel) feed.insertBefore(card, sentinel); else feed.prepend(card);
+          G.closeShortCommentsRail?.();
+          G.scanVideos?.();
+        } else {
+          await G.render();
+        }
       } catch (e) { error.textContent = e.message || 'Could not publish this Short.'; error.hidden = false; progress.hidden = true; publish.disabled = false; }
     };
   }
@@ -174,9 +201,7 @@
         <a class="shorts-side-link" href="#/"><span>${G.icon('home', 23)}</span><b>Home</b></a>
         <a class="shorts-side-link ${scope === 'for-you' ? 'on' : ''}" href="#/shorts"><span>${G.icon('explore', 23)}</span><b>For You</b></a>
         <a class="shorts-side-link ${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following"><span>${G.icon('network', 23)}</span><b>Following</b></a>
-        <a class="shorts-side-link" href="#/shorts"><span>${G.icon('gaming', 23)}</span><b>Shorts</b></a>
         <a class="shorts-side-link" href="#/explore?tab=people"><span>${G.icon('groups', 23)}</span><b>Friends</b></a>
-        <a class="shorts-side-link" href="#/explore?tab=live"><span>${G.icon('camera', 23)}</span><b>LIVE</b></a>
         <a class="shorts-side-link" href="#/notifications"><span>${G.icon('bell', 23)}</span><b>Activity</b></a>
       </div>
       <div class="shorts-side-rule"></div>
@@ -213,22 +238,40 @@
       if (search) search.onsubmit = (event) => { event.preventDefault(); const value = search.querySelector('input').value.trim(); if (value) location.hash = '#/explore?q=' + encodeURIComponent(value); };
     }
 
-    G.setRail(shortsRail());
-    const railBody = G.qs('#short-rail-body');
-    const railSub = G.qs('#short-rail-sub');
-    const railCount = G.qs('#short-rail-count');
-    const railEmpty = () => { if (railBody) railBody.innerHTML = '<div class="short-rail-empty">Comments will appear here when you open a Short.</div>'; };
+    const rail = G.qs('#rail');
+    const closeShortCommentsRail = () => {
+      if (rail) {
+        rail.classList.remove('short-comments-open');
+        rail.innerHTML = '';
+      }
+      G._shortCommentsPostId = 0;
+      G.onCommentAdded = null;
+    };
+    // The comments rail is deliberately empty until the viewer clicks a comment button.
+    closeShortCommentsRail();
+    G.closeShortCommentsRail = closeShortCommentsRail;
     G.openShortCommentsRail = async (post) => {
-      if (!railBody) return;
+      if (!rail) return;
+      rail.innerHTML = shortsRail();
+      rail.classList.add('short-comments-open');
+      G._shortCommentsPostId = Number(post.id);
+      G.onCommentAdded = (commentedPost) => {
+        if (Number(commentedPost.id) !== Number(G._shortCommentsPostId)) return;
+        const count = G.qs('#short-rail-count', rail);
+        if (count) count.textContent = G.num(commentedPost.comment_count || 0);
+      };
+      const railBody = G.qs('#short-rail-body', rail);
+      const railSub = G.qs('#short-rail-sub', rail);
+      const railCount = G.qs('#short-rail-count', rail);
       if (railCount) railCount.textContent = G.num(post.comment_count || 0);
       if (railSub) railSub.textContent = `Comments on @${post.username}`;
-      railBody.innerHTML = '';
       const holder = G.el('<div class="short-rail-holder"><div data-comments hidden></div></div>');
+      railBody.innerHTML = '';
       railBody.appendChild(holder);
+      const railClose = G.qs('[data-short-rail-close]', rail);
+      if (railClose) railClose.onclick = closeShortCommentsRail;
       await G.toggleComments(holder, post);
     };
-    const railClose = G.qs('[data-short-rail-close]');
-    if (railClose) railClose.onclick = () => { railEmpty(); if (railSub) railSub.textContent = 'Share your thoughts on this Short.'; if (railCount) railCount.textContent = '0'; };
 
     view.innerHTML = `<section class="shorts-page tiktok-shorts-page">
       <div class="shorts-mobile-head"><a class="shorts-mobile-brand" href="#/" aria-label="Bloom home"><span class="shorts-brand-mark">B</span><b>BLOOM</b></a><div class="shorts-mobile-tabs"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-mobile-more" type="button" data-short-upload aria-label="Create a Short">${G.icon('plus', 20)}</button></div>
@@ -238,7 +281,24 @@
     </section>`;
     G.qsa('[data-short-upload]', view).forEach((button) => { button.onclick = openShortComposer; });
     const feed = G.qs('#shorts-feed', view);
-    let cursor = null, loading = false, done = false;
+    let cursor = null, loading = false, done = false, scrollFrame = 0;
+    // A comments panel belongs to the video it was opened from. Close it as soon as
+    // the viewer changes cards so the next video never inherits stale comments.
+    feed.addEventListener('scroll', () => {
+      if (window.innerWidth <= 900 || scrollFrame) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = 0;
+        if (!G._shortCommentsPostId) return;
+        const mid = feed.getBoundingClientRect().top + feed.clientHeight / 2;
+        let current = null, distance = Infinity;
+        feed.querySelectorAll('.short-card').forEach((card) => {
+          const r = card.getBoundingClientRect();
+          const d = Math.abs((r.top + r.bottom) / 2 - mid);
+          if (d < distance) { distance = d; current = card; }
+        });
+        if (current && Number(current.dataset.post) !== Number(G._shortCommentsPostId)) G.closeShortCommentsRail?.();
+      });
+    }, { passive: true });
     const sentinel = G.el('<div class="shorts-sentinel" aria-hidden="true"></div>');
     async function load() {
       if (loading || done) return;
@@ -246,11 +306,9 @@
       try {
         const data = await G.get(`/shorts/feed?scope=${scope}&limit=8` + (cursor ? `&cursor=${cursor}` : ''));
         if (feed.querySelector('.shorts-loading')) feed.innerHTML = '';
-        const hadCards = !!feed.querySelector('.short-card');
         const loadedPosts = (data.posts || []).filter((p) => p.media && p.media[0]);
         loadedPosts.forEach((p) => feed.appendChild(shortCard(p)));
-        // TikTok opens the discussion rail beside the active video on desktop.
-        if (!hadCards && loadedPosts[0] && window.innerWidth > 900) G.openShortCommentsRail(loadedPosts[0]);
+        // Keep the right rail closed until a viewer explicitly opens comments.
         cursor = data.nextCursor;
         if (!feed.querySelector('.short-card') && !cursor) {
           done = true;

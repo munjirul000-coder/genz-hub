@@ -18,6 +18,7 @@ function hydrateMedia(m) {
     ...base,
     asset_uid: a.uid,
     status: a.status,
+    stage: a.stage,
     poster: a.poster || base.poster,
     width: a.width || base.width,
     height: a.height || base.height,
