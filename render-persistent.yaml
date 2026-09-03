@@ -35,9 +35,9 @@ services:
         value: "1"
       - key: VIDEO_THREADS
         value: "1"
-      - key: VIDEO_MAX_HEIGHT      # raise to 1080 on a paid instance for full 1080p renditions
-        value: "1080"
+      - key: VIDEO_MAX_HEIGHT      # preserve source quality up to 2180p; never upscale smaller uploads
+        value: "2180"
       - key: VIDEO_MAX_MB
-        value: "300"
+        value: "500"
       # - key: MEDIA_BASE_URL      # set to your CDN / object-storage origin to offload delivery
       #   value: https://cdn.example.com

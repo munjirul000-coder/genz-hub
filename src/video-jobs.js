@@ -174,7 +174,7 @@ async function processAsset(uid) {
   // minutes of CPU, so we keep the original bytes instead: the user's quality is preserved
   // exactly and the adaptive ladder is still built underneath it.
   const MAX_ENCODE_S = Number(process.env.VIDEO_MAX_ENCODE_SECONDS || 180);
-  const nativeTop = Math.min(src.width, src.height) === top.q;
+  const nativeTop = top.w === src.width && top.h === src.height;
   const tooExpensive = V.estimateEncodeSeconds(src, top) > MAX_ENCODE_S;
   const remuxable = nativeTop && (V.canRemux(src) || (tooExpensive && V.isWebSafe(src)));
   update(uid, { stage: remuxable ? 'optimizing' : 'transcoding' });

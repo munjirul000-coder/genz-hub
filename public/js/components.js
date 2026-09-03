@@ -16,8 +16,8 @@
   /* ---------------- media ---------------- */
   function mediaHtml(media) {
     if (!media || !media.length) return '';
-    const n = Math.min(media.length, 4);
-    const items = media.slice(0, 4);
+    const n = Math.min(media.length, 5);
+    const items = media.slice(0, 5);
     const soloVideo = items.length === 1 && items[0].type === 'video';
     return `<div class="media-grid n${n}${soloVideo ? ' solo-video' : ''}">` + items.map((m) => m.type === 'video'
       ? videoHtml(m)

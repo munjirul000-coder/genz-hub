@@ -86,12 +86,12 @@
         <span class="grow" style="min-width:0"><span class="bold" style="display:block;font-size:14.5px">${esc(u.full_name)}</span>
         <span class="tiny muted">@${esc(u.username)}</span></span></a>
       <div class="rail-nav">${NAV.map((n) => `
-        <a class="nav-item" data-k="${n[0]}" href="${n[3]}"><span class="ni">${G.icon(n[1], 20)}</span>${esc(G.t(n[2]))}
+        <a class="nav-item" data-k="${n[0]}" href="${n[3]}"><span class="ni">${G.icon(n[1], 20)}</span><span class="nav-label">${esc(G.t(n[2]))}</span>
         ${['messages', 'notifications', 'network'].includes(n[0]) ? `<span class="cnt" id="s-${n[0]}" hidden></span>` : ''}</a>`).join('')}
       </div>
-      <button class="btn btn-primary btn-block" id="side-create" style="margin-top:14px">${G.icon('edit', 18)} ${esc(G.t('Create'))} ${esc(G.t('Post'))}</button>
-      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block" style="margin-top:8px" href="#/admin">' + G.icon('shield', 18) + ' Admin Panel</a>' : ''}
-      <p class="tiny muted" style="margin:14px 6px 0">Bloom · Connect. Build. Play. Grow.</p>`;
+      <button class="btn btn-primary btn-block" id="side-create" style="margin-top:14px">${G.icon('edit', 18)} <span class="create-label">${esc(G.t('Create'))} ${esc(G.t('Post'))}</span></button>
+      ${u.role === 'admin' ? '<a class="btn btn-ghost btn-block side-admin" style="margin-top:8px" href="#/admin">' + G.icon('shield', 18) + ' <span class="create-label">Admin Panel</span></a>' : ''}
+      <p class="tiny muted side-footer" style="margin:14px 6px 0">Bloom · Connect. Build. Play. Grow.</p>`;
 
     G.qs('#topsearch').addEventListener('submit', (e) => {
       e.preventDefault();

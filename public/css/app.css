@@ -2384,3 +2384,103 @@ html[data-theme="crimson"] body.shorts-mode .short-comments-rail-sub{border-colo
     color:#fff;
   }
 }
+
+/* The large center control is only a play affordance for a paused video. */
+.gzv.is-playing .gzv-big{display:none!important}
+
+/* Instagram-style compact desktop navigation for the normal Bloom shell. */
+@media (min-width:901px){
+  body:not(.shorts-mode) .shell{grid-template-columns:72px minmax(0,1fr) var(--panel)}
+  body:not(.shorts-mode) nav.side{
+    width:56px;
+    overflow:visible;
+    z-index:45;
+    transition:width 180ms var(--ease);
+  }
+  body:not(.shorts-mode) nav.side:hover{width:250px}
+  body:not(.shorts-mode) nav.side #sidenav{
+    width:56px;
+    transition:width 180ms var(--ease);
+  }
+  body:not(.shorts-mode) nav.side:hover #sidenav{width:238px}
+  body:not(.shorts-mode) nav.side .me-card{
+    width:56px;
+    height:56px;
+    justify-content:center;
+    padding:6px;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  body:not(.shorts-mode) nav.side:hover .me-card{width:238px;justify-content:flex-start;padding:10px 12px}
+  body:not(.shorts-mode) nav.side .me-card .grow,
+  body:not(.shorts-mode) nav.side .create-label,
+  body:not(.shorts-mode) nav.side .side-footer{display:none}
+  body:not(.shorts-mode) nav.side:hover .me-card .grow,
+  body:not(.shorts-mode) nav.side:hover .create-label,
+  body:not(.shorts-mode) nav.side:hover .side-footer{display:block}
+  body:not(.shorts-mode) nav.side .rail-nav{
+    width:56px;
+    padding:4px;
+    transition:width 180ms var(--ease);
+  }
+  body:not(.shorts-mode) nav.side:hover .rail-nav{width:238px}
+  body:not(.shorts-mode) nav.side .nav-item{
+    width:48px;
+    justify-content:center;
+    gap:0;
+    padding:11px 8px;
+    white-space:nowrap;
+  }
+  body:not(.shorts-mode) nav.side:hover .nav-item{
+    width:218px;
+    justify-content:flex-start;
+    gap:13px;
+    padding:11px 13px;
+  }
+  body:not(.shorts-mode) nav.side .nav-label{display:none}
+  body:not(.shorts-mode) nav.side:hover .nav-label{display:inline}
+  body:not(.shorts-mode) nav.side #side-create,
+  body:not(.shorts-mode) nav.side .side-admin{
+    width:56px;
+    min-width:56px;
+    padding-left:0;
+    padding-right:0;
+    gap:0;
+    overflow:hidden;
+  }
+  body:not(.shorts-mode) nav.side:hover #side-create,
+  body:not(.shorts-mode) nav.side:hover .side-admin{
+    width:238px;
+    padding-left:14px;
+    padding-right:14px;
+    gap:8px;
+  }
+  body:not(.shorts-mode) nav.side .side-footer{width:220px}
+  body:not(.shorts-mode) nav.side:not(:hover) .nav-item .cnt:not([hidden]){
+    position:absolute;
+    top:3px;
+    right:1px;
+    min-width:14px;
+    height:14px;
+    padding:0 3px;
+    font-size:8px;
+  }
+}
+
+/* Larger Instagram/Facebook-style photo mosaics for 2–5 image posts. */
+.media-grid.n2 img{height:300px}
+.media-grid.n3 img,.media-grid.n4 img{height:240px}
+.media-grid.n5{grid-template-columns:repeat(3,1fr);grid-auto-rows:145px}
+.media-grid.n5 img{height:145px;max-height:none}
+.media-grid.n5 :first-child{grid-column:span 2;grid-row:span 2;height:300px}
+@media (max-width:900px){
+  .media-grid.n2 img{height:250px}
+  .media-grid.n3 img,.media-grid.n4 img{height:205px}
+  .media-grid.n5{grid-auto-rows:115px}
+  .media-grid.n5 img{height:115px}
+  .media-grid.n5 :first-child{height:240px}
+}
+
+@media (min-width:901px) and (max-width:1200px){
+  body:not(.shorts-mode) .shell{grid-template-columns:72px minmax(0,1fr)}
+}

@@ -37,7 +37,7 @@ const AVAILABLE = !!(FFMPEG && FFPROBE);
 const PRESET = process.env.VIDEO_PRESET || 'veryfast';
 const TRANSCODE = process.env.VIDEO_TRANSCODE !== '0';
 // Small boxes (Render free = 0.1 CPU / 512 MB) can cap the ladder without touching code.
-const MAX_HEIGHT = Number(process.env.VIDEO_MAX_HEIGHT || 1080);
+const MAX_HEIGHT = Number(process.env.VIDEO_MAX_HEIGHT || 2180);
 // On a 1–2 core box (Render free) a multi-threaded encode starves the HTTP server, so default to
 // a single encoder thread there; bigger machines let ffmpeg decide.
 const THREADS = Number(process.env.VIDEO_THREADS || (os.cpus().length <= 2 ? 1 : 0));
@@ -49,6 +49,7 @@ const NICE = process.env.VIDEO_NICE !== '0' && process.platform === 'linux'
 // CRF is a *quality* target, not a size target. Lower = better. These values are deliberately
 // conservative (visually transparent-ish) so uploads never look blocky or washed out.
 const LADDER = [
+  { h: 2180, crf: 19, maxrate: 18000, bufsize: 32000, ab: 192 },
   { h: 1080, crf: 21, maxrate: 6500, bufsize: 11000, ab: 160 },
   { h: 720, crf: 22, maxrate: 3600, bufsize: 6500, ab: 128 },
   { h: 480, crf: 23, maxrate: 1700, bufsize: 3200, ab: 112 },
@@ -199,7 +200,7 @@ async function makeRendition(input, outFile, src, rung, onProgress) {
   const args = [
     '-i', input,
     '-c:v', 'libx264', '-preset', PRESET, '-crf', String(rung.crf),
-    '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
+    '-profile:v', 'high', '-level', rung.q > 1080 ? '5.2' : '4.1', '-pix_fmt', 'yuv420p',
     '-maxrate', `${rung.maxrate}k`, '-bufsize', `${rung.bufsize}k`,
     '-vf', `scale=${rung.w}:${rung.h}:flags=lanczos`,
     '-g', String(gop), '-keyint_min', String(Math.round(gop / 2)), '-sc_threshold', '40',

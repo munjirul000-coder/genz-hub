@@ -29,9 +29,9 @@ services:
         value: "1"
       - key: VIDEO_THREADS
         value: "1"
-      - key: VIDEO_MAX_HEIGHT      # honest 1080p; drop to 720 if the free instance runs out of CPU
-        value: "1080"
+      - key: VIDEO_MAX_HEIGHT      # preserve source quality up to 2180p; never upscale smaller uploads
+        value: "2180"
       - key: VIDEO_MAX_MB
-        value: "150"
+        value: "300"
       # - key: MEDIA_BASE_URL      # set to your CDN / object-storage origin to offload delivery
       #   value: https://cdn.example.com

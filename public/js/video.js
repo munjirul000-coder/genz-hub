@@ -18,7 +18,7 @@
   const ATTACH_MARGIN = '150% 0px';  // এই দূরত্বে এলে <video> তৈরি হবে
   const MAX_ATTACHED = 3;      // একসাথে জীবিত video element
   const STALL_WINDOW = 12000;  // ms
-  const UPSHIFT_AFTER = 14000; // ms of healthy playback before trying better quality
+  const UPSHIFT_AFTER = 45000; // wait longer before a quality switch so playback never churns
 
   const players = new Map();   // element → state
   let soundOn = false;         // session-wide sound preference
@@ -43,7 +43,7 @@
   if (conn && conn.addEventListener) conn.addEventListener('change', () => { netState.bps = 0; });
 
   // Rough per-rendition bitrate need (bits/s) — matches the server ladder.
-  const NEED = { 1080: 6.0e6, 720: 3.4e6, 480: 1.7e6, 360: 0.9e6 };
+  const NEED = { 2180: 18.0e6, 1080: 6.0e6, 720: 3.4e6, 480: 1.7e6, 360: 0.9e6 };
   function needFor(h) { return NEED[h] || Math.max(0.5e6, h * 2600); }
 
   /* ------------------------------------------------------------- helpers */
@@ -270,6 +270,9 @@
     if (st.userPaused) return;
     players.forEach((o) => { if (o !== st && o.video && !o.video.paused) { o.video.pause(); o.video.muted = true; } });
     active = st;
+    // A preloaded neighbour starts with metadata only. Promote it to a full buffer
+    // before playback so the first seconds do not repeatedly stall.
+    st.video.preload = 'auto';
     st.video.muted = !soundOn;
     st.ui.big.hidden = true;
     const p = st.video.play();
@@ -326,15 +329,30 @@
     if (st.stallTimes.length >= 2) { st.stallTimes = []; downshift(st); }
   }
 
+  function sameUrl(a, b) {
+    if (!a || !b) return false;
+    try { return new URL(a, location.href).href === new URL(b, location.href).href; }
+    catch (e) { return String(a) === String(b); }
+  }
+
   function switchTo(st, variant) {
-    if (!st.video || !variant || variant.url === st.video.currentSrc) return;
-    const time = st.video.currentTime;
-    const wasPlaying = !st.video.paused;
+    if (!st.video || !variant || sameUrl(variant.url, st.video.currentSrc || st.video.src)) return;
+    const v = st.video;
+    const time = v.currentTime || 0;
+    const wasPlaying = !v.paused;
     st.currentH = variant.h;
-    st.video.src = variant.url;
-    st.video.currentTime = time;
+    st.currentUrl = variant.url;
     st.loadStart = performance.now();
-    if (wasPlaying) { const p = st.video.play(); if (p && p.catch) p.catch(() => {}); }
+    // Swapping sources while repeatedly polling used to reload the same file every
+    // few seconds. Compare canonical URLs and restore the playhead only once metadata
+    // for the new rendition is ready.
+    const restore = () => {
+      try { if (isFinite(time)) v.currentTime = time; } catch (e) {}
+      if (wasPlaying) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    };
+    v.addEventListener('loadedmetadata', restore, { once: true });
+    v.src = variant.url;
+    v.load();
     updateQualityLabel(st);
   }
 
