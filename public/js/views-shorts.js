@@ -18,24 +18,27 @@
         <button class="short-follow btn btn-sm btn-primary" data-follow>${p.user_id === (S.user && S.user.id) ? 'You' : '+ Follow'}</button></div>
       <div class="short-copy">${p.content ? `<div>${G.linkify(p.content)}</div>` : '<div class="short-caption-muted">Short video</div>'}</div>
       <div class="short-actions">
-        <button class="short-action ${p.my_reaction ? 'on' : ''}" data-react aria-label="Like">${p.my_reaction ? '❤️' : '♡'}<small data-count-r>${G.num(p.reaction_count || 0)}</small></button>
-        <button class="short-action" data-comment aria-label="Comments">💬<small data-count-c>${G.num(p.comment_count || 0)}</small></button>
-        <button class="short-action" data-share aria-label="Share">↗<small>Share</small></button>
-        <button class="short-action" data-repost aria-label="Repost">🔁<small>Repost</small></button>
-        <button class="short-action ${p.is_saved ? 'on' : ''}" data-save aria-label="Save">🔖<small>${p.is_saved ? 'Saved' : 'Save'}</small></button>
+        <button class="short-action ${p.my_reaction ? 'on' : ''}" data-react aria-label="Like">${G.icon('heart', 25)}<small data-count-r>${G.num(p.reaction_count || 0)}</small></button>
+        <button class="short-action" data-comment aria-label="Comments">${G.icon('comment', 25)}<small data-count-c>${G.num(p.comment_count || 0)}</small></button>
+        <button class="short-action" data-share aria-label="Share">${G.icon('send', 25)}<small>Share</small></button>
+        <button class="short-action" data-repost aria-label="Repost">${G.icon('repost', 25)}<small>Repost</small></button>
+        <button class="short-action ${p.is_saved ? 'on' : ''}" data-save aria-label="Save">${G.icon('bookmark', 25)}<small>${p.is_saved ? 'Saved' : 'Save'}</small></button>
       </div>
       <div class="short-comments" data-comments hidden></div>
     </article>`);
     const react = node.querySelector('[data-react]');
     react.onclick = async () => {
-      try { const r = await G.post(`/posts/${p.id}/react`, { type: 'like' }); p.my_reaction = r.my_reaction; react.classList.toggle('on', !!r.my_reaction); react.innerHTML = `${r.my_reaction ? '❤️' : '♡'}<small data-count-r>${G.num(r.reaction_count)}</small>`; }
+      try { const r = await G.post(`/posts/${p.id}/react`, { type: 'like' }); p.my_reaction = r.my_reaction; react.classList.toggle('on', !!r.my_reaction); react.innerHTML = `${G.icon('heart', 25)}<small data-count-r>${G.num(r.reaction_count)}</small>`; }
       catch (e) { G.err(e); }
     };
     let pressTimer = null;
     react.addEventListener('contextmenu', (e) => { e.preventDefault(); if (G.openReactionPicker) G.openReactionPicker(react, p, node); });
     react.addEventListener('touchstart', () => { pressTimer = setTimeout(() => G.openReactionPicker && G.openReactionPicker(react, p, node), 450); }, { passive: true });
     react.addEventListener('touchend', () => clearTimeout(pressTimer));
-    node.querySelector('[data-comment]').onclick = () => G.toggleComments(node, p);
+    node.querySelector('[data-comment]').onclick = () => {
+      if (window.innerWidth > 900 && G.openShortCommentsRail) return G.openShortCommentsRail(p);
+      G.toggleComments(node, p);
+    };
     node.querySelector('[data-share]').onclick = async () => {
       const url = location.origin + '/#/post/' + p.id;
       try { await navigator.clipboard?.writeText(url); G.toast('Short link copied', 'ok'); } catch (e) { G.toast(url); }
@@ -164,13 +167,76 @@
     };
   }
 
+  function shortsSidebar(scope) {
+    return `<div class="shorts-side-brand"><a href="#/" aria-label="Bloom home"><span class="shorts-brand-mark">B</span><span>BLOOM</span></a></div>
+      <form class="shorts-side-search" data-short-search role="search"><span>${G.icon('search', 18)}</span><input type="search" placeholder="Search" aria-label="Search Bloom"></form>
+      <div class="shorts-side-nav">
+        <a class="shorts-side-link" href="#/"><span>${G.icon('home', 23)}</span><b>Home</b></a>
+        <a class="shorts-side-link ${scope === 'for-you' ? 'on' : ''}" href="#/shorts"><span>${G.icon('explore', 23)}</span><b>For You</b></a>
+        <a class="shorts-side-link ${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following"><span>${G.icon('network', 23)}</span><b>Following</b></a>
+        <a class="shorts-side-link" href="#/shorts"><span>${G.icon('gaming', 23)}</span><b>Shorts</b></a>
+        <a class="shorts-side-link" href="#/explore?tab=people"><span>${G.icon('groups', 23)}</span><b>Friends</b></a>
+        <a class="shorts-side-link" href="#/explore?tab=live"><span>${G.icon('camera', 23)}</span><b>LIVE</b></a>
+        <a class="shorts-side-link" href="#/notifications"><span>${G.icon('bell', 23)}</span><b>Activity</b></a>
+      </div>
+      <div class="shorts-side-rule"></div>
+      <div class="shorts-side-nav shorts-side-secondary">
+        <button class="shorts-side-link" type="button" data-short-upload><span>${G.icon('plus', 23)}</span><b>Upload</b></button>
+        <a class="shorts-side-link" href="#/u/${esc(S.user.username)}"><span>${G.icon('user', 23)}</span><b>Profile</b></a>
+        <button class="shorts-side-link" type="button" data-short-more><span>${G.icon('more', 23)}</span><b>More</b></button>
+      </div>
+      <div class="shorts-side-footer">Bloom · Connect. Build. Play. Grow.</div>`;
+  }
+
+  function shortsRail() {
+    return `<section class="short-comments-rail">
+      <div class="short-comments-rail-head"><div><b>Comments</b><span id="short-rail-count">0</span></div><button class="short-rail-close" type="button" data-short-rail-close aria-label="Close comments">${G.icon('close', 19)}</button></div>
+      <div class="short-comments-rail-sub" id="short-rail-sub">Share your thoughts on this Short.</div>
+      <div class="short-comments-rail-body" id="short-rail-body"><div class="short-rail-empty">Comments will appear here when you open a Short.</div></div>
+    </section>`;
+  }
+
   G.route('shorts', async (parts, query) => {
     if (!G.requireUser()) return;
     const view = G.mountShell();
-    G.setRail('');
     const scope = query.scope === 'following' ? 'following' : 'for-you';
-    view.innerHTML = `<section class="shorts-page"><div class="shorts-head"><div><h1>Shorts</h1><p>Quick ideas, clips and moments from your hubs.</p></div><div class="shorts-head-actions"><button class="btn btn-primary btn-sm" id="shorts-create">＋ Create Short</button><div class="shorts-tabs"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For you</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div></div></div><div id="shorts-feed" class="shorts-feed"><div class="shorts-loading">Loading Shorts…</div></div></section>`;
-    G.qs('#shorts-create', view).onclick = openShortComposer;
+    document.body.classList.add('shorts-mode');
+
+    const side = G.qs('#shorts-sidenav');
+    if (side) {
+      side.hidden = false;
+      side.innerHTML = shortsSidebar(scope);
+      G.qsa('[data-short-upload]', side).forEach((button) => { button.onclick = openShortComposer; });
+      const more = G.qs('[data-short-more]', side);
+      if (more) more.onclick = () => G.modal('More', `<div class="stack"><a class="row card pad" href="#/settings" data-close>${G.icon('settings', 19)} Settings</a><a class="row card pad" href="#/saved" data-close>${G.icon('saved', 19)} Saved</a><a class="row card pad" href="#/messages" data-close>${G.icon('messages', 19)} Messages</a></div>`);
+      const search = G.qs('[data-short-search]', side);
+      if (search) search.onsubmit = (event) => { event.preventDefault(); const value = search.querySelector('input').value.trim(); if (value) location.hash = '#/explore?q=' + encodeURIComponent(value); };
+    }
+
+    G.setRail(shortsRail());
+    const railBody = G.qs('#short-rail-body');
+    const railSub = G.qs('#short-rail-sub');
+    const railCount = G.qs('#short-rail-count');
+    const railEmpty = () => { if (railBody) railBody.innerHTML = '<div class="short-rail-empty">Comments will appear here when you open a Short.</div>'; };
+    G.openShortCommentsRail = async (post) => {
+      if (!railBody) return;
+      if (railCount) railCount.textContent = G.num(post.comment_count || 0);
+      if (railSub) railSub.textContent = `Comments on @${post.username}`;
+      railBody.innerHTML = '';
+      const holder = G.el('<div class="short-rail-holder"><div data-comments hidden></div></div>');
+      railBody.appendChild(holder);
+      await G.toggleComments(holder, post);
+    };
+    const railClose = G.qs('[data-short-rail-close]');
+    if (railClose) railClose.onclick = () => { railEmpty(); if (railSub) railSub.textContent = 'Share your thoughts on this Short.'; if (railCount) railCount.textContent = '0'; };
+
+    view.innerHTML = `<section class="shorts-page tiktok-shorts-page">
+      <div class="shorts-mobile-head"><a class="shorts-mobile-brand" href="#/" aria-label="Bloom home"><span class="shorts-brand-mark">B</span><b>BLOOM</b></a><div class="shorts-mobile-tabs"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-mobile-more" type="button" data-short-upload aria-label="Create a Short">${G.icon('plus', 20)}</button></div>
+      <div class="shorts-desktop-head"><div class="shorts-desktop-spacer"></div><div class="shorts-feed-switcher"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-header-upload" type="button" data-short-upload>${G.icon('plus', 17)} Upload</button></div>
+      <div id="shorts-feed" class="shorts-feed"><div class="shorts-loading">Loading Shorts…</div></div>
+      <nav class="shorts-mobile-nav" aria-label="Shorts navigation"><a href="#/" data-short-mobile="home"><span>${G.icon('home', 21)}</span><small>Home</small></a><a class="on" href="#/shorts" data-short-mobile="shorts"><span>${G.icon('explore', 21)}</span><small>For You</small></a><button type="button" data-short-upload aria-label="Create a Short"><span>${G.icon('plus', 22)}</span><small>Create</small></button><a href="#/messages" data-short-mobile="inbox"><span>${G.icon('messages', 21)}</span><small>Inbox</small></a><a href="#/u/${esc(S.user.username)}" data-short-mobile="profile"><span>${G.icon('user', 21)}</span><small>Profile</small></a></nav>
+    </section>`;
+    G.qsa('[data-short-upload]', view).forEach((button) => { button.onclick = openShortComposer; });
     const feed = G.qs('#shorts-feed', view);
     let cursor = null, loading = false, done = false;
     const sentinel = G.el('<div class="shorts-sentinel" aria-hidden="true"></div>');
@@ -180,7 +246,11 @@
       try {
         const data = await G.get(`/shorts/feed?scope=${scope}&limit=8` + (cursor ? `&cursor=${cursor}` : ''));
         if (feed.querySelector('.shorts-loading')) feed.innerHTML = '';
-        (data.posts || []).forEach((p) => { if (p.media && p.media[0]) feed.appendChild(shortCard(p)); });
+        const hadCards = !!feed.querySelector('.short-card');
+        const loadedPosts = (data.posts || []).filter((p) => p.media && p.media[0]);
+        loadedPosts.forEach((p) => feed.appendChild(shortCard(p)));
+        // TikTok opens the discussion rail beside the active video on desktop.
+        if (!hadCards && loadedPosts[0] && window.innerWidth > 900) G.openShortCommentsRail(loadedPosts[0]);
         cursor = data.nextCursor;
         if (!feed.querySelector('.short-card') && !cursor) {
           done = true;

@@ -206,8 +206,9 @@
       </div>
       <div class="between" style="margin-bottom:14px">
         <div class="tabs" style="display:inline-flex">
-          <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">For you</button>
+          <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">For You</button>
           <button class="tab ${scope === 'following' ? 'on' : ''}" data-scope="following">Following</button>
+          <a class="tab" href="#/shorts">Shorts</a>
         </div>
       </div>
       <div id="feed"></div>`;

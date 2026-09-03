@@ -28,6 +28,7 @@
 
   G.mountFull = function (html) {
     shellMounted = false;
+    document.body.classList.remove('shorts-mode');
     const root = G.qs('#root');
     root.innerHTML = '';
     const wrap = G.el('<div id="view"></div>');
@@ -37,6 +38,13 @@
   };
 
   G.mountShell = function () {
+    // A Shorts route temporarily swaps the normal shell for a TikTok-style stage.
+    // Reset it whenever another route asks for the regular Bloom shell.
+    document.body.classList.remove('shorts-mode');
+    const regularNav = G.qs('#sidenav');
+    const shortsNav = G.qs('#shorts-sidenav');
+    if (regularNav) regularNav.hidden = false;
+    if (shortsNav) shortsNav.hidden = true;
     if (shellMounted) return G.qs('#view');
     shellMounted = true;
     const u = S.user;
@@ -61,7 +69,7 @@
         </div>
       </header>
       <div class="shell">
-        <nav class="side" aria-label="Main navigation"><div id="sidenav"></div></nav>
+        <nav class="side" aria-label="Main navigation"><div id="sidenav"></div><div id="shorts-sidenav" hidden></div></nav>
         <main id="view" tabindex="-1"></main>
         <aside class="rail rail-right side" id="rail" aria-label="Suggestions"></aside>
       </div>
