@@ -2140,3 +2140,9 @@ html[data-theme="crimson"] .short-action{border-color:rgba(255,75,100,.48);backg
   .short-card{height:calc(100dvh - var(--nav-h) - var(--tab-h) - 74px);min-height:440px;width:100%;margin:0 0 8px;border-radius:20px;border-left:0;border-right:0}
   .short-top{left:14px;right:14px;top:14px}.short-copy{left:14px;right:72px;bottom:18px}.short-actions{right:8px;bottom:14px;gap:7px}.short-action{width:47px;min-height:47px;border-radius:15px;font-size:20px}
 }
+
+.shorts-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:520px){
+  .shorts-head-actions{width:100%;justify-content:space-between}
+  .shorts-head-actions .btn{min-height:40px;padding:9px 13px}
+}

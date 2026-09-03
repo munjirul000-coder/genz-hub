@@ -696,8 +696,14 @@ function shortsFeed({ me, scope = 'for-you', limit = 6, cursor = null }) {
     const candidates = F.queryPosts({ me, where: where.concat(extra), params, limit: Math.min(100, Math.max(30, take * 8)), cursor: baseCursor, order: 'p.created_at DESC, p.id DESC' });
     rows = rankShortsPosts(candidates.posts, me, Math.max(take, candidates.posts.length));
     rankedIds = rows.map((p) => Number(p.id)); nextBase = candidates.nextCursor;
-    // Do not recycle already-shown Shorts immediately. An empty result means the
-    // viewer is caught up; the next fresh upload will appear on the next request.
+    // If the viewer has consumed every available Short during the cooldown, recycle
+    // the least-recently-shown eligible videos instead of rendering a dead black page.
+    if (!rows.length && !baseCursor) {
+      const recycled = F.queryPosts({ me, where: where.concat([extra[0]]), params: {}, limit: Math.min(100, Math.max(30, take * 8)), cursor: null,
+        order: 'COALESCE((SELECT shown_at FROM shorts_impressions si WHERE si.user_id=@me AND si.post_id=p.id),0) ASC, p.created_at DESC, p.id DESC' });
+      rows = rankShortsPosts(recycled.posts, me, Math.max(take, recycled.posts.length));
+      rankedIds = rows.map((p) => Number(p.id)); nextBase = recycled.nextCursor;
+    }
     token = { ids: rankedIds, offset: 0, next: nextBase };
   }
   const page = rows.slice(0, take);
