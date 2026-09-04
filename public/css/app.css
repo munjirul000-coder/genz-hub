@@ -2653,3 +2653,36 @@ html[data-theme="crimson"] .auth-card{
   backdrop-filter:blur(22px) saturate(130%);
   box-shadow:0 26px 90px rgba(0,0,0,.54),inset 0 1px rgba(255,220,214,.32),inset 0 -1px rgba(0,0,0,.34);
 }
+
+/* Performance pass: keep the premium look, but do not repaint full-screen gradients every frame. */
+html[data-theme="crimson"] body::before{
+  will-change:transform;
+  filter:blur(30px) saturate(125%);
+  animation-duration:44s;
+}
+html[data-theme="crimson"] body::after{animation-duration:58s;opacity:.16}
+.bloom-theme-fx{contain:strict;will-change:contents}
+.bloom-petals{contain:paint;transform:translateZ(0)}
+.bloom-petal{will-change:transform}
+html[data-theme="crimson"] body.shorts-mode #view,
+html[data-theme="crimson"] body.shorts-mode .side,
+html[data-theme="crimson"] body.shorts-mode .shorts-page,
+html[data-theme="crimson"] body.shorts-mode .shorts-feed,
+html[data-theme="crimson"] body.shorts-mode .short-comments-rail{
+  animation:none!important;
+  background-position:50% 50%!important;
+}
+html.bloom-lite[data-theme="crimson"] body{background-attachment:scroll!important}
+html.bloom-lite[data-theme="crimson"] body::before{filter:blur(18px) saturate(110%);animation:none!important;opacity:.45}
+html.bloom-lite[data-theme="crimson"] body::after{animation:none!important;opacity:.08}
+html.bloom-lite .bloom-theme-fx::after{display:none}
+html.bloom-lite .bloom-petal{box-shadow:none;will-change:transform}
+html.bloom-lite[data-theme="crimson"] .auth-card{backdrop-filter:none}
+html.bloom-lite[data-theme="crimson"] .btn::before,
+html.bloom-lite[data-theme="crimson"] .iconbtn::before,
+html.bloom-lite[data-theme="crimson"] .type-btn::before,
+html.bloom-lite[data-theme="crimson"] .nav-item::before,
+html.bloom-lite[data-theme="crimson"] .me-card::before,
+html.bloom-lite[data-theme="crimson"] .searchbox::before,
+html.bloom-lite[data-theme="crimson"] .shorts-side-link::before,
+html.bloom-lite[data-theme="crimson"] .shorts-header-upload::before{animation-duration:18s}

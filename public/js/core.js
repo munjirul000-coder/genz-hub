@@ -196,6 +196,11 @@
      stays behind the app, and is removed automatically when the user changes theme. */
   G.syncThemeEffects = function () {
     const enabled = document.documentElement.dataset.theme === 'crimson';
+    const cores = Number(navigator.hardwareConcurrency || 8);
+    const ram = Number(navigator.deviceMemory || 8);
+    const saveData = !!(navigator.connection && navigator.connection.saveData);
+    const lite = saveData || cores <= 4 || ram <= 4;
+    document.documentElement.classList.toggle('bloom-lite', lite);
     let fx = document.querySelector('.bloom-theme-fx');
     if (!enabled) { if (fx) fx.remove(); return; }
     if (fx) return;
@@ -204,7 +209,8 @@
     fx.setAttribute('aria-hidden', 'true');
     const petals = document.createElement('div');
     petals.className = 'bloom-petals';
-    for (let i = 0; i < 32; i++) {
+    const petalCount = lite ? 12 : 20;
+    for (let i = 0; i < petalCount; i++) {
       const petal = document.createElement('i');
       petal.className = 'bloom-petal';
       const left = (i * 31 + 7) % 104;
