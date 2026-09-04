@@ -1,0 +1,5 @@
+# Gen-Z Hub environment configuration (never commit real values)
+PORT=3000
+DATA_DIR=./data
+ADMIN_EMAIL=admin@genzhub.app
+ADMIN_PASSWORD=change-this-strong-password

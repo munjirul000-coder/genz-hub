@@ -1,0 +1,43 @@
+# ডেটা স্থায়ী রাখার সংস্করণ — Render Starter (~$7/মাস), persistent disk সহ।
+# ব্যবহার করতে: এই ফাইলের কনটেন্ট render.yaml-এ কপি করে commit করো।
+services:
+  - type: web
+    name: genz-hub
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: genzhub-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "20.19.0"
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: DEMO_SEED
+        value: "1"
+      - key: ADMIN_EMAIL
+        value: admin@genzhub.app
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      # ---- video pipeline (ffmpeg ships as an npm dependency, no system package needed) ----
+      - key: VIDEO_PRESET          # x264 speed/quality trade-off for a 0.1-CPU free instance
+        value: veryfast
+      - key: VIDEO_CONCURRENCY     # one transcode at a time so the web process stays responsive
+        value: "1"
+      - key: VIDEO_THREADS
+        value: "1"
+      - key: VIDEO_MAX_HEIGHT      # preserve source quality up to 2180p; never upscale smaller uploads
+        value: "2180"
+      - key: VIDEO_MAX_MB
+        value: "500"
+      # - key: MEDIA_BASE_URL      # set to your CDN / object-storage origin to offload delivery
+      #   value: https://cdn.example.com

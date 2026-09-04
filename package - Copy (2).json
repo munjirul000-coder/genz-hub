@@ -1,0 +1,40 @@
+{
+  "name": "genz-hub",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "prod": "NODE_ENV=production node src/server.js",
+    "qa": "bash qa.sh",
+    "uitest": "npx --yes jsdom@29 >/dev/null 2>&1; node ui-test.js",
+    "test": "bash qa.sh",
+    "docker:up": "docker compose up -d --build",
+    "seed:demo": "node src/demo-seed.js --fresh",
+    "seed:reset": "node src/demo-seed.js --fresh",
+    "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\"",
+    "test:video": "node tests/video-quality-test.js",
+    "test:feed": "node tests/video-feed-test.js",
+    "test:stress": "node tests/video-stress-test.js",
+    "test:platform": "node tests/platform-test.js",
+    "test:platform-ui": "node tests/platform-ui-test.js",
+    "seed:platform": "node src/seed-platform.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "Gen-Z Hub \u2014 Connect. Build. Play. Grow.",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "multer": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

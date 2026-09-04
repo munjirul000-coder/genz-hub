@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: genz-hub
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20.19.0"
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /opt/render/project/src/data
+      - key: DEMO_SEED
+        value: "1"
+      - key: ADMIN_EMAIL
+        value: munjirul000@gmail.com
+      - key: ADMIN_PASSWORD
+        value: "AdminGenz2026"
+      # ---- video pipeline (ffmpeg ships as an npm dependency, no system package needed) ----
+      - key: VIDEO_PRESET          # x264 speed/quality trade-off for a 0.1-CPU free instance
+        value: veryfast
+      - key: VIDEO_CONCURRENCY     # one transcode at a time so the web process stays responsive
+        value: "1"
+      - key: VIDEO_THREADS
+        value: "1"
+      - key: VIDEO_MAX_HEIGHT      # preserve source quality up to 2180p; never upscale smaller uploads
+        value: "2180"
+      - key: VIDEO_MAX_MB
+        value: "300"
+      # - key: MEDIA_BASE_URL      # set to your CDN / object-storage origin to offload delivery
+      #   value: https://cdn.example.com
