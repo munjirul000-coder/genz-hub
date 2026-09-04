@@ -2484,3 +2484,172 @@ html[data-theme="crimson"] body.shorts-mode .short-comments-rail-sub{border-colo
 @media (min-width:901px) and (max-width:1200px){
   body:not(.shorts-mode) .shell{grid-template-columns:72px minmax(0,1fr)}
 }
+
+/* ============================================================
+   BLOOM CRIMSON PETAL THEME — supplied flower artwork + glass chrome
+   ============================================================ */
+html[data-theme="crimson"] body{
+  background-color:#050207 !important;
+  background-image:linear-gradient(180deg,rgba(5,0,8,.58),rgba(5,0,8,.86)),url('/assets/bloom-crimson-flowers.jpg') !important;
+  background-size:cover !important;
+  background-position:center top !important;
+  background-attachment:fixed !important;
+}
+html[data-theme="crimson"] body.shorts-mode #view,
+html[data-theme="crimson"] body.shorts-mode .shell{
+  background:rgba(11,2,9,.72) !important;
+  backdrop-filter:blur(2px);
+}
+html[data-theme="crimson"] body.shorts-mode .shorts-page,
+html[data-theme="crimson"] body.shorts-mode .shorts-feed{
+  background:transparent !important;
+}
+.bloom-theme-fx{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+}
+.bloom-theme-fx::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.28) 100%);
+}
+.bloom-petals{position:absolute;inset:0;overflow:hidden}
+.bloom-petal{
+  position:absolute;
+  top:-12vh;
+  display:block;
+  border-radius:100% 0 100% 0;
+  background:linear-gradient(145deg,#ff7183 0%,#d61c45 45%,#560719 100%);
+  box-shadow:0 0 8px rgba(255,42,85,.34),inset 1px 1px 2px rgba(255,220,220,.32);
+  opacity:.78;
+  transform:rotate(0deg);
+  animation:bloomPetalFall 15s linear infinite;
+}
+@keyframes bloomPetalFall{
+  0%{transform:translate3d(0,-12vh,0) rotate(0deg) scale(.72);opacity:0}
+  8%{opacity:.8}
+  48%{transform:translate3d(calc(var(--petal-drift) * .35),50vh,0) rotate(calc(var(--petal-rotate) * .5)) scale(1)}
+  100%{transform:translate3d(var(--petal-drift),118vh,0) rotate(var(--petal-rotate)) scale(.86);opacity:0}
+}
+
+/* Glassy rose-red surfaces with a slow permanent light sweep. */
+@keyframes bloomGlossSweep{0%,18%{transform:translateX(-135%)}55%,100%{transform:translateX(135%)}}
+html[data-theme="crimson"] .btn,
+html[data-theme="crimson"] .iconbtn,
+html[data-theme="crimson"] .type-btn,
+html[data-theme="crimson"] .nav-item,
+html[data-theme="crimson"] .me-card,
+html[data-theme="crimson"] .searchbox,
+html[data-theme="crimson"] .shorts-side-link,
+html[data-theme="crimson"] .shorts-header-upload{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  background-image:linear-gradient(135deg,rgba(255,83,111,.72),rgba(103,4,25,.9) 48%,rgba(224,53,87,.68)) !important;
+  background-size:220% 220%;
+  box-shadow:0 8px 24px rgba(130,0,26,.42),inset 0 1px rgba(255,218,212,.34),inset 0 -1px rgba(30,0,8,.4) !important;
+}
+html[data-theme="crimson"] .btn::before,
+html[data-theme="crimson"] .iconbtn::before,
+html[data-theme="crimson"] .type-btn::before,
+html[data-theme="crimson"] .nav-item::before,
+html[data-theme="crimson"] .me-card::before,
+html[data-theme="crimson"] .searchbox::before,
+html[data-theme="crimson"] .shorts-side-link::before,
+html[data-theme="crimson"] .shorts-header-upload::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:-40% -55%;
+  background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.33) 49%,transparent 60%);
+  animation:bloomGlossSweep 8s ease-in-out infinite;
+  pointer-events:none;
+}
+html[data-theme="crimson"] .input,
+html[data-theme="crimson"] .textarea,
+html[data-theme="crimson"] .select,
+html[data-theme="crimson"] .searchbox input{
+  border-color:#ff5470 !important;
+  box-shadow:inset 0 1px rgba(255,220,212,.25),0 6px 20px rgba(120,0,24,.3) !important;
+}
+html[data-theme="crimson"] .post,
+html[data-theme="crimson"] .greet,
+html[data-theme="crimson"] .composer-shell,
+html[data-theme="crimson"] .stories,
+html[data-theme="crimson"] .modal,
+html[data-theme="crimson"] .auth-card,
+html[data-theme="crimson"] .short-comments-rail{
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(145deg,rgba(87,4,25,.84),rgba(25,2,13,.9) 58%,rgba(119,11,39,.72)) !important;
+  border-color:rgba(255,83,111,.68) !important;
+  box-shadow:0 18px 55px rgba(84,0,20,.52),inset 0 1px rgba(255,190,180,.28),inset 0 -1px rgba(0,0,0,.46) !important;
+}
+html[data-theme="crimson"] .post::before,
+html[data-theme="crimson"] .greet::before,
+html[data-theme="crimson"] .composer-shell::before,
+html[data-theme="crimson"] .stories::before,
+html[data-theme="crimson"] .modal::before,
+html[data-theme="crimson"] .auth-card::before,
+html[data-theme="crimson"] .short-comments-rail::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(116deg,transparent 15%,rgba(255,132,145,.13) 45%,transparent 61%);
+  background-size:240% 100%;
+  animation:bloomGlossSweep 12s ease-in-out infinite;
+}
+html[data-theme="crimson"] .shorts-side-brand .shorts-brand-mark,
+html[data-theme="crimson"] .logo-mark{
+  animation:bloomLogoPulse 3.8s ease-in-out infinite;
+}
+@keyframes bloomLogoPulse{
+  0%,100%{filter:saturate(1);box-shadow:0 7px 24px rgba(255,35,70,.42),inset 0 1px rgba(255,215,180,.55)}
+  50%{filter:saturate(1.4) brightness(1.12);box-shadow:0 10px 34px rgba(255,35,70,.72),0 0 22px rgba(255,95,122,.28),inset 0 1px rgba(255,245,215,.75)}
+}
+html[data-theme="crimson"] body.shorts-mode .shorts-side-link.on{
+  background:linear-gradient(135deg,#ff4868,#b30d31 62%,#e0a661) !important;
+  color:#080104 !important;
+  box-shadow:0 10px 30px rgba(255,39,76,.58),inset 0 1px rgba(255,230,210,.55) !important;
+}
+html[data-theme="crimson"] body.shorts-mode .short-action:not(.short-profile-action){
+  box-shadow:0 6px 22px rgba(255,37,73,.32),inset 0 1px rgba(255,255,255,.65) !important;
+}
+@media (prefers-reduced-motion:reduce){
+  .bloom-petal,
+  html[data-theme="crimson"] .btn::before,
+  html[data-theme="crimson"] .iconbtn::before,
+  html[data-theme="crimson"] .type-btn::before,
+  html[data-theme="crimson"] .nav-item::before,
+  html[data-theme="crimson"] .me-card::before,
+  html[data-theme="crimson"] .searchbox::before,
+  html[data-theme="crimson"] .shorts-side-link::before,
+  html[data-theme="crimson"] .shorts-header-upload::before,
+  html[data-theme="crimson"] .post::before,
+  html[data-theme="crimson"] .greet::before,
+  html[data-theme="crimson"] .composer-shell::before,
+  html[data-theme="crimson"] .stories::before,
+  html[data-theme="crimson"] .modal::before,
+  html[data-theme="crimson"] .auth-card::before,
+  html[data-theme="crimson"] .short-comments-rail::before,
+  html[data-theme="crimson"] .shorts-brand-mark,
+  html[data-theme="crimson"] .logo-mark{animation:none!important}
+}
+
+/* Crimson auth screen: the supplied flower image remains visible behind a glass login card. */
+html[data-theme="crimson"] .auth-wrap{background:rgba(4,0,7,.16)}
+html[data-theme="crimson"] .auth-art,
+html[data-theme="crimson"] .auth-form{background:transparent!important}
+html[data-theme="crimson"] .auth-card{
+  padding:30px;
+  border:1px solid rgba(255,121,139,.48);
+  border-radius:30px;
+  background:linear-gradient(145deg,rgba(112,18,45,.66),rgba(27,2,15,.78) 58%,rgba(182,29,64,.42));
+  backdrop-filter:blur(22px) saturate(130%);
+  box-shadow:0 26px 90px rgba(0,0,0,.54),inset 0 1px rgba(255,220,214,.32),inset 0 -1px rgba(0,0,0,.34);
+}

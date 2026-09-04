@@ -189,6 +189,35 @@
     const sys = mq && mq.matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = t === 'system' ? sys : t;
     localStorage.setItem('gz_theme', t);
+    if (G.syncThemeEffects) G.syncThemeEffects();
+  };
+
+  /* Crimson theme atmosphere: a lightweight DOM-only petal layer. It is created once,
+     stays behind the app, and is removed automatically when the user changes theme. */
+  G.syncThemeEffects = function () {
+    const enabled = document.documentElement.dataset.theme === 'crimson';
+    let fx = document.querySelector('.bloom-theme-fx');
+    if (!enabled) { if (fx) fx.remove(); return; }
+    if (fx) return;
+    fx = document.createElement('div');
+    fx.className = 'bloom-theme-fx';
+    fx.setAttribute('aria-hidden', 'true');
+    const petals = document.createElement('div');
+    petals.className = 'bloom-petals';
+    for (let i = 0; i < 32; i++) {
+      const petal = document.createElement('i');
+      petal.className = 'bloom-petal';
+      const left = (i * 31 + 7) % 104;
+      const size = 7 + ((i * 13) % 10);
+      const delay = -((i * 1.73) % 16);
+      const duration = 11 + ((i * 7) % 11);
+      const drift = -140 + ((i * 53) % 280);
+      const rotate = -80 + ((i * 41) % 210);
+      petal.style.cssText = `left:${left}%;width:${size}px;height:${Math.round(size * 1.55)}px;animation-delay:${delay.toFixed(2)}s;animation-duration:${duration}s;--petal-drift:${drift}px;--petal-rotate:${rotate}deg;`;
+      petals.appendChild(petal);
+    }
+    fx.appendChild(petals);
+    document.body.prepend(fx);
   };
   if (window.matchMedia) {
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
