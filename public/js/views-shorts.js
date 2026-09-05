@@ -274,12 +274,14 @@
     };
 
     view.innerHTML = `<section class="shorts-page tiktok-shorts-page">
-      <div class="shorts-mobile-head"><a class="shorts-mobile-brand" href="#/" aria-label="Bloom home"><span class="shorts-brand-mark">B</span><b>BLOOM</b></a><div class="shorts-mobile-tabs"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-mobile-more" type="button" data-short-upload aria-label="Create a Short">${G.icon('plus', 20)}</button></div>
+      <div class="shorts-mobile-head"><a class="shorts-mobile-brand" href="#/" aria-label="Bloom home"><span class="shorts-brand-mark">B</span><b>BLOOM</b></a><div class="shorts-mobile-tabs"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-mobile-more" type="button" data-short-top-search aria-label="Search Bloom">${G.icon('search', 20)}</button></div>
       <div class="shorts-desktop-head"><div class="shorts-desktop-spacer"></div><div class="shorts-feed-switcher"><a class="${scope === 'for-you' ? 'on' : ''}" href="#/shorts">For You</a><a class="${scope === 'following' ? 'on' : ''}" href="#/shorts?scope=following">Following</a></div><button class="shorts-header-upload" type="button" data-short-upload>${G.icon('plus', 17)} Upload</button></div>
       <div id="shorts-feed" class="shorts-feed"><div class="shorts-loading">Loading Shorts…</div></div>
       <nav class="shorts-mobile-nav" aria-label="Shorts navigation"><a href="#/" data-short-mobile="home"><span>${G.icon('home', 21)}</span><small>Home</small></a><a class="on" href="#/shorts" data-short-mobile="shorts"><span>${G.icon('explore', 21)}</span><small>For You</small></a><button type="button" data-short-upload aria-label="Create a Short"><span>${G.icon('plus', 22)}</span><small>Create</small></button><a href="#/messages" data-short-mobile="inbox"><span>${G.icon('messages', 21)}</span><small>Inbox</small></a><a href="#/u/${esc(S.user.username)}" data-short-mobile="profile"><span>${G.icon('user', 21)}</span><small>Profile</small></a></nav>
     </section>`;
     G.qsa('[data-short-upload]', view).forEach((button) => { button.onclick = openShortComposer; });
+    const topSearch = G.qs('[data-short-top-search]', view);
+    if (topSearch) topSearch.onclick = () => { location.hash = '#/explore'; };
     const feed = G.qs('#shorts-feed', view);
     let cursor = null, loading = false, done = false, scrollFrame = 0;
     // A comments panel belongs to the video it was opened from. Close it as soon as

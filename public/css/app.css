@@ -2691,6 +2691,10 @@ html.bloom-lite[data-theme="crimson"] .shorts-header-upload::before{animation-du
    IVORY GOLD — approved light premium theme for the live Bloom UI
    ============================================================ */
 html[data-theme="ivory"]{
+  --volt:#d4af37;
+  --volt-deep:#a67c00;
+  --aqua:#b88916;
+  --iris:#d7b85a;
   --bg:#f7f4ec;
   --bg-tint:#eee9dd;
   --surface:#fffdf8;
@@ -2786,3 +2790,46 @@ html[data-theme="ivory"] .tabbar button{color:#777267}
 html[data-theme="ivory"] .tabbar button.on{color:#6b4e05}
 html[data-theme="ivory"] .tabbar button.on .ti{background:#f0eadf;color:#8a6508}
 html[data-theme="ivory"] .story-viewer{background:rgba(247,244,236,.94)}
+
+/* Ivory Gold Shorts: black cinematic viewer with the reference's quiet-gold chrome. */
+html[data-theme="ivory"] body.shorts-mode,
+html[data-theme="ivory"] body.shorts-mode #view,
+html[data-theme="ivory"] body.shorts-mode .shorts-page,
+html[data-theme="ivory"] body.shorts-mode .shorts-feed{background:#000!important;color:#fff}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-head{background:linear-gradient(180deg,rgba(0,0,0,.82),transparent);color:var(--gold-light)}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-brand{color:#fff}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-tabs a{color:rgba(255,255,255,.64)}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-tabs a.on{color:#f3d28c}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-tabs a.on::after{background:#c19a6b;box-shadow:0 0 10px rgba(193,154,107,.72)}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-more{background:rgba(0,0,0,.44);border-color:rgba(193,154,107,.42);color:#e7c89b}
+html[data-theme="ivory"] body.shorts-mode .shorts-feed-switcher a.on{color:#171611}
+html[data-theme="ivory"] body.shorts-mode .shorts-feed-switcher a.on::after{background:#c19a6b}
+html[data-theme="ivory"] body.shorts-mode .short-card .short-card-stage{background:#000}
+html[data-theme="ivory"] body.shorts-mode .short-follow{display:none!important}
+html[data-theme="ivory"] body.shorts-mode .short-creator{color:#f3e5ab}
+html[data-theme="ivory"] body.shorts-mode .short-creator small{color:rgba(255,255,255,.72)}
+html[data-theme="ivory"] body.shorts-mode .short-copy{color:#fff;text-shadow:0 2px 10px #000}
+html[data-theme="ivory"] body.shorts-mode .short-copy a{color:#e7c89b}
+html[data-theme="ivory"] body.shorts-mode .short-action:not(.short-profile-action){background:rgba(5,5,5,.54);border-color:rgba(193,154,107,.4);color:#d7b679;box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 1px rgba(255,255,255,.16)}
+html[data-theme="ivory"] body.shorts-mode .short-action:not(.short-profile-action):hover,
+html[data-theme="ivory"] body.shorts-mode .short-action:not(.short-profile-action).on{background:rgba(193,154,107,.15);border-color:#d4af37;color:#f3d28c}
+html[data-theme="ivory"] body.shorts-mode .short-profile-plus{background:#c19a6b;color:#080604;border-color:#000}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav{background:rgba(8,8,8,.9);border-color:rgba(193,154,107,.3);box-shadow:0 15px 45px #000,0 0 0 1px rgba(193,154,107,.12);color:#fff}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav a,
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav button{color:rgba(255,255,255,.64)}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav a.on{color:#f3d28c}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav button[data-short-upload] span{background:linear-gradient(135deg,#8d6426,#c19a6b 42%,#f3e5ab 55%,#9b712c);color:#080604;box-shadow:0 0 18px rgba(193,154,107,.34)}
+html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav small{display:none}
+html[data-theme="ivory"] body.shorts-mode .short-profile-action{background:transparent!important}
+@media (max-width:900px){
+  html[data-theme="ivory"] body.shorts-mode .short-top{top:auto;left:15px;right:auto;bottom:122px}
+  html[data-theme="ivory"] body.shorts-mode .short-copy{left:15px;right:78px;bottom:80px}
+  html[data-theme="ivory"] body.shorts-mode .shorts-mobile-nav{height:60px}
+}
+
+/* Reference-style Shorts viewer: keep transport controls hidden in the Ivory Gold feed. */
+html[data-theme="ivory"] body.shorts-mode .gzv-bar{
+  opacity:0!important;
+  pointer-events:none!important;
+  transform:translateY(8px)!important;
+}
