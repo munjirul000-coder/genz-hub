@@ -145,7 +145,7 @@
           const d = await G.get(`/conversations/${id}/messages?after=${lastId}`);
           if (d.messages.length) { if (body.querySelector('p')) body.innerHTML = ''; render(d.messages); }
         } catch (e) {}
-      }, 4000);
+      }, 2000);
     } catch (e) {
       main.innerHTML = G.errorState(e.message);
     }

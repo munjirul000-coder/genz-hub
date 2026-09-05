@@ -165,6 +165,7 @@
   /* ---------------- home ---------------- */
   G.route('home', async (parts, query) => {
     if (!G.requireUser()) return;
+    if (G._homeFeedCleanup) G._homeFeedCleanup();
     const view = G.mountShell();
     const scope = query.scope || 'for-you';
     const hour = new Date().getHours();
@@ -227,12 +228,19 @@
       G.openComposer(Object.assign({ contentType: t }, map[t] || {}));
     });
     G.qsa('[data-scope]', view).forEach((b) => b.onclick = () => { location.hash = '#/?scope=' + b.dataset.scope; });
-    G.feedList(G.qs('#feed', view), `/posts/feed?scope=${encodeURIComponent(scope)}`, {
+    const feedController = G.feedList(G.qs('#feed', view), `/posts/feed?scope=${encodeURIComponent(scope)}`, {
       empty: G.emptyState('🌱', scope === 'following' ? 'Your following feed is empty' : 'No posts yet',
         scope === 'following' ? 'Follow more people to fill this feed.' : 'Be the first to post on Bloom today.',
         `<div style="margin-top:12px"><button class="btn btn-primary btn-sm" data-compose>Create a post</button>
          <a class="btn btn-ghost btn-sm" href="#/explore?tab=people">Find people</a></div>`),
     });
+    // Keep two logged-in browsers in sync without a hard page reload. A new public
+    // post is picked up on the next refresh while the current scroll position remains intact.
+    const homeRefresh = setInterval(() => {
+      if (S.route.name !== 'home') return clearInterval(homeRefresh);
+      if (document.visibilityState === 'visible') feedController.reload();
+    }, 8000);
+    G._homeFeedCleanup = () => clearInterval(homeRefresh);
     buildRail();
   });
 

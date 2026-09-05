@@ -689,7 +689,7 @@
     const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) { autoFills = 0; load(); } }, { rootMargin: '400px' });
     load().then(() => { io.observe(sentinel); fillIfNeeded(true); });
     window.addEventListener('scroll', onScroll, { passive: true });
-    return { reload: () => { cursor = null; done = false; first = true; container.innerHTML = ''; load(); } };
+    return { reload: () => { cursor = null; done = false; first = true; list.innerHTML = ''; container.innerHTML = ''; loading = false; load(); } };
   };
 
   /* ---------------- small cards ---------------- */
