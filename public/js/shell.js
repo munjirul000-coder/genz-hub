@@ -100,7 +100,7 @@
     });
     G.qs('#nav-theme').onclick = () => {
       const cur = (S.user && S.user.theme) || 'system';
-      const next = cur === 'dark' ? 'crimson' : cur === 'crimson' ? 'light' : cur === 'light' ? 'system' : 'dark';
+      const next = cur === 'dark' ? 'ivory' : cur === 'ivory' ? 'crimson' : cur === 'crimson' ? 'light' : cur === 'light' ? 'system' : 'dark';
       G.applyTheme(next);
       if (S.user) { S.user.theme = next; G.patch('/me/settings', { theme: next }).catch(() => {}); }
       G.toast('Theme: ' + next);

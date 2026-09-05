@@ -184,7 +184,7 @@
   /* ---------------- theme ---------------- */
   G.applyTheme = function (theme) {
     const requested = theme || (S.user && S.user.theme) || localStorage.getItem('gz_theme') || 'dark';
-    const t = ['light', 'dark', 'crimson', 'system'].includes(requested) ? requested : 'dark';
+    const t = ['light', 'dark', 'crimson', 'ivory', 'system'].includes(requested) ? requested : 'ivory';
     const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
     const sys = mq && mq.matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = t === 'system' ? sys : t;
