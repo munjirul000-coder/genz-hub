@@ -1,0 +1,29 @@
+{
+  "name": "ideapulse",
+  "version": "1.0.0",
+  "description": "IdeaPulse — Discover what people really need. Anonymously collect real problems and surface business opportunities.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "seed:demo": "node src/seed.js --demo",
+    "test": "node tests/smoke.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "keywords": [
+    "idea",
+    "feedback",
+    "opportunity",
+    "market-research"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.7.5",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2"
+  }
+}

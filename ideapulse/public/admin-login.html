@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="meta.title.login">Admin Login — IdeaPulse</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body class="admin-body" data-page="admin-login">
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="brand" href="/">
+        <span class="logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 13a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M12 13V5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg>
+        </span>
+        IdeaPulse <span style="font-weight:600;color:var(--muted);font-size:0.85rem;">· Admin</span>
+      </a>
+      <div class="nav-actions">
+        <button class="lang-toggle" type="button" data-lang-toggle aria-label="Switch language">বাংলা</button>
+        <a href="/" style="font-weight:600;font-size:0.9rem;" data-i18n="login.back">← Back to site</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="login-wrap">
+    <div class="login-card">
+      <div class="form-card fade-in">
+        <div class="center" style="margin-bottom:26px;">
+          <div class="success-ring" style="width:64px;height:64px;margin-bottom:16px;background:var(--grad);box-shadow:0 12px 28px rgba(124,58,237,.35);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h1 style="font-size:1.7rem;" data-i18n="login.title">Admin Login</h1>
+          <p style="margin:0;font-size:0.95rem;" data-i18n="login.sub">Private area — authorized admins only.</p>
+        </div>
+
+        <form id="login-form" novalidate>
+          <div class="field">
+            <label for="email" data-i18n="login.email">Admin email / username</label>
+            <input class="input" type="email" id="email" name="email" autocomplete="username" required placeholder="admin@ideapulse.app" />
+          </div>
+          <div class="field">
+            <label for="password" data-i18n="login.password">Password</label>
+            <input class="input" type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn" data-i18n="login.btn">Sign in</button>
+          </div>
+          <p id="login-error" class="hint" style="color:var(--rose);text-align:center;margin:14px 0 0;display:none;"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/i18n.js"></script>
+  <script src="/js/ideapulse.js"></script>
+</body>
+</html>
