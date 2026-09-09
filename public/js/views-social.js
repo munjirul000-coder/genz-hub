@@ -13,8 +13,11 @@
     if (G._chatViewportCleanup) G._chatViewportCleanup();
     const visualViewport = window.visualViewport;
     const syncChatViewport = () => {
-      const height = visualViewport && visualViewport.height ? visualViewport.height : window.innerHeight;
-      document.documentElement.style.setProperty('--bloom-chat-vh', `${Math.round(height)}px`);
+      const viewportHeight = visualViewport && visualViewport.height ? visualViewport.height : window.innerHeight;
+      // Measure the Messenger title bar so safe-area/notch devices keep the composer visible.
+      const chrome = G.qs('.messenger-mobile-head', view)?.getBoundingClientRect().height || 58;
+      const height = Math.max(240, Math.round(viewportHeight - chrome));
+      document.documentElement.style.setProperty('--bloom-chat-vh', `${height}px`);
       const body = G.qs('#cbody', view);
       if (body) requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
     };
@@ -44,6 +47,7 @@
       </div>
       <div class="chat-main" id="cmain"></div></div>
       <nav class="messenger-mobile-nav" aria-label="Messages navigation"><a class="active" href="#/messages"><span>${G.icon('messages', 20)}</span><small>Chats</small></a><a href="#/network"><span>${G.icon('groups', 20)}</span><small>People</small></a><a href="#/notifications"><span>${G.icon('bell', 20)}</span><small>Notifications</small></a><a href="#/menu"><span>${G.icon('menu', 20)}</span><small>Menu</small></a></nav>`;
+    syncChatViewport();
 
     const listBox = G.qs('#clist', view);
     async function loadList(q) {
