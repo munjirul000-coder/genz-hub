@@ -689,7 +689,21 @@
     const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) { autoFills = 0; load(); } }, { rootMargin: '400px' });
     load().then(() => { io.observe(sentinel); fillIfNeeded(true); });
     window.addEventListener('scroll', onScroll, { passive: true });
-    return { reload: () => { cursor = null; done = false; first = true; list.innerHTML = ''; container.innerHTML = ''; loading = false; load(); } };
+    async function refreshNew() {
+      if (loading || !document.body.contains(container) || first) return 0;
+      try {
+        const sep = url.includes('?') ? '&' : '?';
+        const data = await G.get(url + sep + 'limit=20');
+        const existing = new Set([...list.querySelectorAll('[data-post]')].map((node) => String(node.dataset.post)));
+        const fresh = (data.posts || []).filter((p) => !existing.has(String(p.id)));
+        fresh.slice().reverse().forEach((p) => list.insertBefore(G.postCard(p), list.firstChild));
+        return fresh.length;
+      } catch (e) { return 0; }
+    }
+    return {
+      reload: () => { cursor = null; done = false; first = true; list.innerHTML = ''; container.innerHTML = ''; loading = false; load(); },
+      refreshNew,
+    };
   };
 
   /* ---------------- small cards ---------------- */

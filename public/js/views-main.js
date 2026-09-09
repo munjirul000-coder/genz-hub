@@ -216,13 +216,24 @@
         `<div style="margin-top:12px"><button class="btn btn-primary btn-sm" data-compose>Create a post</button>
          <a class="btn btn-ghost btn-sm" href="#/explore?tab=people">Find people</a></div>`),
     });
-    // Keep two logged-in browsers in sync without a hard page reload. A new public
-    // post is picked up on the next refresh while the current scroll position remains intact.
-    const homeRefresh = setInterval(() => {
-      if (S.route.name !== 'home') return clearInterval(homeRefresh);
-      if (document.visibilityState === 'visible') feedController.reload();
-    }, 8000);
-    G._homeFeedCleanup = () => clearInterval(homeRefresh);
+    // Keep two logged-in browsers in sync without replacing the feed DOM. New public
+    // posts are inserted at the top; comments, reactions, focus and scroll position survive.
+    const refreshHome = () => {
+      if (S.route.name !== 'home' || document.visibilityState !== 'visible') return;
+      const active = document.activeElement;
+      if (active && active.matches('textarea,input,[contenteditable]')) return;
+      if (view.querySelector('[data-comments]:not([hidden])')) return;
+      feedController.refreshNew();
+    };
+    const homeRefresh = setInterval(refreshHome, 8000);
+    const homeFocus = () => setTimeout(refreshHome, 120);
+    window.addEventListener('focus', homeFocus);
+    document.addEventListener('visibilitychange', homeFocus);
+    G._homeFeedCleanup = () => {
+      clearInterval(homeRefresh);
+      window.removeEventListener('focus', homeFocus);
+      document.removeEventListener('visibilitychange', homeFocus);
+    };
     buildRail();
   });
 
