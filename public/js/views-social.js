@@ -10,10 +10,29 @@
     const view = G.mountShell();
     G.setRail('');
     document.body.classList.add('chat-open');
+    if (G._chatViewportCleanup) G._chatViewportCleanup();
+    const visualViewport = window.visualViewport;
+    const syncChatViewport = () => {
+      const height = visualViewport && visualViewport.height ? visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--bloom-chat-vh', `${Math.round(height)}px`);
+      const body = G.qs('#cbody', view);
+      if (body) requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
+    };
+    syncChatViewport();
+    visualViewport?.addEventListener('resize', syncChatViewport);
+    visualViewport?.addEventListener('scroll', syncChatViewport);
+    G._chatViewportCleanup = () => {
+      visualViewport?.removeEventListener('resize', syncChatViewport);
+      visualViewport?.removeEventListener('scroll', syncChatViewport);
+      document.documentElement.style.removeProperty('--bloom-chat-vh');
+    };
     if (!G._chatCleanup) {
       G._chatCleanup = true;
       window.addEventListener('hashchange', () => {
-        if (!(location.hash || '').startsWith('#/messages')) document.body.classList.remove('chat-open');
+        if (!(location.hash || '').startsWith('#/messages')) {
+          document.body.classList.remove('chat-open');
+          G._chatViewportCleanup?.();
+        }
       });
     }
     const activeId = parts[0] ? Number(parts[0]) : null;

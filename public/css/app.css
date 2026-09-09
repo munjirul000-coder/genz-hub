@@ -2880,3 +2880,22 @@ html[data-theme="ivory"] .messenger-mobile-head,
 html[data-theme="ivory"] .messenger-mobile-nav{background:rgba(255,255,255,.9);border-color:rgba(28,25,17,.1)}
 html[data-theme="ivory"] .chat-body{background:#f7f4ec}
 html[data-theme="ivory"] .messenger-mobile-nav a.active{color:#a67c00}
+
+/* Mobile chat keyboard fix: keep the composer inside the visual viewport so typed text
+   and attachment/emoji controls stay immediately above the Android keyboard. */
+@media (max-width:900px){
+  body.chat-open .shell,
+  body.chat-open #view,
+  body.chat-open .chat-shell,
+  body.chat-open .chat-main{
+    height:var(--bloom-chat-vh,100dvh)!important;
+    min-height:0!important;
+  }
+  body.chat-open .chat-shell{display:grid!important;overflow:hidden!important}
+  body.chat-open .chat-main{display:flex!important;overflow:hidden!important}
+  body.chat-open .chat-body{min-height:0!important;flex:1 1 auto!important;overflow-y:auto!important;overscroll-behavior:contain}
+  body.chat-open .chat-input{position:relative!important;z-index:5;flex:0 0 auto!important;min-height:60px;background:var(--surface)!important}
+  body.chat-open .chat-input .textarea,
+  body.chat-open #cmsg{color:var(--ink)!important;background:var(--surface-2)!important;opacity:1!important}
+  body.chat-open #cmsg::placeholder{color:var(--muted)!important}
+}
