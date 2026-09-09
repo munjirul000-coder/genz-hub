@@ -114,7 +114,9 @@ function publicUser(u, viewerId) {
   if (!u) return null;
   return {
     id: u.id, username: u.username, full_name: u.full_name, avatar: u.avatar, cover: u.cover,
-    bio: u.bio, location: u.location, role: u.role, status: u.status,
+    bio: u.bio, location: u.location, status: u.status,
+    // Administrative roles are server-side only; never expose them on public profiles.
+    ...(viewerId === u.id ? { role: u.role } : {}),
     in_business: !!u.in_business, in_gaming: !!u.in_gaming,
     business_role: u.business_role, fav_games: u.fav_games, platform: u.platform, gamer_tag: u.gamer_tag,
     created_at: u.created_at, last_seen: u.last_seen,

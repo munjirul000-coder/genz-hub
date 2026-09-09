@@ -50,7 +50,7 @@ function visibilitySQL(alias = 'p') {
 }
 
 const POST_FIELDS = `
-  p.*, u.username, u.full_name, u.avatar, u.role AS author_role,
+  p.*, u.username, u.full_name, u.avatar,
   (SELECT COUNT(*) FROM reactions rr WHERE rr.post_id=p.id) AS reaction_count,
   (SELECT COUNT(*) FROM comments cc WHERE cc.post_id=p.id AND cc.removed=0) AS comment_count,
   (SELECT COUNT(*) FROM posts sp WHERE sp.repost_of=p.id AND sp.removed=0) AS repost_count,

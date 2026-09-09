@@ -17,12 +17,14 @@
       });
     }
     const activeId = parts[0] ? Number(parts[0]) : null;
-    view.innerHTML = `<div class="card chat-shell ${activeId ? 'has-active' : ''}" style="overflow:hidden">
+    view.innerHTML = `<div class="messenger-mobile-head"><a class="messenger-close" href="#/" aria-label="Close messages">${G.icon('close', 22)}</a><strong>Messenger</strong><button class="messenger-more" type="button" aria-label="More">•••</button></div>
+      <div class="card chat-shell ${activeId ? 'has-active' : ''}" style="overflow:hidden">
       <div class="conv-list">
         <div class="pad" style="padding:12px"><input class="input" id="csearch" placeholder="Search conversations" aria-label="Search conversations"></div>
         <div id="clist">${G.skeletonList(4)}</div>
       </div>
-      <div class="chat-main" id="cmain"></div></div>`;
+      <div class="chat-main" id="cmain"></div></div>
+      <nav class="messenger-mobile-nav" aria-label="Messages navigation"><a class="active" href="#/messages"><span>${G.icon('messages', 20)}</span><small>Chats</small></a><a href="#/network"><span>${G.icon('groups', 20)}</span><small>People</small></a><a href="#/notifications"><span>${G.icon('bell', 20)}</span><small>Notifications</small></a><a href="#/menu"><span>${G.icon('menu', 20)}</span><small>Menu</small></a></nav>`;
 
     const listBox = G.qs('#clist', view);
     async function loadList(q) {

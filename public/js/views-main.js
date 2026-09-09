@@ -18,27 +18,9 @@
           <button class="btn btn-sm btn-primary" data-f="${u.id}">Follow</button></div>`).join('')
         : '<p class="tiny muted">No suggestions right now.</p>'}</div>`);
     } catch (e) { parts.push('<div class="card pad tiny muted">Could not load suggestions.</div>'); }
-    try {
-      const { hashtags } = await G.get('/posts/trending-hashtags');
-      parts.push(`<div class="card pad"><div class="bold small" style="margin-bottom:8px">🔥 ${esc(G.t('Trending'))}</div>
-        ${hashtags.length ? hashtags.map((h) => `<a class="between" href="#/hashtag/${esc(h.tag)}" style="padding:5px 0">
-          <span class="small bold">#${esc(h.tag)}</span><span class="tiny muted">${h.n} posts</span></a>`).join('')
-        : '<p class="tiny muted">No trending tags yet.</p>'}</div>`);
-    } catch (e) {}
-    try {
-      const { communities } = await G.get('/communities' + (hub ? '?hub=' + hub : ''));
-      parts.push(`<div class="card pad"><div class="bold small" style="margin-bottom:8px">🌐 Communities to join</div>
-        ${communities.slice(0, 4).map((c) => `<a class="between" href="#/c/${esc(c.slug)}" style="padding:5px 0">
-          <span class="small bold">${esc(c.name)}</span><span class="tiny muted">${G.num(c.member_count)}</span></a>`).join('') || '<p class="tiny muted">No communities yet.</p>'}</div>`);
-    } catch (e) {}
-    try {
-      const { events } = await G.get('/events' + (hub ? '?hub=' + hub : ''));
-      parts.push(`<div class="card pad"><div class="between" style="margin-bottom:8px"><span class="bold small">📅 ${esc(G.t('Upcoming events'))}</span>
-        <a class="link tiny" href="#/events">All</a></div>
-        ${events.slice(0, 3).map((ev) => `<a href="#/event/${ev.id}" style="display:block;padding:6px 0">
-          <div class="small bold">${esc(ev.title)}</div><div class="tiny muted">${G.fmtDateTime(ev.starts_at)}</div></a>`).join('')
-        || '<p class="tiny muted">No upcoming events.</p>'}</div>`);
-    } catch (e) {}
+    // Keep the right rail intentionally quiet: suggested people only.
+    // Trending tags, communities and events remain available on their dedicated pages.
+
     G.setRail(parts.join(''));
     G.qsa('#rail [data-f]').forEach((b) => b.onclick = async () => {
       b.disabled = true;
@@ -361,7 +343,6 @@
             <div class="prof-badges">
               ${p.in_business ? '<span class="badge badge-biz">Business</span>' : ''}
               ${p.in_gaming ? '<span class="badge badge-game">Gaming</span>' : ''}
-              ${p.role === 'admin' ? '<span class="badge badge-admin">Admin</span>' : ''}
               ${p.business_role ? `<span class="pill">${esc(p.business_role)}</span>` : ''}
             </div>
             <div class="prof-meta">

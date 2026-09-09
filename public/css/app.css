@@ -2833,3 +2833,50 @@ html[data-theme="ivory"] body.shorts-mode .gzv-bar{
   pointer-events:none!important;
   transform:translateY(8px)!important;
 }
+
+/* Ivory cleanup: remove the faint corner/border marks from navigation and the quiet people rail. */
+html[data-theme="ivory"] #rail .card,
+html[data-theme="ivory"] nav.side .rail-nav,
+html[data-theme="ivory"] nav.side .me-card{
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Mobile Messages: compact Messenger-style list and conversation treatment. */
+.messenger-mobile-head,.messenger-mobile-nav{display:none}
+@media (max-width:900px){
+  body.chat-open .shell{padding:0!important}
+  body.chat-open #view{padding:0!important;min-height:100dvh!important}
+  .messenger-mobile-head{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--line-soft);font-size:19px;letter-spacing:-.04em}
+  .messenger-close,.messenger-more{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--ink)}
+  .messenger-more{font-weight:800;letter-spacing:2px}
+  .chat-shell{height:calc(100dvh - 58px)!important;min-height:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:var(--surface)!important}
+  .conv-list{border:0;background:var(--surface);overflow-y:auto}
+  .conv-list>.pad{padding:12px 16px!important;border-bottom:1px solid var(--line-soft)}
+  .conv-list #csearch{height:44px;border-radius:999px;padding-left:18px;background:var(--surface-2)}
+  .conv{gap:13px;padding:15px 17px;border-bottom:1px solid var(--line-soft);background:var(--surface)}
+  .conv:hover,.conv.on{background:var(--surface-2)}
+  .conv .avatar{width:52px!important;height:52px!important;font-size:21px!important;border-radius:50%}
+  .conv .bold{font-size:15px}.conv .tiny{font-size:12.5px}
+  .chat-main{background:var(--surface);height:calc(100dvh - 58px)!important}
+  .chat-main>.row:first-child{height:70px;padding:8px 13px!important;background:var(--surface);border-bottom:1px solid var(--line-soft)!important}
+  .chat-main>.row:first-child .avatar{width:46px!important;height:46px!important;font-size:19px!important}
+  .chat-main>.row:first-child .chat-back{width:38px;height:38px;margin-right:2px}
+  .chat-main>.row:first-child .iconbtn{width:40px;height:40px;border-radius:50%;background:transparent;border:0}
+  .chat-body{padding:18px 14px 24px;gap:12px;background:var(--bg);}
+  .msg{max-width:78%;padding:12px 15px;border-radius:20px;border-bottom-left-radius:6px;background:#fff;border:1px solid rgba(24,22,17,.08);color:#222;box-shadow:0 4px 14px rgba(40,30,12,.08);font-size:15px}
+  .msg.mine{background:var(--accent-bg);color:var(--accent-ink);border:0;border-bottom-left-radius:20px;border-bottom-right-radius:6px}
+  .chat-input{padding:9px 10px max(9px,env(safe-area-inset-bottom));gap:6px;background:var(--surface);border-top:1px solid var(--line-soft)}
+  .chat-input .btn-icon{width:38px;height:38px;min-width:38px;padding:0}
+  .chat-input .textarea{min-height:42px!important;padding:10px 14px!important;background:var(--surface-2);border-radius:999px}
+  .chat-input .lbl-send{display:none}.chat-input button[type=submit]{width:40px;height:40px;min-width:40px;padding:0;border-radius:50%}
+  .messenger-mobile-nav{display:flex;position:fixed;z-index:91;left:12px;right:12px;bottom:12px;height:62px;align-items:center;justify-content:space-around;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(20px);box-shadow:0 15px 42px rgba(0,0,0,.18)}
+  .messenger-mobile-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:62px;color:var(--muted);font-size:10px;font-weight:700}
+  .messenger-mobile-nav a.active{color:var(--accent)}
+  .messenger-mobile-nav small{font-size:10px}
+  body.chat-open .chat-shell.has-active~.messenger-mobile-nav{display:none}
+}
+html[data-theme="ivory"] .messenger-mobile-head,
+html[data-theme="ivory"] .messenger-mobile-nav{background:rgba(255,255,255,.9);border-color:rgba(28,25,17,.1)}
+html[data-theme="ivory"] .chat-body{background:#f7f4ec}
+html[data-theme="ivory"] .messenger-mobile-nav a.active{color:#a67c00}
