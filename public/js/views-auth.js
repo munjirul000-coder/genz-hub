@@ -97,8 +97,8 @@
       <form id="sf" novalidate>
         <div class="field"><label class="label" for="sn">Full name</label><input class="input" id="sn" autocomplete="name" required></div>
         <div class="field"><label class="label" for="su">Username</label>
-          <input class="input" id="su" autocomplete="username" placeholder="e.g. rafi_builds" required>
-          <div class="hint" id="suh">3-20 characters: letters, numbers, underscore.</div></div>
+          <input class="input" id="su" autocomplete="username" placeholder="e.g. Rafi Ahmed" required>
+          <div class="hint" id="suh">Type your name — it becomes your @handle. Spaces, dots and dashes turn into underscores.</div></div>
         <div class="field"><label class="label" for="se">Email</label><input class="input" id="se" type="email" autocomplete="email" required></div>
         <div class="field"><label class="label" for="sp">Password</label>
           <input class="input" id="sp" type="password" autocomplete="new-password" required>
@@ -109,15 +109,26 @@
         <p class="tiny muted center" style="margin-top:12px">By joining you agree to keep Bloom respectful and safe.</p>
       </form>`;
     const uInput = G.qs('#su', panel), hint = G.qs('#suh', panel);
+    const BASE_HINT = 'Type your name — it becomes your @handle. Spaces, dots and dashes turn into underscores.';
     let tmr;
+    // The handle the user will actually get, kept in sync with what the server will store.
     uInput.addEventListener('input', () => {
       clearTimeout(tmr);
-      const v = uInput.value.trim();
-      if (v.length < 3) { hint.textContent = '3-20 characters: letters, numbers, underscore.'; hint.style.color = ''; return; }
+      const handle = G.normUsername(uInput.value);
+      if (!handle) { hint.textContent = BASE_HINT; hint.style.color = ''; return; }
+      if (handle.length < 3) {
+        hint.textContent = `@${handle} is too short — your handle needs at least 3 characters.`;
+        hint.style.color = 'var(--danger)';
+        return;
+      }
+      hint.textContent = `Your handle will be @${handle} — checking…`;
+      hint.style.color = '';
       tmr = setTimeout(async () => {
         try {
-          const r = await G.get('/auth/username-available?username=' + encodeURIComponent(v));
-          hint.textContent = r.available ? '✅ ' + r.reason : '❌ ' + r.reason;
+          const r = await G.get('/auth/username-available?username=' + encodeURIComponent(handle));
+          // A slower reply for an older keystroke must not overwrite the current one.
+          if (G.normUsername(uInput.value) !== handle) return;
+          hint.textContent = r.available ? `✅ @${r.username} is available` : `❌ @${r.username} — ${r.reason}`;
           hint.style.color = r.available ? 'var(--ok)' : 'var(--danger)';
         } catch (e) {}
       }, 350);
@@ -127,9 +138,10 @@
       const err = G.qs('#serr', panel); err.hidden = true;
       const btn = e.target.querySelector('button[type=submit]');
       btn.disabled = true; btn.textContent = 'Creating…';
+      const handle = G.normUsername(uInput.value);
       try {
         const r = await G.post('/auth/signup', {
-          full_name: G.qs('#sn', panel).value.trim(), username: uInput.value.trim(),
+          full_name: G.qs('#sn', panel).value.trim(), username: handle,
           email: G.qs('#se', panel).value.trim(), password: G.qs('#sp', panel).value, dob: G.qs('#sd', panel).value,
         });
         S.user = r.user;
@@ -137,6 +149,12 @@
         location.reload();
       } catch (ex) {
         err.textContent = ex.message; err.hidden = false;
+        // Point at the username box and show the handle we did manage to build, if any.
+        if (ex.field === 'username') {
+          uInput.focus();
+          hint.textContent = handle ? `We read that as @${handle} — please adjust it.` : BASE_HINT;
+          hint.style.color = 'var(--danger)';
+        }
         btn.disabled = false; btn.textContent = 'Create account';
       }
     };

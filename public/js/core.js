@@ -47,6 +47,17 @@
   G.put = (p, body) => api(p, { method: 'PUT', body: body || {} });
   G.del = (p) => api(p, { method: 'DELETE' });
 
+  // Mirror of the server-side handle rules (normalizeUsername in src/util.js). The UI uses it to
+  // show the exact @handle the user will get, so what they see is what the server stores.
+  G.normUsername = (raw) => String(raw == null ? '' : raw)
+    .toLowerCase()
+    .replace(/[\s.\-]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 20)
+    .replace(/_+$/g, '');
+
   G.uploadFiles = async function (files, onProgress) {
     return new Promise((resolve, reject) => {
       const fd = new FormData();

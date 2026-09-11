@@ -6,9 +6,7 @@ const U = require('../util');
 const RBAC = require('../rbac');
 
 const r = express.Router();
-const RESERVED = ['admin', 'root', 'genzhub', 'support', 'null', 'undefined', 'api'];
 
-function validUsername(u) { return /^[a-z0-9_]{3,20}$/i.test(u) && !RESERVED.includes(u.toLowerCase()); }
 function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e); }
 function passwordIssue(p) {
   if (typeof p !== 'string' || p.length < 8) return 'Password must be at least 8 characters.';
@@ -23,21 +21,24 @@ function age(dob) {
 }
 
 r.get('/username-available', U.wrap((req, res) => {
-  const u = U.sanitizeText(req.query.username, 30);
-  if (!validUsername(u)) return res.json({ available: false, reason: '3-20 chars, letters/numbers/underscore only.' });
-  const exists = db.prepare('SELECT 1 FROM users WHERE username=?').get(u);
-  res.json({ available: !exists, reason: exists ? 'Username already taken.' : 'Available' });
+  const username = U.normalizeUsername(req.query.username);
+  const issue = U.usernameIssue(username);
+  if (issue) return res.json({ available: false, username, reason: issue });
+  const exists = db.prepare('SELECT 1 FROM users WHERE username=?').get(username);
+  res.json({ available: !exists, username, reason: exists ? 'Username already taken.' : 'Available' });
 }));
 
 r.post('/signup', U.rateLimit({ max: 25, windowMs: 10 * 60 * 1000, key: 'signup' }), U.wrap((req, res) => {
   const full_name = U.sanitizeText(req.body.full_name, 60);
-  const username = U.sanitizeText(req.body.username, 20);
+  const typedUsername = U.sanitizeText(req.body.username, 60);
+  const username = U.normalizeUsername(typedUsername);
   const email = U.sanitizeText(req.body.email, 120).toLowerCase();
   const password = req.body.password || '';
   const dob = U.sanitizeText(req.body.dob, 20);
 
   if (full_name.length < 2) return res.status(400).json({ error: 'Please enter your full name.', field: 'full_name' });
-  if (!validUsername(username)) return res.status(400).json({ error: 'Username must be 3-20 chars: letters, numbers, underscore.', field: 'username' });
+  const ui = U.usernameIssue(username);
+  if (ui) return res.status(400).json({ error: ui, field: 'username', username });
   if (!validEmail(email)) return res.status(400).json({ error: 'Enter a valid email address.', field: 'email' });
   const pi = passwordIssue(password);
   if (pi) return res.status(400).json({ error: pi, field: 'password' });

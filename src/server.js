@@ -191,8 +191,10 @@ function computeAssetVersion() {
   return Math.round(newest).toString(36);
 }
 const ASSET_V = computeAssetVersion();
+// index.html ships with a placeholder ?v=… — strip any existing query first, otherwise repeated
+// builds stack up ("?v=1?v=2") and the URL stops matching what the cache is keyed on.
 const INDEX_HTML = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')
-  .replace(/(src|href)="(\/(?:js|css)\/[^"]+)"/g, (m, attr, url) => `${attr}="${url}?v=${ASSET_V}"`);
+  .replace(/(src|href)="(\/(?:js|css)\/[^"?]+)(?:\?[^"]*)?"/g, (m, attr, url) => `${attr}="${url}?v=${ASSET_V}"`);
 
 function sendIndex(req, res) {
   res.setHeader('Cache-Control', 'no-cache, must-revalidate');

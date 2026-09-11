@@ -13,6 +13,7 @@
     "seed:demo": "node src/demo-seed.js --fresh",
     "seed:reset": "node src/demo-seed.js --fresh",
     "build": "echo \"Gen-Z Hub: no build step required (server-rendered SPA)\"",
+    "test:username": "node tests/username-ui-test.js",
     "test:video": "node tests/video-quality-test.js",
     "test:feed": "node tests/video-feed-test.js",
     "test:stress": "node tests/video-stress-test.js",

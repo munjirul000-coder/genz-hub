@@ -14,6 +14,35 @@ function sanitizeText(s, max = 5000) {
   return s.replace(/\u0000/g, '').trim().slice(0, max);
 }
 
+// ---- usernames ----
+// A username is a URL-safe handle (lowercase letters, numbers, underscore) because it appears in
+// profile URLs. But people type their real name, so friendly input is normalized instead of being
+// rejected outright: "Rafi Ahmed" -> "rafi_ahmed", "rafi.ahmed" -> "rafi_ahmed".
+// Signup, the availability check and the settings update all go through this one function so the
+// three of them can never disagree about what a valid handle looks like.
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+const RESERVED_USERNAMES = ['admin', 'root', 'genzhub', 'bloom', 'support', 'null', 'undefined', 'api', 'www', 'help'];
+const USERNAME_RULES = 'Username needs 3-20 characters: English letters (a-z), numbers (0-9) and underscore (_). Spaces, dots and dashes become underscores.';
+
+function normalizeUsername(raw) {
+  if (typeof raw !== 'string') return '';
+  return sanitizeText(raw, 60)
+    .toLowerCase()
+    .replace(/[\s.\-]+/g, '_')       // spaces, dots, dashes -> underscore
+    .replace(/[^a-z0-9_]/g, '')      // drop anything that is not URL-safe
+    .replace(/_{2,}/g, '_')          // collapse repeated underscores
+    .replace(/^_+|_+$/g, '')         // trim leading/trailing underscores
+    .slice(0, 20)
+    .replace(/_+$/g, '');            // the slice above can re-expose a trailing underscore
+}
+
+// null when the handle is usable, otherwise the reason to show the user.
+function usernameIssue(normalized) {
+  if (!USERNAME_RE.test(normalized)) return USERNAME_RULES;
+  if (RESERVED_USERNAMES.includes(normalized)) return 'That username is reserved. Please pick another.';
+  return null;
+}
+
 const token = () => crypto.randomBytes(32).toString('hex');
 
 class HttpError extends Error {
@@ -166,6 +195,7 @@ function linkHashtags(postId, content) {
 
 module.exports = {
   now, escapeHtml, sanitizeText, token, HttpError, bad, wrap, rateLimit,
+  normalizeUsername, usernameIssue, USERNAME_RE, USERNAME_RULES, RESERVED_USERNAMES,
   createSession, loadUser, requireAuth, requirePostingAccess, requireAdmin, requireStaff, requireSuperAdmin,
   requirePermission, requireAnyPermission, isStaff: RBAC.isStaff, staffRole: RBAC.staffRole, hasPermission: RBAC.hasPermission, csrfGuard,
   publicUser, isBlocked, areConnected, notify, linkHashtags, extractHashtags, SESSION_MS,

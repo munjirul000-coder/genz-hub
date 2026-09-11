@@ -54,12 +54,12 @@ r.patch('/settings', U.wrap((req, res) => {
 r.post('/username', U.wrap((req, res) => {
   // Usernames stay URL-safe, but normalize friendly input such as "Munir BH"
   // into "munir_bh" instead of rejecting it with a confusing error.
-  const raw = U.sanitizeText(req.body.username, 60).trim().toLowerCase();
-  const username = raw.replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 20);
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) return res.status(400).json({ error: 'Username needs 3–20 letters, numbers or underscores.' });
-  if (db.prepare('SELECT 1 FROM users WHERE username=? AND id<>?').get(username, req.user.id)) return res.status(409).json({ error: 'Username already taken.' });
+  const username = U.normalizeUsername(req.body.username);
+  const issue = U.usernameIssue(username);
+  if (issue) return res.status(400).json({ error: issue, username });
+  if (db.prepare('SELECT 1 FROM users WHERE username=? AND id<>?').get(username, req.user.id)) return res.status(409).json({ error: 'Username already taken.', username });
   db.prepare('UPDATE users SET username=? WHERE id=?').run(username, req.user.id);
-  res.json({ ok: true, username });
+  res.json({ ok: true, username, user: me(db.prepare('SELECT * FROM users WHERE id=?').get(req.user.id)) });
 }));
 
 r.post('/email', U.wrap((req, res) => {

@@ -450,7 +450,7 @@
     if (tab === 'account') {
       box.innerHTML = `<div class="card pad stack">
         <div><div class="label">${esc(G.t('Email'))}</div><form class="row" id="f-email"><input class="input grow" id="s-email" value="${esc(u.email)}" type="email"><button class="btn btn-ghost">${esc(G.t('Update'))}</button></form></div>
-        <div><div class="label">${esc(G.t('Username'))}</div><form class="row" id="f-user"><input class="input grow" id="s-user" value="${esc(u.username)}" autocomplete="username" pattern="[A-Za-z0-9_]{3,20}"><button class="btn btn-ghost">${esc(G.t('Update'))}</button></form><div class="tiny muted" style="margin-top:6px">${S.user.lang === 'bn' ? 'স্পেস দিলে স্বয়ংক্রিয়ভাবে আন্ডারস্কোর হবে: Munir BH → munir_bh' : 'Spaces become underscores automatically, for example Munir BH → munir_bh.'}</div></div>
+        <div><div class="label">${esc(G.t('Username'))}</div><form class="row" id="f-user" novalidate><input class="input grow" id="s-user" value="${esc(u.username)}" autocomplete="username" spellcheck="false"><button class="btn btn-ghost">${esc(G.t('Update'))}</button></form><div class="tiny muted" id="s-user-hint" style="margin-top:6px">${S.user.lang === 'bn' ? 'স্পেস দিলে স্বয়ংক্রিয়ভাবে আন্ডারস্কোর হবে: Munir BH → munir_bh' : 'Spaces become underscores automatically, for example Munir BH → munir_bh.'}</div></div>
         <div class="divider"></div>
         <div><div class="label">${esc(G.t('Change password'))}</div><form class="stack" id="f-pw">
           <input class="input" id="s-cur" type="password" placeholder="${esc(G.t('Current password'))}" autocomplete="current-password">
@@ -461,17 +461,38 @@
           <button class="btn btn-danger" id="s-del">Delete my account permanently</button>
           <p class="tiny muted">This removes your profile, posts, messages and memberships.</p></div></div>`;
       G.qs('#f-email', box).onsubmit = async (e) => { e.preventDefault(); try { await G.post('/me/email', { email: G.qs('#s-email', box).value }); G.toast('Email updated', 'ok'); } catch (ex) { G.err(ex); } };
+      const uInput = G.qs('#s-user', box), uHint = G.qs('#s-user-hint', box);
+      // Show the handle as it will be stored, so a space or a dot is never a silent surprise.
+      uInput.addEventListener('input', () => {
+        const handle = G.normUsername(uInput.value);
+        uHint.textContent = handle ? 'Will be saved as @' + handle : 'Type your name — letters, numbers, spaces, dots and dashes are fine.';
+      });
       G.qs('#f-user', box).onsubmit = async (e) => {
         e.preventDefault();
-        const input = G.qs('#s-user', box);
-        const normalized = input.value.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 20);
-        input.value = normalized;
+        const handle = G.normUsername(uInput.value);
+        uInput.value = handle;
+        if (handle === S.user.username) { G.toast('Your username is already @' + handle, 'ok'); return; }
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
         try {
-          const r = await G.post('/me/username', { username: normalized });
-          S.user.username = r.username;
+          const r = await G.post('/me/username', { username: handle });
+          S.user = r.user || Object.assign({}, S.user, { username: r.username });
+          uHint.textContent = 'Saved as @' + r.username;
+          uInput.value = r.username;
+          // G.render() only redraws #view, so the sidebar "me" card would keep showing the old
+          // handle and the change would look like it did nothing. Refresh it in place.
+          const card = document.querySelector('#sidenav .me-card');
+          if (card) {
+            card.setAttribute('href', '#/u/' + encodeURIComponent(r.username));
+            const handleEl = card.querySelector('.tiny.muted');
+            if (handleEl) handleEl.textContent = '@' + r.username;
+          }
           G.toast('Username updated to @' + r.username, 'ok');
-          G.render();
-        } catch (ex) { G.err(ex); }
+        } catch (ex) {
+          uHint.textContent = ex.message;
+          G.err(ex);
+        }
+        btn.disabled = false;
       };
       G.qs('#f-pw', box).onsubmit = async (e) => {
         e.preventDefault();
