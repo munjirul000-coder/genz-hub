@@ -437,7 +437,7 @@
     const u = S.user;
     view.innerHTML = `<div class="card"><div class="pad"><h2 style="margin:0;font-size:19px">${esc(G.t('Settings'))}</h2></div>
       <div class="tabs">${[['account', 'Account'], ['profile', 'Profile'], ['privacy', 'Privacy'], ['notifications', 'Notifications'], ['appearance', 'Appearance'], ['language', 'Language']]
-        .map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${l}</button>`).join('')}</div></div>
+        .map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${esc(G.t(l))}</button>`).join('')}</div></div>
       <div id="sview" style="margin-top:14px"></div>`;
     G.qsa('[data-t]', view).forEach((b) => b.onclick = () => { location.hash = '#/settings?tab=' + b.dataset.t; });
     const box = G.qs('#sview', view);
@@ -449,19 +449,30 @@
 
     if (tab === 'account') {
       box.innerHTML = `<div class="card pad stack">
-        <div><div class="label">Email</div><form class="row" id="f-email"><input class="input grow" id="s-email" value="${esc(u.email)}" type="email"><button class="btn btn-ghost">Update</button></form></div>
-        <div><div class="label">Username</div><form class="row" id="f-user"><input class="input grow" id="s-user" value="${esc(u.username)}"><button class="btn btn-ghost">Update</button></form></div>
+        <div><div class="label">${esc(G.t('Email'))}</div><form class="row" id="f-email"><input class="input grow" id="s-email" value="${esc(u.email)}" type="email"><button class="btn btn-ghost">${esc(G.t('Update'))}</button></form></div>
+        <div><div class="label">${esc(G.t('Username'))}</div><form class="row" id="f-user"><input class="input grow" id="s-user" value="${esc(u.username)}" autocomplete="username" pattern="[A-Za-z0-9_]{3,20}"><button class="btn btn-ghost">${esc(G.t('Update'))}</button></form><div class="tiny muted" style="margin-top:6px">${S.user.lang === 'bn' ? 'স্পেস দিলে স্বয়ংক্রিয়ভাবে আন্ডারস্কোর হবে: Munir BH → munir_bh' : 'Spaces become underscores automatically, for example Munir BH → munir_bh.'}</div></div>
         <div class="divider"></div>
-        <div><div class="label">Change password</div><form class="stack" id="f-pw">
-          <input class="input" id="s-cur" type="password" placeholder="Current password" autocomplete="current-password">
-          <input class="input" id="s-new" type="password" placeholder="New password (min 8, letters + numbers)" autocomplete="new-password">
-          <button class="btn btn-primary">Change password</button></form></div>
+        <div><div class="label">${esc(G.t('Change password'))}</div><form class="stack" id="f-pw">
+          <input class="input" id="s-cur" type="password" placeholder="${esc(G.t('Current password'))}" autocomplete="current-password">
+          <input class="input" id="s-new" type="password" placeholder="${esc(G.t('New password (min 8, letters + numbers)'))}" autocomplete="new-password">
+          <button class="btn btn-primary">${esc(G.t('Change password'))}</button></form></div>
         <div class="divider"></div>
         <div><div class="label">Danger zone</div>
           <button class="btn btn-danger" id="s-del">Delete my account permanently</button>
           <p class="tiny muted">This removes your profile, posts, messages and memberships.</p></div></div>`;
       G.qs('#f-email', box).onsubmit = async (e) => { e.preventDefault(); try { await G.post('/me/email', { email: G.qs('#s-email', box).value }); G.toast('Email updated', 'ok'); } catch (ex) { G.err(ex); } };
-      G.qs('#f-user', box).onsubmit = async (e) => { e.preventDefault(); try { const r = await G.post('/me/username', { username: G.qs('#s-user', box).value }); S.user.username = r.username; G.toast('Username updated', 'ok'); } catch (ex) { G.err(ex); } };
+      G.qs('#f-user', box).onsubmit = async (e) => {
+        e.preventDefault();
+        const input = G.qs('#s-user', box);
+        const normalized = input.value.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 20);
+        input.value = normalized;
+        try {
+          const r = await G.post('/me/username', { username: normalized });
+          S.user.username = r.username;
+          G.toast('Username updated to @' + r.username, 'ok');
+          G.render();
+        } catch (ex) { G.err(ex); }
+      };
       G.qs('#f-pw', box).onsubmit = async (e) => {
         e.preventDefault();
         try { await G.post('/auth/change-password', { current: G.qs('#s-cur', box).value, next: G.qs('#s-new', box).value }); G.toast('Password changed. Other sessions signed out.', 'ok'); e.target.reset(); }

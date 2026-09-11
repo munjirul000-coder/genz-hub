@@ -172,12 +172,15 @@
     'Communities': 'কমিউনিটি', 'Business Hub': 'বিজনেস হাব', 'Gaming Hub': 'গেমিং হাব', 'Saved': 'সেভড',
     'Settings': 'সেটিংস', 'Profile': 'প্রোফাইল', 'Network': 'নেটওয়ার্ক', 'Events': 'ইভেন্ট', 'Create': 'তৈরি করুন',
     'Post': 'পোস্ট', 'Comment': 'কমেন্ট', 'Share': 'শেয়ার', 'Save': 'সেভ', 'Like': 'লাইক', 'Follow': 'ফলো',
-    'Following': 'ফলোয়িং', 'Followers': 'ফলোয়ার', 'Log out': 'লগ আউট', 'Search': 'সার্চ',
+    'Following': 'ফলোয়িং', 'For You': 'তোমার জন্য', 'For you': 'তোমার জন্য', 'Followers': 'ফলোয়ার', 'Log out': 'লগ আউট', 'Search': 'সার্চ',
+    'Discover': 'ডিসকভার', 'Shorts': 'শর্টস', 'Friends': 'বন্ধুরা', 'Activity': 'অ্যাক্টিভিটি', 'Upload': 'আপলোড', 'People': 'মানুষ', 'Chats': 'চ্যাট', 'Messenger': 'মেসেঞ্জার',
+    'Search conversations': 'চ্যাট খুঁজুন', 'No conversations yet': 'এখনও কোনো চ্যাট নেই', 'Write a message…': 'মেসেজ লিখুন…', 'No messages yet. Say hi 👋': 'এখনও কোনো মেসেজ নেই। হ্যালো বলুন 👋', 'Online now': 'এখন অনলাইনে',
     'What is happening?': 'কী চলছে?', 'Loading…': 'লোড হচ্ছে…', 'just now': 'এইমাত্র', 'Menu': 'মেনু',
     'Suggested people': 'প্রস্তাবিত মানুষ', 'Trending': 'ট্রেন্ডিং', 'Upcoming events': 'আসন্ন ইভেন্ট',
     'For you': 'তোমার জন্য', 'Posts': 'পোস্ট', 'About': 'সম্পর্কে', 'Media': 'মিডিয়া', 'Admin': 'অ্যাডমিন',
     'Edit profile': 'প্রোফাইল এডিট', 'Nothing here yet': 'এখনও কিছু নেই', 'Retry': 'আবার চেষ্টা করুন',
     'Send': 'পাঠান', 'Reply': 'রিপ্লাই', 'Delete': 'ডিলিট', 'Edit': 'এডিট', 'Report': 'রিপোর্ট', 'Cancel': 'বাতিল',
+    'Account': 'অ্যাকাউন্ট', 'Privacy': 'প্রাইভেসি', 'Appearance': 'অ্যাপিয়ারেন্স', 'Language': 'ভাষা', 'Username': 'ইউজারনেম', 'Email': 'ইমেইল', 'Update': 'আপডেট', 'Change password': 'পাসওয়ার্ড পরিবর্তন', 'Current password': 'বর্তমান পাসওয়ার্ড', 'New password (min 8, letters + numbers)': 'নতুন পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)',
   };
   G.t = (s) => (S.user && S.user.lang === 'bn' && BN[s]) || s;
 

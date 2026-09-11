@@ -39,10 +39,10 @@
       });
     }
     const activeId = parts[0] ? Number(parts[0]) : null;
-    view.innerHTML = `<div class="messenger-mobile-head"><a class="messenger-close" href="#/" aria-label="Close messages">${G.icon('close', 22)}</a><strong>Messenger</strong><button class="messenger-more" type="button" aria-label="More">•••</button></div>
+    view.innerHTML = `<div class="messenger-mobile-head"><a class="messenger-close" href="#/" aria-label="Close messages">${G.icon('close', 22)}</a><strong>${esc(G.t('Messenger'))}</strong><button class="messenger-more" type="button" aria-label="More">•••</button></div>
       <div class="card chat-shell ${activeId ? 'has-active' : ''}" style="overflow:hidden">
       <div class="conv-list">
-        <div class="pad" style="padding:12px"><input class="input" id="csearch" placeholder="Search conversations" aria-label="Search conversations"></div>
+        <div class="pad" style="padding:12px"><input class="input" id="csearch" placeholder="${esc(G.t('Search conversations'))}" aria-label="${esc(G.t('Search conversations'))}"></div>
         <div id="clist">${G.skeletonList(4)}</div>
       </div>
       <div class="chat-main" id="cmain"></div></div>
@@ -55,7 +55,7 @@
         const { conversations } = await G.get('/conversations' + (q ? '?q=' + encodeURIComponent(q) : ''));
         listBox.innerHTML = '';
         if (!conversations.length) {
-          listBox.innerHTML = G.emptyState('💬', 'No conversations yet', 'Start a chat from someone\'s profile.',
+          listBox.innerHTML = G.emptyState('💬', G.t('No conversations yet'), 'Start a chat from someone\'s profile.',
             '<div style="margin-top:10px"><a class="btn btn-sm btn-primary" href="#/explore?tab=people">Find people</a></div>');
           return;
         }
@@ -78,7 +78,7 @@
 
     const main = G.qs('#cmain', view);
     if (!activeId) {
-      main.innerHTML = G.emptyState('✉️', 'Select a conversation', 'Your messages are private and only visible to you and the recipient.');
+      main.innerHTML = G.emptyState('✉️', S.user && S.user.lang === 'bn' ? 'একটি চ্যাট নির্বাচন করুন' : 'Select a conversation', S.user && S.user.lang === 'bn' ? 'আপনার মেসেজ শুধু আপনি এবং প্রাপক দেখতে পারবেন।' : 'Your messages are private and only visible to you and the recipient.');
       return;
     }
     openChat(main, activeId);
@@ -103,7 +103,7 @@
         <form class="chat-input" id="cform">
           <label class="btn btn-ghost btn-icon" title="Attach file" style="cursor:pointer">${G.icon('image', 18)}<input type="file" id="cfile" hidden accept="image/*,video/*,.pdf,.txt"></label>
           <button type="button" class="btn btn-ghost btn-icon" id="etoggle" title="Emoji" aria-label="Emoji">🙂</button>
-          <textarea class="textarea grow" id="cmsg" rows="1" style="min-height:44px;max-height:110px" placeholder="Write a message…" aria-label="Message"></textarea>
+          <textarea class="textarea grow" id="cmsg" rows="1" style="min-height:44px;max-height:110px" placeholder="${esc(G.t('Write a message…'))}" aria-label="${esc(G.t('Write a message…'))}"></textarea>
           <button class="btn btn-primary" type="submit" aria-label="Send">${G.icon('send', 18)}<span class="lbl-send">${esc(G.t('Send'))}</span></button>
         </form>`;
       const body = G.qs('#cbody', main);
@@ -120,7 +120,7 @@
         });
         body.scrollTop = body.scrollHeight;
       };
-      if (!data.messages.length) body.innerHTML = '<p class="center small muted" style="margin:auto">No messages yet. Say hi 👋</p>';
+      if (!data.messages.length) body.innerHTML = `<p class="center small muted" style="margin:auto">${esc(G.t('No messages yet. Say hi 👋'))}</p>`;
       render(data.messages);
 
       const ebar = G.qs('#ebar', main);

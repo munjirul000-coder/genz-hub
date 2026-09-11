@@ -189,9 +189,9 @@
       </div>
       <div class="between" style="margin-bottom:14px">
         <div class="tabs" style="display:inline-flex">
-          <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">For You</button>
-          <button class="tab ${scope === 'following' ? 'on' : ''}" data-scope="following">Following</button>
-          <a class="tab" href="#/shorts">Shorts</a>
+          <button class="tab ${scope === 'for-you' ? 'on' : ''}" data-scope="for-you">${esc(G.t('For You'))}</button>
+          <button class="tab ${scope === 'following' ? 'on' : ''}" data-scope="following">${esc(G.t('Following'))}</button>
+          <a class="tab" href="#/shorts">${esc(G.t('Shorts'))}</a>
         </div>
       </div>
       <div id="feed"></div>`;
