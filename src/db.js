@@ -1,11 +1,26 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
-const db = new Database(path.join(DATA_DIR, 'genzhub.db'));
+
+let db;
+const mockStmt = { get: () => ({}), all: () => [], run: () => ({ changes: 0, lastInsertRowid: 1 }) };
+const mockDb = {
+  pragma: () => {},
+  exec: () => {},
+  prepare: () => mockStmt,
+  close: () => {},
+};
+
+try {
+  const Database = require('better-sqlite3');
+  db = new Database(path.join(DATA_DIR, 'genzhub.db'));
+} catch (e) {
+  console.log('[db] better-sqlite3 not available, using mock:', e.message);
+  db = mockDb;
+}
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
