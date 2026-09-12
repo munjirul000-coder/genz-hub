@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: flashvault-bd
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: flashvault-app
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
