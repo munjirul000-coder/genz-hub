@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
+<title>FlashVault BD — Merchant Portal</title>
+<meta name="description" content="Turn your warehouse dead stock into cash in 1 hour. Zero brand dilution, zero listing fee.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090b; --bg2:#111113; --bg3:#18181b; --bg4:#1f1f23;
+  --border:#27272a; --border2:#3f3f46;
+  --gold:#f59e0b; --gold2:#fbbf24; --gold-dim:rgba(245,158,11,.12);
+  --gold-glow:rgba(245,158,11,.35);
+  --text:#fafafa; --text2:#e4e4e7; --muted:#a1a1aa; --muted2:#71717a;
+  --green:#10b981; --red:#ef4444; --blue:#3b82f6;
+  --radius:14px; --radius-lg:20px; --radius-pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+img{max-width:100%;display:block}
+
+/* BG */
+.bg-glows{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+.bg-glows .glow{position:absolute;border-radius:50%;filter:blur(120px);opacity:.14}
+.bg-glows .g1{width:700px;height:700px;background:radial-gradient(circle,var(--gold) 0%,transparent 70%);top:-200px;right:-150px}
+.bg-glows .g2{width:600px;height:600px;background:radial-gradient(circle,#ff6b00 0%,transparent 70%);bottom:10%;left:-200px;opacity:.10}
+
+/* HEADER */
+.header{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(20px) saturate(180%);background:rgba(9,9,11,.82);
+  border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;
+}
+.header-inner{max-width:1280px;margin:0 auto;width:100%;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-.04em;font-size:18px}
+.logo-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:grid;place-items:center;box-shadow:0 0 16px var(--gold-glow)}
+.logo-text span{color:var(--gold)}
+.nav{display:flex;align-items:center;gap:22px}
+.nav a{font-size:13px;font-weight:500;color:var(--muted);transition:color .2s}
+.nav a:hover{color:var(--text2)}
+.nav a.active{color:var(--gold2);font-weight:700}
+.nav .cta{padding:8px 14px;border-radius:var(--radius-pill);background:var(--text);color:var(--bg);font-weight:600;font-size:12.5px}
+.nav .cta:hover{background:var(--gold);color:#000}
+
+/* HERO */
+.hero{max-width:1280px;margin:0 auto;padding:56px 20px 32px;display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:center}
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding:32px 16px 20px}}
+.hero-kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold2);border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.08);
+  padding:6px 10px;border-radius:var(--radius-pill);margin-bottom:16px;
+}
+.hero h1{
+  font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-.05em;
+  font-size:clamp(32px,4.5vw,48px);line-height:.92;margin-bottom:14px;
+}
+.hero h1 span{color:var(--gold)}
+.hero p{color:var(--muted);font-size:15.5px;line-height:1.6;max-width:520px;font-weight:300}
+.hero-bullets{display:flex;gap:16px;margin-top:18px;flex-wrap:wrap}
+.bullet{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.bullet .ico{width:28px;height:28px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);display:grid;place-items:center;font-size:14px}
+
+.hero-card{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.hero-card h4{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:14px;letter-spacing:.02em}
+.trust-list{display:flex;flex-direction:column;gap:10px}
+.trust-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.4}
+.trust-item .check{width:22px;height:22px;border-radius:6px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.25);color:var(--green);display:grid;place-items:center;flex-shrink:0;font-size:12px}
+.trust-item b{font-weight:600}
+.trust-item span{color:var(--muted)}
+
+/* LAYOUT */
+.main{max-width:1280px;margin:0 auto;padding:0 20px 80px;display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:start}
+@media(max-width:1024px){.main{grid-template-columns:1fr}}
+
+/* FORM */
+.form-wrap{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.4);
+}
+.form-head{margin-bottom:20px}
+.form-head h2{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.02em;margin-bottom:6px}
+.form-head p{color:var(--muted);font-size:13.5px;line-height:1.5}
+.field{margin-bottom:16px}
+.label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.input,.select,.textarea{
+  width:100%;padding:12px 14px;border-radius:10px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  font-size:14px;outline:none;transition:border-color .2s;
+}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--gold)}
+.input::placeholder,.textarea::placeholder{color:var(--muted2)}
+.textarea{min-height:90px;resize:vertical;line-height:1.5}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.row2{grid-template-columns:1fr}}
+
+/* CATEGORY */
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cat-card{
+  padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);
+  cursor:pointer;transition:all .2s;text-align:left;position:relative;overflow:hidden;
+}
+.cat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.cat-card.on{border-color:var(--gold);background:rgba(245,158,11,.08);box-shadow:0 0 0 3px rgba(245,158,11,.12)}
+.cat-card.on::after{content:'● ACTIVE';position:absolute;top:8px;right:8px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold2);font-weight:700}
+.cat-card.coming{opacity:.5;cursor:not-allowed}
+.cat-card b{display:block;font-size:13px;margin-bottom:2px}
+.cat-card span{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.cat-card .soon{font-size:9px;background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border-radius:999px;margin-top:6px;display:inline-block}
+
+/* UPLOAD */
+.dropzone{
+  border:1.5px dashed var(--border2);border-radius:12px;
+  background:var(--bg);padding:22px;text-align:center;
+  transition:all .2s;cursor:pointer;position:relative;
+}
+.dropzone:hover{border-color:var(--gold);background:rgba(245,158,11,.04)}
+.dropzone.dragover{border-color:var(--gold);background:rgba(245,158,11,.08);transform:scale(1.01)}
+.dropzone .ico{width:44px;height:44px;margin:0 auto 10px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);display:grid;place-items:center;font-size:20px}
+.dropzone b{font-size:13px;display:block;margin-bottom:4px}
+.dropzone p{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.previews{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.previews .pv{aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg3);border:1px solid var(--border);position:relative}
+.previews .pv img{width:100%;height:100%;object-fit:cover}
+.previews .pv button{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:10px;display:grid;place-items:center}
+
+/* SAVINGS */
+.savings-bar{
+  margin-top:8px;padding:10px 12px;border-radius:10px;
+  background:var(--bg);border:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+}
+.savings-bar b{color:var(--gold2)}
+
+/* TERMS */
+.terms{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  font-size:12.5px;line-height:1.4;color:var(--muted);
+}
+.terms input{margin-top:3px;accent-color:var(--gold)}
+.terms b{color:var(--text2)}
+
+.btn-submit{
+  width:100%;margin-top:16px;padding:14px;border-radius:12px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;
+  font-weight:800;font-size:14px;letter-spacing:.01em;
+  box-shadow:0 0 24px rgba(245,158,11,.3);
+  transition:all .2s;
+}
+.btn-submit:hover{transform:translateY(-1px);box-shadow:0 0 32px rgba(245,158,11,.45)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* DASHBOARD */
+.dash-wrap{position:sticky;top:80px}
+.dash-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.stat{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:14px;padding:16px;
+}
+.stat .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.stat .top span{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2)}
+.stat .top .ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:14px}
+.stat b{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;display:block}
+.stat .sub{font-size:11px;color:var(--muted2);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+.table-wrap{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;
+}
+.table-head{padding:16px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.table-head h4{font-family:'Syne',sans-serif;font-weight:700;font-size:14px}
+.table-head span{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)}
+.table{width:100%;border-collapse:collapse;font-size:12.5px}
+.table th{text-align:left;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);border-bottom:1px solid var(--border);font-weight:600}
+.table td{padding:12px 14px;border-bottom:1px solid rgba(39,39,42,.6);vertical-align:middle}
+.table tr:last-child td{border-bottom:0}
+.table tr:hover td{background:rgba(255,255,255,.02)}
+.status-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 8px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--border);
+}
+.status-badge.approved{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+.status-badge.pending{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:var(--gold2)}
+.status-badge.soldout{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#fca5a5}
+.status-badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+.empty{padding:32px 18px;text-align:center;color:var(--muted2)}
+.empty .ico{width:48px;height:48px;margin:0 auto 10px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);display:grid;place-items:center;font-size:22px}
+.empty b{color:var(--text2);font-size:13px;display:block;margin-bottom:4px}
+.empty span{font-size:12px}
+
+/* TOAST */
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;width:min(380px,92vw);pointer-events:none}
+.toast{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:12px;padding:12px 14px;font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:toastIn .35s}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+
+/* MODAL SUCCESS */
+.overlay{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.72);backdrop-filter:blur(16px);display:none;place-items:center;padding:16px}
+.overlay.open{display:grid}
+.modal{width:100%;max-width:420px;background:linear-gradient(145deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.7);text-align:center;animation:modalIn .4s}
+@keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
+.modal .check{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;background:linear-gradient(135deg,var(--green),#059669);display:grid;place-items:center;color:#fff;font-size:28px;box-shadow:0 0 24px rgba(16,185,129,.35)}
+.modal h3{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;margin-bottom:6px}
+.modal p{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="bg-glows"><div class="glow g1"></div><div class="glow g2"></div></div>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/flashvault" class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#000" stroke-width="2.2"><path d="M12 2L13.5 8.5H20L14.75 12.5L16.25 19L12 14.75L7.75 19L9.25 12.5L4 8.5H10.5L12 2Z"/></svg></div><span class="logo-text">FLASH<span>VAULT</span> <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted2);font-weight:400">/ MERCHANT</span></span></a>
+    <nav class="nav">
+      <a href="/flashvault">Vault</a>
+      <a href="/drop">Live Drop</a>
+      <a href="/merchant" class="active">Merchant Portal</a>
+      <a href="#" class="cta" onclick="document.getElementById('formSection').scrollIntoView({behavior:'smooth'});return false">List Stock →</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="hero-kicker">● ZERO LISTING FEE • ESCROW PROTECTED • 48H PAYOUT</div>
+    <h1>Turn Your Warehouse <span>Dead Stock</span> into Cash in 1 Hour.</h1>
+    <p>List your surplus inventory for our secret 9 PM drop. Zero brand dilution, zero listing fee. We handle hype, you handle dispatch.</p>
+    <div class="hero-bullets">
+      <div class="bullet"><span class="ico">⚡</span> 1-Hour Liquidation</div>
+      <div class="bullet"><span class="ico">🛡️</span> Escrow Protected</div>
+      <div class="bullet"><span class="ico">🚀</span> 10k+ Hype Buyers</div>
+    </div>
+  </div>
+  <div class="hero-card">
+    <h4>Why Brands Love FlashVault</h4>
+    <div class="trust-list">
+      <div class="trust-item"><span class="check">✓</span><div><b>Zero Brand Dilution</b><br><span>We sell as surplus lot, not under your main store. Secret drop audience only.</span></div></div>
+      <div class="trust-item"><span class="check">✓</span><div><b>Zero Listing Fee</b><br><span>We take 15% commission only after sale. No upfront cost.</span></div></div>
+      <div class="trust-item"><span class="check">✓</span><div><b>48h Payout via bKash</b><br><span>Escrow releases after delivery confirmation. No waiting weeks.</span></div></div>
+      <div class="trust-item"><span class="check">✓</span><div><b>We Handle FOMO</b><br><span>Live countdown, stock bars, 1k+ watching — you just pack and ship.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<main class="main" id="formSection">
+  <!-- FORM -->
+  <div class="form-wrap">
+    <div class="form-head">
+      <h2>Merchant Onboarding & Product Submission</h2>
+      <p>Fill this once. Our team reviews within 6 hours. Approved products go live this Friday 9PM.</p>
+    </div>
+
+    <div class="field"><label class="label">Brand / Company Name *</label><input class="input" id="brand" placeholder="e.g. Gorur Ghash, Fabrilife, Yellow"></div>
+    <div class="field"><label class="label">Founder Phone (bKash Merchant) *</label><input class="input" id="phone" placeholder="01XXXXXXXXX"></div>
+
+    <div class="field">
+      <label class="label">Category Selection *</label>
+      <div class="cat-grid">
+        <button type="button" class="cat-card on" data-cat="clothing" onclick="setCat('clothing')"><b>Week 1: Clothing</b><span>Active • T-shirts, Hoodies, Pants</span></button>
+        <button type="button" class="cat-card coming" data-cat="shoes"><b>Week 2: Shoes</b><span>Sneakers, Loafers, Boots</span><br><span class="soon">Coming Soon</span></button>
+        <button type="button" class="cat-card coming" data-cat="gadgets"><b>Week 3: Gadgets</b><span>Earphones, Chargers, Cases</span><br><span class="soon">Coming Soon</span></button>
+      </div>
+    </div>
+
+    <div class="field"><label class="label">Product Title *</label><input class="input" id="title" placeholder="e.g. Heavyweight Hoodie - Jet Black 320GSM"></div>
+    <div class="field"><label class="label">Product Description *</label><textarea class="textarea" id="desc" placeholder="Fabric, GSM, size range, why surplus, defect if any (e.g. minor print misalignment)"></textarea></div>
+
+    <div class="row2">
+      <div class="field"><label class="label">Original Retail Price (BDT) *</label><input class="input" id="orig" type="number" placeholder="2500" oninput="calcSavings()"></div>
+      <div class="field"><label class="label">Proposed Flash Drop Price (BDT) *</label><input class="input" id="dropPrice" type="number" placeholder="650" oninput="calcSavings()"></div>
+    </div>
+    <div class="savings-bar" id="savingsBar" style="display:none"><span>Customer Savings</span><b id="savingsText">-74% OFF</b></div>
+
+    <div class="row2">
+      <div class="field"><label class="label">Total Available Stock Qty *</label><input class="input" id="stock" type="number" placeholder="e.g. 15 or 50"></div>
+      <div class="field"><label class="label">Courier Details (Steadfast / Pathao ID) *</label><input class="input" id="courier" placeholder="e.g. Steadfast Merchant ID: 12345"></div>
+    </div>
+
+    <div class="field">
+      <label class="label">Product Image Upload (Drag & Drop) *</label>
+      <div class="dropzone" id="dropzone">
+        <div class="ico">📦</div>
+        <b>Drag & drop product images here</b>
+        <p>PNG, JPG, WEBP up to 10MB • Max 6 images • First image is cover</p>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      </div>
+      <div class="previews" id="previews"></div>
+    </div>
+
+    <label class="terms">
+      <input type="checkbox" id="terms">
+      <span><b>I agree to dispatch orders within 24 hours</b> of successful Flash Sale completion. I understand escrow will hold funds until delivery is confirmed, and I will provide valid courier tracking.</span>
+    </label>
+
+    <button class="btn-submit" id="submitBtn" onclick="submitProduct()">Submit Product for Approval →</button>
+    <div id="formErr" style="display:none;margin-top:12px;padding:10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-size:13px"></div>
+  </div>
+
+  <!-- DASHBOARD PREVIEW -->
+  <div class="dash-wrap">
+    <div class="dash-stats">
+      <div class="stat"><div class="top"><span>Total Sales</span><span class="ico" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.2)">💰</span></div><b id="statSales">BDT 0</b><div class="sub">Lifetime</div></div>
+      <div class="stat"><div class="top"><span>Products Sold</span><span class="ico" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2)">📦</span></div><b id="statSold">0</b><div class="sub">Units</div></div>
+      <div class="stat"><div class="top"><span>Pending Payout</span><span class="ico" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2)">⏳</span></div><b id="statPending">BDT 0</b><div class="sub">Escrow Locked</div></div>
+      <div class="stat"><div class="top"><span>Completed</span><span class="ico" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2)">✅</span></div><b id="statDone">0</b><div class="sub">Deliveries</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-head"><h4>Submitted Products</h4><span id="tableCount">0 items</span></div>
+      <div style="overflow-x:auto">
+        <table class="table">
+          <thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Pricing</th><th>Status</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="emptyState"><div class="ico">📭</div><b>No products yet</b><span>Submit your first dead-stock lot above. It will appear here.</span></div>
+    </div>
+
+    <div style="margin-top:16px;padding:14px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--muted)">
+      <b style="color:var(--text2)">🛡️ How Escrow Works:</b> Customer pays → Funds locked in FlashVault escrow → You ship within 24h → Customer confirms delivery → bKash payout in 24h. Zero scam, zero risk for both sides.
+    </div>
+  </div>
+</main>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="overlay" id="successOverlay">
+  <div class="modal">
+    <div class="check">✓</div>
+    <h3>Product Submitted!</h3>
+    <p>Our team will review within 6 hours. You'll get SMS + bKash notification once approved for Friday 9PM drop.</p>
+    <div style="background:var(--bg);border:1px dashed var(--border2);padding:10px;border-radius:8px;font-family:'JetBrains Mono';font-size:11px;color:var(--gold2);margin-bottom:16px" id="submittedId">ID: FV-M-XXXX</div>
+    <button class="btn-submit" style="margin-top:0" onclick="closeSuccess()">Go to Dashboard →</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/framer-motion@11.0.8/dist/framer-motion.js"></script>
+<script>
+let selectedCat='clothing';
+let uploadedImages=[];
+const STORAGE_KEY='fv_merchant_products';
+
+function setCat(cat){
+  if(cat!=='clothing') return;
+  selectedCat=cat;
+  document.querySelectorAll('.cat-card').forEach(c=>{
+    c.classList.toggle('on', c.dataset.cat===cat);
+  });
+}
+
+function calcSavings(){
+  const orig=parseFloat(document.getElementById('orig').value);
+  const drop=parseFloat(document.getElementById('dropPrice').value);
+  const bar=document.getElementById('savingsBar');
+  const text=document.getElementById('savingsText');
+  if(orig>0 && drop>0 && drop<orig){
+    const pct=Math.round(((orig-drop)/orig)*100);
+    bar.style.display='flex';
+    text.textContent=`${pct}% OFF • Save BDT ${orig-drop}`;
+  } else {
+    bar.style.display='none';
+  }
+}
+
+// Drag & Drop
+const dropzone=document.getElementById('dropzone');
+const fileInput=document.getElementById('fileInput');
+const previews=document.getElementById('previews');
+
+dropzone.onclick=()=>fileInput.click();
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('dragover')});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop',e=>{
+  e.preventDefault();dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.onchange=()=>handleFiles(fileInput.files);
+
+function handleFiles(files){
+  const arr=[...files].slice(0,6-uploadedImages.length);
+  arr.forEach(file=>{
+    if(!file.type.startsWith('image/')) return;
+    if(file.size>10*1024*1024) {toast('Image too large (max 10MB)','⚠️'); return}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      uploadedImages.push({name:file.name, data:e.target.result});
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderPreviews(){
+  previews.innerHTML=uploadedImages.map((img,i)=>`
+    <div class="pv"><img src="${img.data}" alt=""><button onclick="removeImg(${i})">✕</button></div>
+  `).join('');
+}
+function removeImg(i){uploadedImages.splice(i,1);renderPreviews()}
+
+function toast(msg,ico='✅'){
+  const box=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:grid;place-items:center;flex-shrink:0">${ico}</div><div>${msg}</div>`;
+  box.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),300)},3500);
+}
+
+function getProducts(){
+  try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}
+}
+function saveProducts(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list))}
+
+function renderTable(){
+  const list=getProducts();
+  const tbody=document.getElementById('tableBody');
+  const empty=document.getElementById('emptyState');
+  const count=document.getElementById('tableCount');
+  count.textContent=`${list.length} items`;
+
+  if(!list.length){
+    tbody.innerHTML='';
+    empty.style.display='block';
+    updateStats([]);
+    return;
+  }
+  empty.style.display='none';
+  tbody.innerHTML=list.map(p=>{
+    const statusClass = p.status==='approved'?'approved':p.status==='soldout'?'soldout':'pending';
+    const statusText = p.status==='approved'?'Approved for Friday Drop':p.status==='soldout'?'Sold Out':'Pending Review';
+    return `<tr>
+      <td><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${p.title}</div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted2)">${p.brand}</div></td>
+      <td><span style="font-family:'JetBrains Mono';font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:3px 7px;border-radius:999px">${p.category}</span></td>
+      <td><b>${p.stock}</b> pcs</td>
+      <td><div style="font-size:12px"><span style="text-decoration:line-through;color:var(--muted2)">BDT ${p.orig}</span> <b style="color:var(--gold2)">BDT ${p.drop}</b></div><div style="font-size:10px;color:var(--green)">${Math.round(((p.orig-p.drop)/p.orig)*100)}% OFF</div></td>
+      <td><span class="status-badge ${statusClass}"><span class="dot"></span>${statusText}</span></td>
+    </tr>`;
+  }).join('');
+  updateStats(list);
+}
+
+function updateStats(list){
+  const approved = list.filter(p=>p.status==='approved' || p.status==='soldout');
+  const totalSales = approved.reduce((s,p)=>s + (p.drop * (p.sold||0)),0);
+  const totalSold = approved.reduce((s,p)=>s + (p.sold||0),0);
+  const pending = approved.reduce((s,p)=>s + (p.drop * (p.stock - (p.sold||0)) * 0.15),0); // mock escrow pending as commission?
+  // For demo: Total sales = drop * sold, Pending = drop * remaining * 0.85 (merchant payout locked), Completed = sold
+  const pendingPayout = list.filter(p=>p.status!=='pending').reduce((s,p)=>s + (p.drop * (p.sold||Math.floor(p.stock*0.6)) * 0.85),0);
+  document.getElementById('statSales').textContent = `BDT ${totalSales.toLocaleString('en-BD')}`;
+  document.getElementById('statSold').textContent = totalSold;
+  document.getElementById('statPending').textContent = `BDT ${Math.floor(pendingPayout).toLocaleString('en-BD')}`;
+  document.getElementById('statDone').textContent = totalSold;
+}
+
+function submitProduct(){
+  const brand=document.getElementById('brand').value.trim();
+  const phone=document.getElementById('phone').value.trim();
+  const title=document.getElementById('title').value.trim();
+  const desc=document.getElementById('desc').value.trim();
+  const orig=parseFloat(document.getElementById('orig').value);
+  const drop=parseFloat(document.getElementById('dropPrice').value);
+  const stock=parseInt(document.getElementById('stock').value);
+  const courier=document.getElementById('courier').value.trim();
+  const terms=document.getElementById('terms').checked;
+  const err=document.getElementById('formErr');
+
+  if(!brand || brand.length<2){showErr('Enter valid Brand/Company name');return}
+  if(!/^01[0-9]{9}$/.test(phone)){showErr('Enter valid BD phone 01XXXXXXXXX');return}
+  if(!title || title.length<5){showErr('Product title too short');return}
+  if(!desc || desc.length<10){showErr('Add product description (min 10 chars)');return}
+  if(!orig || orig<100){showErr('Enter valid original price');return}
+  if(!drop || drop<50 || drop>=orig){showErr('Drop price must be less than original and at least 50 BDT');return}
+  if(!stock || stock<1){showErr('Enter valid stock quantity');return}
+  if(!courier){showErr('Enter courier merchant ID');return}
+  if(uploadedImages.length===0){showErr('Upload at least 1 product image');return}
+  if(!terms){showErr('You must agree to dispatch within 24 hours');return}
+
+  err.style.display='none';
+  const id='FV-M-'+Math.floor(1000+Math.random()*9000);
+  const product={
+    id, brand, phone, title, desc, orig, drop, stock,
+    category:selectedCat, courier,
+    images:uploadedImages.slice(0,1).map(i=>i.data),
+    status:'pending',
+    sold:0,
+    createdAt:Date.now()
+  };
+  const list=getProducts();
+  list.unshift(product);
+  saveProducts(list);
+  renderTable();
+
+  document.getElementById('submittedId').textContent=`ID: ${id} • ${brand} • ${title}`;
+  document.getElementById('successOverlay').classList.add('open');
+
+  // reset form
+  document.getElementById('brand').value='';
+  document.getElementById('phone').value='';
+  document.getElementById('title').value='';
+  document.getElementById('desc').value='';
+  document.getElementById('orig').value='';
+  document.getElementById('dropPrice').value='';
+  document.getElementById('stock').value='';
+  document.getElementById('courier').value='';
+  document.getElementById('terms').checked=false;
+  uploadedImages=[];renderPreviews();calcSavings();
+
+  toast('Product submitted for review!','📦');
+
+  // Simulate approval after 5s
+  setTimeout(()=>{
+    const updated=getProducts();
+    const idx=updated.findIndex(p=>p.id===id);
+    if(idx>=0){
+      updated[idx].status='approved';
+      updated[idx].sold=Math.floor(Math.random()*Math.min(5,updated[idx].stock));
+      saveProducts(updated);
+      renderTable();
+      toast(`✅ ${title} approved for Friday 9PM Drop!`,'🎉');
+    }
+  },5000);
+}
+
+function showErr(msg){
+  const err=document.getElementById('formErr');
+  err.style.display='block';err.textContent=msg;
+}
+
+function closeSuccess(){document.getElementById('successOverlay').classList.remove('open')}
+
+// Init
+renderTable();
+</script>
+</body>
+</html>

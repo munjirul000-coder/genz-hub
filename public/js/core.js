@@ -31,7 +31,7 @@
       if (res.status === 401 && !path.startsWith('/auth')) {
         S.user = null;
         const h = (location.hash || '').slice(1);
-        const OPEN = ['/auth', '/reset', '/welcome', '/about', '/privacy', '/terms', '/guidelines', '/contact'];
+        const OPEN = ['/auth', '/reset', '/welcome', '/about', '/privacy', '/terms', '/guidelines', '/contact', '/flashvault', '/drop', '/merchant', '/admin'];
         if (!OPEN.some((p) => h.startsWith(p))) location.hash = '#/auth';
       }
       const err = new Error(data.error || 'Request failed (' + res.status + ')');

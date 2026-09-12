@@ -43,10 +43,23 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(self), camera=(self)');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; " +
-    "script-src 'self'; connect-src 'self'; frame-ancestors *");
+  // FlashVault needs external fonts, images, and framer-motion CDN — allow them globally but keep strict defaults
+  const isFlashVault = req.path.startsWith('/flashvault') || req.path.startsWith('/drop') || req.path.startsWith('/merchant') || req.path.startsWith('/admin');
+  if (isFlashVault) {
+    res.setHeader('Content-Security-Policy',
+      "default-src 'self'; " +
+      "img-src 'self' data: blob: https:; media-src 'self' blob: https:; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com data:; " +
+      "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; " +
+      "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; " +
+      "frame-ancestors *");
+  } else {
+    res.setHeader('Content-Security-Policy',
+      "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; " +
+      "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; connect-src 'self'; frame-ancestors *");
+  }
   next();
 });
 
@@ -174,8 +187,46 @@ app.get('/api/bootstrap', U.wrap((req, res) => {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
 
-// --- static frontend (versioned assets, never-stale HTML) ---
+// --- FlashVault BD public landing + drop execution ---
 const PUBLIC = path.join(__dirname, '..', 'public');
+app.get('/flashvault', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'flashvault.html'));
+});
+app.get('/flashvault.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'flashvault.html'));
+});
+app.get('/drop', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'drop.html'));
+});
+app.get('/drop.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'drop.html'));
+});
+app.get('/merchant', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'merchant.html'));
+});
+app.get('/merchant.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'merchant.html'));
+});
+app.get('/admin', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'admin-flashvault.html'));
+});
+app.get('/admin.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'admin-flashvault.html'));
+});
+app.get('/admin-flashvault.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(PUBLIC, 'admin-flashvault.html'));
+});
+
+// --- static frontend (versioned assets, never-stale HTML) ---
 
 // প্রতিটি ডিপ্লয়ে নতুন ভার্সন → ব্রাউজার নিশ্চিতভাবে নতুন CSS/JS পায়
 function computeAssetVersion() {

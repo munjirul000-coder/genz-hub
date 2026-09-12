@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
+<title>FlashVault BD — Secret Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090b; --bg2:#111113; --bg3:#18181b; --bg4:#1f1f23;
+  --border:#27272a; --border2:#3f3f46;
+  --gold:#f59e0b; --gold2:#fbbf24; --gold-dim:rgba(245,158,11,.12); --gold-glow:rgba(245,158,11,.35);
+  --text:#fafafa; --text2:#e4e4e7; --muted:#a1a1aa; --muted2:#71717a;
+  --green:#10b981; --red:#ef4444; --blue:#3b82f6; --purple:#8b5cf6;
+  --radius:12px; --radius-lg:18px; --radius-pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+img{display:block;max-width:100%}
+
+/* HEADER */
+.header{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(20px) saturate(180%);background:rgba(9,9,11,.9);
+  border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;
+}
+.header-inner{max-width:1360px;margin:0 auto;width:100%;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-.04em;font-size:17px}
+.logo-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:grid;place-items:center;box-shadow:0 0 16px var(--gold-glow)}
+.logo-text span{color:var(--gold)}
+.badge-secret{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 10px;border-radius:var(--radius-pill);
+  background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);
+  color:#fca5a5;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;
+}
+.nav{display:flex;align-items:center;gap:14px}
+.nav .live{
+  display:flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);
+  padding:6px 10px;border-radius:999px;background:var(--bg2);border:1px solid var(--border);
+}
+.nav .live .dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite;box-shadow:0 0 0 0 rgba(16,185,129,.5)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.nav a{font-size:12.5px;color:var(--muted);padding:6px 10px;border-radius:8px;border:1px solid transparent}
+.nav a:hover{color:var(--text2);border-color:var(--border);background:var(--bg2)}
+
+/* MAIN */
+.main{max-width:1360px;margin:0 auto;padding:24px 20px 80px}
+.page-title{margin-bottom:20px}
+.page-title h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(26px,3.5vw,34px);letter-spacing:-.04em;line-height:.95}
+.page-title h1 span{color:var(--gold)}
+.page-title p{color:var(--muted);font-size:13.5px;margin-top:6px}
+
+/* ANALYTICS */
+.analytics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+@media(max-width:1024px){.analytics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.analytics{grid-template-columns:1fr}}
+.card{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;
+  position:relative;overflow:hidden;transition:all .25s;
+}
+.card:hover{border-color:rgba(245,158,11,.2);transform:translateY(-1px)}
+.card::before{content:'';position:absolute;inset:0;background:radial-gradient(400px at 0% 0%, var(--gold-dim), transparent 60%);opacity:0;transition:opacity .25s}
+.card:hover::before{opacity:1}
+.card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card .top span{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2)}
+.card .top .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:16px;border:1px solid var(--border)}
+.card b{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;display:block;letter-spacing:-.02em}
+.card .sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-top:4px}
+.card .trend{font-size:11px;margin-top:8px;display:flex;align-items:center;gap:4px}
+.card .trend.up{color:var(--green)}
+.card .trend.down{color:var(--muted2)}
+
+/* TOGGLE */
+.toggle-wrap{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+}
+.toggle{
+  position:relative;width:48px;height:28px;border-radius:999px;
+  background:var(--bg4);border:1px solid var(--border);cursor:pointer;transition:all .25s;
+}
+.toggle.on{background:linear-gradient(135deg,var(--gold),var(--gold2));border-color:var(--gold);box-shadow:0 0 16px var(--gold-glow)}
+.toggle i{
+  position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:var(--text);transition:transform .25s;box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.toggle.on i{transform:translateX(20px);background:#000}
+.toggle-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)}
+.toggle-label b{color:var(--gold2)}
+
+/* SECTION */
+.section{margin-bottom:28px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.section-head h2{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;letter-spacing:-.02em}
+.section-head .actions{display:flex;gap:8px}
+.btn-sm{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--bg2);transition:all .2s}
+.btn-sm:hover{border-color:var(--border2);background:var(--bg3)}
+.btn-sm.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-sm.primary:hover{background:var(--gold);border-color:var(--gold);color:#000}
+.btn-sm.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#fca5a5}
+.btn-sm.success{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+
+/* TABLE */
+.table-wrap{
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;
+}
+.table{width:100%;border-collapse:collapse;font-size:12.5px}
+.table th{text-align:left;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap}
+.table td{padding:12px 14px;border-bottom:1px solid rgba(39,39,42,.5);vertical-align:middle}
+.table tr:last-child td{border-bottom:0}
+.table tr:hover td{background:rgba(255,255,255,.02)}
+.prod-cell{display:flex;gap:10px;align-items:center;min-width:200px}
+.prod-cell img{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
+.prod-cell .info{flex:1;min-width:0}
+.prod-cell .title{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.prod-cell .brand{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2)}
+.status-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 8px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--border);
+}
+.status-badge.approved{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+.status-badge.pending{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:var(--gold2)}
+.status-badge.rejected{background:rgba(113,113,122,.15);border-color:var(--border);color:var(--muted)}
+.status-badge.soldout{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#fca5a5}
+.status-badge.paid{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+.status-badge.escrow{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:var(--gold2)}
+.status-badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ESCROW FLOW */
+.flow{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2)}
+.flow .step{display:flex;align-items:center;gap:4px}
+.flow .step.done{color:var(--green)}
+.flow .step.active{color:var(--gold2)}
+.flow .arrow{color:var(--border2)}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);backdrop-filter:blur(16px);display:none;place-items:center;padding:16px}
+.overlay.open{display:grid}
+.modal{width:100%;max-width:440px;background:linear-gradient(145deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:modalIn .35s}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.modal h3{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-bottom:8px}
+.modal p{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:14px}
+.field{margin-bottom:12px}
+.label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.input{width:100%;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;outline:none}
+.input:focus{border-color:var(--gold)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:10px 14px;border-radius:10px;font-weight:700;font-size:13px;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;box-shadow:0 0 16px var(--gold-glow)}
+.btn-ghost{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.btn-block{width:100%}
+
+/* AUTH GATE */
+.auth-gate{
+  position:fixed;inset:0;z-index:200;
+  background:radial-gradient(800px at 50% -10%, rgba(245,158,11,.15), transparent 60%), var(--bg);
+  display:grid;place-items:center;padding:20px;
+}
+.auth-card{
+  width:100%;max-width:380px;
+  background:linear-gradient(145deg,var(--bg2),var(--bg3));
+  border:1px solid var(--border);border-radius:20px;padding:28px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center;
+}
+.auth-card .logo-mark{width:48px;height:48px;margin:0 auto 14px;border-radius:14px}
+.auth-card h2{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;margin-bottom:6px}
+.auth-card p{color:var(--muted);font-size:13px;margin-bottom:18px}
+.auth-card .input{margin-bottom:12px}
+.auth-card .hint{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2);margin-top:12px}
+
+/* TOAST */
+.toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;width:min(380px,92vw);pointer-events:none}
+.toast{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:12px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:toastIn .3s}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#000" stroke-width="2.2"><path d="M12 2L13.5 8.5H20L14.75 12.5L16.25 19L12 14.75L7.75 19L9.25 12.5L4 8.5H10.5L12 2Z"/></svg></div>
+    <h2>Secret Admin Access</h2>
+    <p>Owner only. Enter master key to unlock FlashVault control panel.</p>
+    <input class="input" id="adminKey" type="password" placeholder="Enter owner key" autocomplete="off">
+    <button class="btn btn-primary btn-block" onclick="checkAuth()">Unlock Dashboard →</button>
+    <div class="hint">Hint: FLASHVAULT2026 or AdminGenz2026 • Stored in session only</div>
+    <div id="authErr" style="display:none;margin-top:12px;padding:8px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-size:12px"></div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/flashvault" class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#000" stroke-width="2.2"><path d="M12 2L13.5 8.5H20L14.75 12.5L16.25 19L12 14.75L7.75 19L9.25 12.5L4 8.5H10.5L12 2Z"/></svg></div><span class="logo-text">FLASH<span>VAULT</span> <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted2);font-weight:400">/ ADMIN</span></span><span class="badge-secret">● SECRET OWNER ONLY</span></a>
+    <div class="nav">
+      <div class="live"><span class="dot"></span><span id="liveCount">14,230 online</span></div>
+      <a href="/flashvault">Vault</a>
+      <a href="/drop">Drop</a>
+      <a href="/merchant">Merchants</a>
+      <a href="#" onclick="logout();return false">Logout</a>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <div class="page-title">
+    <h1>Owner <span>Control Panel</span></h1>
+    <p>Real-time sales, commission, traffic, and escrow. Manual override for Friday 9PM drop.</p>
+  </div>
+
+  <div class="analytics">
+    <div class="card">
+      <div class="top"><span>Total Gross Sales</span><span class="ico" style="background:rgba(245,158,11,.15)">💰</span></div>
+      <b id="grossSales">BDT 0</b>
+      <div class="sub">Lifetime • All drops</div>
+      <div class="trend up">↗ +12.4% this week</div>
+    </div>
+    <div class="card">
+      <div class="top"><span>Platform Commission (10%)</span><span class="ico" style="background:rgba(16,185,129,.12)">📈</span></div>
+      <b id="commission">BDT 0</b>
+      <div class="sub">Your earnings</div>
+      <div class="trend up">↗ +8.2% vs last drop</div>
+    </div>
+    <div class="card">
+      <div class="top"><span>Live Traffic</span><span class="ico" style="background:rgba(59,130,246,.12)">👁️</span></div>
+      <b id="traffic">14,230</b>
+      <div class="sub">Users online now</div>
+      <div class="trend up" id="trafficTrend">● 342 joining/min</div>
+      <div class="toggle-wrap">
+        <span class="toggle-label">Simulate FOMO</span>
+        <span style="font-family:'JetBrains Mono';font-size:11px;color:var(--green)">● LIVE</span>
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(245,158,11,.25)">
+      <div class="top"><span>Active Drop Status</span><span class="ico" style="background:rgba(239,68,68,.12)">⚡</span></div>
+      <b id="dropStatusText">VAULT LOCKED</b>
+      <div class="sub" id="dropSub">Next unlock: Friday 9:00 PM BST</div>
+      <div class="toggle-wrap">
+        <span class="toggle-label">Force: <b id="forceLabel">AUTO</b></span>
+        <div class="toggle" id="dropToggle" onclick="toggleDrop()"><i></i></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px">
+        <button class="btn-sm primary" onclick="forceUnlock()">FORCE UNLOCK</button>
+        <button class="btn-sm" onclick="forceLock()">FORCE LOCK</button>
+        <button class="btn-sm" onclick="forceAuto()">AUTO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>📦 Product Approval Queue</h2>
+      <div class="actions">
+        <button class="btn-sm" onclick="seedMockProducts()">+ Seed Mock</button>
+        <button class="btn-sm" onclick="renderProducts()">↺ Refresh</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Product</th><th>Merchant</th><th>Category</th><th>Stock</th><th>Pricing</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="productBody"></tbody>
+      </table>
+      <div id="productEmpty" style="display:none;padding:24px;text-align:center;color:var(--muted2);font-size:13px">No submissions yet. Merchants will appear here.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>🛡️ Escrow & Payout Manager</h2>
+      <div class="actions">
+        <button class="btn-sm" onclick="seedMockOrders()">+ Seed Orders</button>
+        <button class="btn-sm success" onclick="releaseAllEligible()">Release All Eligible</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Order ID</th><th>Product / Customer</th><th>Payment</th><th>Escrow Flow</th><th>Payout</th><th>Action</th></tr></thead>
+        <tbody id="escrowBody"></tbody>
+      </table>
+      <div id="escrowEmpty" style="display:none;padding:24px;text-align:center;color:var(--muted2);font-size:13px">No completed drops yet. Orders from /drop will appear here.</div>
+    </div>
+  </div>
+</main>
+
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <h3>Adjust Price / Stock</h3>
+    <p>Edit drop price and stock before approval. Savings auto-calculates.</p>
+    <div class="field"><label class="label">Product Title</label><input class="input" id="editTitle"></div>
+    <div class="row2">
+      <div class="field"><label class="label">Original Price BDT</label><input class="input" id="editOrig" type="number"></div>
+      <div class="field"><label class="label">Drop Price BDT</label><input class="input" id="editDrop" type="number"></div>
+    </div>
+    <div class="field"><label class="label">Stock Qty</label><input class="input" id="editStock" type="number"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="trackOverlay">
+  <div class="modal">
+    <h3>Update Courier Tracking</h3>
+    <p>Set tracking status for this order. Payout only unlocks after Delivered.</p>
+    <div class="field"><label class="label">Tracking ID</label><input class="input" id="trackId" placeholder="e.g. Pathao: 123456789"></div>
+    <div class="field"><label class="label">Courier Status</label>
+      <select class="input" id="trackStatus">
+        <option value="pending">Pending Pickup</option>
+        <option value="shipped">Shipped</option>
+        <option value="delivered">Delivered ✓</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeTrack()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveTrack()">Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="https://unpkg.com/framer-motion@11.0.8/dist/framer-motion.js"></script>
+<script>
+// AUTH
+function checkAuth(){
+  const key=document.getElementById('adminKey').value.trim();
+  const err=document.getElementById('authErr');
+  if(['FLASHVAULT2026','AdminGenz2026','admin','owner'].includes(key)){
+    sessionStorage.setItem('fv_admin_auth','1');
+    document.getElementById('authGate').style.display='none';
+    init();
+  } else {
+    err.style.display='block';err.textContent='Invalid owner key. Try FLASHVAULT2026';
+  }
+}
+function logout(){sessionStorage.removeItem('fv_admin_auth');location.reload()}
+if(sessionStorage.getItem('fv_admin_auth')==='1'){
+  document.getElementById('authGate').style.display='none';
+}
+
+// DATA
+const P_KEY='fv_merchant_products';
+const O_KEY='fv_orders';
+const DROP_KEY='fv_drop_forced';
+
+function getProducts(){try{return JSON.parse(localStorage.getItem(P_KEY)||'[]')}catch(e){return []}}
+function saveProducts(list){localStorage.setItem(P_KEY,JSON.stringify(list))}
+function getOrders(){try{return JSON.parse(localStorage.getItem(O_KEY)||'[]')}catch(e){return []}}
+function saveOrders(list){localStorage.setItem(O_KEY,JSON.stringify(list))}
+
+function seedMockProducts(){
+  const mock=[
+    {id:'FV-M-1001', brand:'Gorur Ghash Surplus', phone:'01712345678', title:'Heavyweight Hoodie - Jet Black 320GSM', desc:'320GSM fleece, oversized', orig:2500, drop:650, stock:20, category:'clothing', courier:'Steadfast: 12345', status:'pending', sold:0, createdAt:Date.now()-3600000, images:[]},
+    {id:'FV-M-1002', brand:'Fabrilife Lot', phone:'01812345678', title:'Premium Drop-Shoulder Tee - Off White', desc:'280GSM cotton', orig:1200, drop:350, stock:50, category:'clothing', courier:'Pathao: 67890', status:'pending', sold:0, createdAt:Date.now()-7200000, images:[]},
+    {id:'FV-M-1003', brand:'Yellow Surplus', phone:'01912345678', title:'Cargo Pants Olive 6-Pocket', desc:'Export surplus, minor defect', orig:2200, drop:580, stock:15, category:'clothing', courier:'Steadfast: 54321', status:'approved', sold:8, createdAt:Date.now()-10800000, images:[]},
+  ];
+  const existing=getProducts();
+  saveProducts([...mock, ...existing]);
+  renderProducts();renderEscrow();updateAnalytics();
+  toast('Mock products seeded','📦');
+}
+function seedMockOrders(){
+  const mockOrders=[
+    {orderId:'FV-100001', product:'Heavyweight Hoodie - Jet Black', brand:'Gorur Ghash', total:710, payment:'bkash', city:'dhaka', customer:'Rahim Ahmed', phone:'01712345678', paymentStatus:'paid', courierStatus:'pending', trackingId:'', payoutStatus:'locked', at:Date.now()-3600000},
+    {orderId:'FV-100002', product:'Premium Tee Off White', brand:'Fabrilife', total:410, payment:'nagad', city:'outside', customer:'Sadia Khan', phone:'01812345678', paymentStatus:'paid', courierStatus:'shipped', trackingId:'Pathao: 987654', payoutStatus:'locked', at:Date.now()-7200000},
+    {orderId:'FV-100003', product:'Varsity Jacket Limited', brand:'Export Surplus', total:1010, payment:'bkash', city:'dhaka', customer:'Tanvir Hossain', phone:'01912345678', paymentStatus:'paid', courierStatus:'delivered', trackingId:'Steadfast: 123456', payoutStatus:'locked', at:Date.now()-10800000},
+    {orderId:'FV-100004', product:'Cargo Pants Olive', brand:'Yellow', total:640, payment:'cod', city:'dhaka', customer:'Nabila Rahman', phone:'01612345678', paymentStatus:'paid', courierStatus:'delivered', trackingId:'Pathao: 112233', payoutStatus:'released', at:Date.now()-14400000},
+  ];
+  const existing=getOrders();
+  saveOrders([...mockOrders, ...existing]);
+  renderEscrow();updateAnalytics();
+  toast('Mock orders seeded','🛒');
+}
+
+let editId=null;
+let trackId=null;
+
+function renderProducts(){
+  const list=getProducts();
+  const tbody=document.getElementById('productBody');
+  const empty=document.getElementById('productEmpty');
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=list.map(p=>{
+    const pct=Math.round(((p.orig-p.drop)/p.orig)*100);
+    return `<tr>
+      <td><div class="prod-cell"><img src="${(p.images&&p.images[0])||'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=100&q=60'}" alt=""><div class="info"><div class="title">${p.title}</div><div class="brand">${p.brand}</div></div></div></td>
+      <td><div style="font-family:'JetBrains Mono';font-size:11px">${p.phone}</div><div style="font-size:11px;color:var(--muted2)">${p.courier}</div></td>
+      <td><span style="font-family:'JetBrains Mono';font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:3px 7px;border-radius:999px">${p.category}</span></td>
+      <td><b>${p.stock}</b> pcs${p.sold?`<div style="font-size:10px;color:var(--green)">Sold: ${p.sold}</div>`:''}</td>
+      <td><div style="font-size:12px"><span style="text-decoration:line-through;color:var(--muted2)">BDT ${p.orig}</span> <b style="color:var(--gold2)">BDT ${p.drop}</b></div><div style="font-size:10px;color:var(--green)">${pct}% OFF</div></td>
+      <td><span class="status-badge ${p.status}"><span class="dot"></span>${p.status}</span></td>
+      <td><div class="actions">
+        ${p.status==='pending'?`<button class="btn-sm success" onclick="approveProduct('${p.id}')">Approve</button><button class="btn-sm danger" onclick="rejectProduct('${p.id}')">Reject</button>`:''}
+        ${p.status!=='rejected'?`<button class="btn-sm" onclick="openEdit('${p.id}')">Edit</button>`:''}
+        ${p.status==='approved'?`<button class="btn-sm danger" onclick="markSoldOut('${p.id}')">Sold Out</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function approveProduct(id){
+  const list=getProducts();
+  const idx=list.findIndex(p=>p.id===id);
+  if(idx>=0){list[idx].status='approved';saveProducts(list);renderProducts();toast(`Approved ${list[idx].title} for Friday Drop`,'✅')}
+}
+function rejectProduct(id){
+  if(!confirm('Reject this product?')) return;
+  const list=getProducts();
+  const idx=list.findIndex(p=>p.id===id);
+  if(idx>=0){list[idx].status='rejected';saveProducts(list);renderProducts();toast('Product rejected','🚫')}
+}
+function markSoldOut(id){
+  const list=getProducts();
+  const idx=list.findIndex(p=>p.id===id);
+  if(idx>=0){list[idx].status='soldout';saveProducts(list);renderProducts();toast('Marked as sold out','💀')}
+}
+function openEdit(id){
+  editId=id;
+  const list=getProducts();
+  const p=list.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('editTitle').value=p.title;
+  document.getElementById('editOrig').value=p.orig;
+  document.getElementById('editDrop').value=p.drop;
+  document.getElementById('editStock').value=p.stock;
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit(){document.getElementById('editOverlay').classList.remove('open');editId=null}
+function saveEdit(){
+  const list=getProducts();
+  const idx=list.findIndex(p=>p.id===editId);
+  if(idx<0) return;
+  list[idx].title=document.getElementById('editTitle').value.trim()||list[idx].title;
+  list[idx].orig=parseFloat(document.getElementById('editOrig').value)||list[idx].orig;
+  list[idx].drop=parseFloat(document.getElementById('editDrop').value)||list[idx].drop;
+  list[idx].stock=parseInt(document.getElementById('editStock').value)||list[idx].stock;
+  saveProducts(list);renderProducts();closeEdit();toast('Product updated','✏️');
+}
+
+function renderEscrow(){
+  const orders=getOrders();
+  const tbody=document.getElementById('escrowBody');
+  const empty=document.getElementById('escrowEmpty');
+  if(!orders.length){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=orders.map(o=>{
+    const payout = Math.floor(o.total*0.9); // merchant gets 90%
+    const commission = o.total - payout;
+    const canRelease = o.courierStatus==='delivered' && o.payoutStatus!=='released';
+    return `<tr>
+      <td><div style="font-family:'JetBrains Mono';font-size:11px;font-weight:700">${o.orderId}</div><div style="font-size:10px;color:var(--muted2)">${new Date(o.at).toLocaleDateString()}</div></td>
+      <td><div style="font-weight:600;font-size:12.5px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.product}</div><div style="font-size:11px;color:var(--muted2)">${o.customer||'Guest'} • ${o.phone||''}</div><div style="font-size:10px;color:var(--muted2)">${o.brand||''} • ${o.city}</div></td>
+      <td><span class="status-badge ${o.paymentStatus==='paid'?'paid':'pending'}"><span class="dot"></span>${o.payment} • ${o.paymentStatus}</span><div style="font-size:11px;margin-top:4px">Total: <b>BDT ${o.total}</b></div></td>
+      <td>
+        <div class="flow">
+          <span class="step ${o.paymentStatus==='paid'?'done':''}">● Pay</span><span class="arrow">→</span>
+          <span class="step ${o.courierStatus==='shipped'?'done':o.courierStatus==='delivered'?'done':''} ${o.courierStatus==='shipped'?'active':''}">${o.courierStatus==='pending'?'○':o.courierStatus==='shipped'?'◐':'●'} Courier</span><span class="arrow">→</span>
+          <span class="step ${o.payoutStatus==='released'?'done':canRelease?'active':''}">${o.payoutStatus==='released'?'●':'○'} Payout</span>
+        </div>
+        <div style="margin-top:6px;font-family:'JetBrains Mono';font-size:10px;color:var(--muted2)">${o.trackingId||'No tracking yet'}</div>
+        <div style="margin-top:4px"><button class="btn-sm" onclick="openTrack('${o.orderId}')">Update Tracking</button></div>
+      </td>
+      <td><div style="font-size:12px">Merchant: <b style="color:var(--gold2)">BDT ${payout}</b></div><div style="font-size:10px;color:var(--muted2)">Commission: BDT ${commission}</div><div style="margin-top:4px"><span class="status-badge ${o.payoutStatus==='released'?'paid':'escrow'}"><span class="dot"></span>${o.payoutStatus}</span></div></td>
+      <td>
+        ${o.payoutStatus==='released'?'<span style="color:var(--green);font-size:12px">✓ Released</span>':canRelease?`<button class="btn-sm success" onclick="releasePayout('${o.orderId}')">Release Payout</button>`:`<button class="btn-sm" disabled style="opacity:.5">Locked</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openTrack(orderId){
+  trackId=orderId;
+  const orders=getOrders();
+  const o=orders.find(x=>x.orderId===orderId);
+  if(!o) return;
+  document.getElementById('trackId').value=o.trackingId||'';
+  document.getElementById('trackStatus').value=o.courierStatus||'pending';
+  document.getElementById('trackOverlay').classList.add('open');
+}
+function closeTrack(){document.getElementById('trackOverlay').classList.remove('open');trackId=null}
+function saveTrack(){
+  const orders=getOrders();
+  const idx=orders.findIndex(x=>x.orderId===trackId);
+  if(idx<0) return;
+  orders[idx].trackingId=document.getElementById('trackId').value.trim();
+  orders[idx].courierStatus=document.getElementById('trackStatus').value;
+  saveOrders(orders);renderEscrow();closeTrack();toast('Tracking updated','📦');
+}
+function releasePayout(orderId){
+  if(!confirm(`Release payout for ${orderId}? This will transfer funds to merchant via bKash.`)) return;
+  const orders=getOrders();
+  const idx=orders.findIndex(x=>x.orderId===orderId);
+  if(idx>=0){
+    if(orders[idx].courierStatus!=='delivered'){toast('Can only release after Delivered','⚠️');return}
+    orders[idx].payoutStatus='released';
+    saveOrders(orders);renderEscrow();updateAnalytics();
+    toast(`Payout released for ${orderId}`,'💸');
+  }
+}
+function releaseAllEligible(){
+  const orders=getOrders();
+  let count=0;
+  orders.forEach(o=>{if(o.courierStatus==='delivered' && o.payoutStatus!=='released'){o.payoutStatus='released';count++}});
+  if(count){saveOrders(orders);renderEscrow();updateAnalytics();toast(`Released ${count} payouts`,'💸')}
+  else toast('No eligible payouts (need Delivered status)','ℹ️');
+}
+
+// ANALYTICS
+function updateAnalytics(){
+  const orders=getOrders();
+  const gross=orders.reduce((s,o)=>s+o.total,0);
+  const commission=Math.floor(gross*0.10);
+  document.getElementById('grossSales').textContent=`BDT ${gross.toLocaleString('en-BD')}`;
+  document.getElementById('commission').textContent=`BDT ${commission.toLocaleString('en-BD')}`;
+}
+
+let trafficBase=14230;
+function updateTraffic(){
+  trafficBase+=Math.floor((Math.random()-0.5)*120);
+  if(trafficBase<12000) trafficBase=12000;
+  if(trafficBase>16000) trafficBase=16000;
+  document.getElementById('traffic').textContent=trafficBase.toLocaleString('en-BD');
+  document.getElementById('liveCount').textContent=`${trafficBase.toLocaleString('en-BD')} online`;
+  document.getElementById('trafficTrend').textContent=`● ${Math.floor(200+Math.random()*200)} joining/min`;
+}
+setInterval(updateTraffic,2000);
+
+// DROP TOGGLE
+function getDropState(){
+  return localStorage.getItem(DROP_KEY)||'auto';
+}
+function setDropState(state){
+  localStorage.setItem(DROP_KEY,state);
+  renderDropState();
+}
+function renderDropState(){
+  const state=getDropState();
+  const toggle=document.getElementById('dropToggle');
+  const label=document.getElementById('forceLabel');
+  const text=document.getElementById('dropStatusText');
+  const sub=document.getElementById('dropSub');
+  if(state==='unlocked'){
+    toggle.classList.add('on');label.textContent='UNLOCKED';text.textContent='VAULT UNLOCKED';sub.textContent='Manually forced open • Live now';
+    label.style.color='var(--gold2)';
+  } else if(state==='locked'){
+    toggle.classList.remove('on');label.textContent='LOCKED';text.textContent='VAULT LOCKED';sub.textContent='Manually forced locked';
+    label.style.color='var(--muted)';
+  } else {
+    // auto - check time
+    const now=new Date();
+    const target=new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 15,0,0,0));
+    const day=target.getUTCDay();
+    const diff=(5-day+7)%7;
+    target.setUTCDate(target.getUTCDate()+diff);
+    if(target<=now) target.setUTCDate(target.getUTCDate()+7);
+    const isLive = (target - now) <=0;
+    toggle.classList.toggle('on', isLive);
+    label.textContent='AUTO';text.textContent=isLive?'VAULT UNLOCKED':'VAULT LOCKED';sub.textContent=`Next unlock: Friday 9:00 PM BST • Auto mode`;
+    label.style.color='var(--muted2)';
+  }
+}
+function toggleDrop(){
+  const cur=getDropState();
+  if(cur==='auto') setDropState('unlocked');
+  else if(cur==='unlocked') setDropState('locked');
+  else setDropState('auto');
+  toast(`Drop status: ${getDropState().toUpperCase()}`,'⚡');
+}
+function forceUnlock(){setDropState('unlocked');toast('Drop FORCE UNLOCKED','🔓')}
+function forceLock(){setDropState('locked');toast('Drop FORCE LOCKED','🔒')}
+function forceAuto(){setDropState('auto');toast('Drop set to AUTO','⏰')}
+
+function toast(msg,ico='✅'){
+  const box=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:grid;place-items:center;flex-shrink:0">${ico}</div><div>${msg}</div>`;
+  box.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),300)},3500);
+}
+
+function init(){
+  renderDropState();
+  renderProducts();
+  renderEscrow();
+  updateAnalytics();
+  updateTraffic();
+  setInterval(renderDropState,5000);
+}
+
+if(sessionStorage.getItem('fv_admin_auth')==='1'){init()}
+
+// close modals on outside click
+document.getElementById('editOverlay').onclick=e=>{if(e.target.id==='editOverlay') closeEdit()}
+document.getElementById('trackOverlay').onclick=e=>{if(e.target.id==='trackOverlay') closeTrack()}
+document.getElementById('authGate').addEventListener('keydown',e=>{if(e.key==='Enter') checkAuth()})
+</script>
+</body>
+</html>

@@ -248,4 +248,15 @@
       };
     });
   });
+
+  // FlashVault BD — redirect SPA route to standalone premium landing
+  G.route('flashvault', async () => {
+    window.location.href = '/flashvault';
+  });
+  G.route('drop', async () => {
+    window.location.href = '/drop';
+  });
+  G.route('merchant', async () => {
+    window.location.href = '/merchant';
+  });
 })();
