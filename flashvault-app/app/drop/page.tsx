@@ -30,7 +30,7 @@ function DropContent() {
           setLiveTraffic(d.drop.liveTraffic);
         }
       });
-    const id = setInterval(() => setLiveTraffic((n) => n + Math.floor(Math.random() * 20) - 10), 2500);
+    const id = setInterval(() => setLiveTraffic((n) => n + Math.floor(Math.random() * 20) - 10), 5000);
     return () => clearInterval(id);
   }, [forceUnlock]);
 

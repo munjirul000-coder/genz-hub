@@ -20,7 +20,7 @@ export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "8%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   useEffect(() => {
@@ -34,18 +34,10 @@ export default function LandingPage() {
       <ScrollProgress />
       <Header />
 
-      {/* Background orbs — American/European premium */}
+      {/* Background orbs — optimized: reduced blur, no repeat heavy */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <motion.div
-          animate={{ x: [0, 100, 0], y: [0, -50, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-gold/10 via-bg3 to-transparent blur-[80px]"
-        />
-        <motion.div
-          animate={{ x: [0, -80, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-[40%] -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-ink/[0.04] via-bg4 to-transparent blur-[60px]"
-        />
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-gold/10 via-bg3 to-transparent blur-[40px] opacity-60" />
+        <div className="absolute top-[40%] -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-ink/[0.04] via-bg4 to-transparent blur-[40px] opacity-40" />
       </div>
 
       {/* HERO — Editorial Vault with parallax */}

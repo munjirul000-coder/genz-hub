@@ -50,14 +50,16 @@ export function ProductCard({ p, index }: { p: Product; index: number }) {
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         className="relative bg-bg2 border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-500"
       >
-        {/* Image with parallax */}
+        {/* Image with parallax - optimized */}
         <div className="relative aspect-[4/5] overflow-hidden bg-bg3">
           <motion.img
-            src={p.image}
+            src={p.image.replace("w=600", "w=400").replace("w=800", "w=400")}
             alt={p.title}
-            className="w-full h-full object-cover"
-            animate={{ scale: hover ? 1.08 : 1 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover will-change-transform"
+            animate={{ scale: hover ? 1.06 : 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-70" />
           <motion.div
