@@ -150,13 +150,16 @@ export default function LandingPage() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: 0.6 + i * 0.12, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     whileHover={{ scale: 1.03, y: -4 }}
+                    onClick={() => (window.location.href = `/product/${p.id}`)}
                     className="relative aspect-[3/4] rounded-lg overflow-hidden bg-bg3 group cursor-pointer"
+                    role="button"
+                    tabIndex={0}
                   >
                     <img src={p.image} alt={p.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute bottom-2 left-2 right-2 bg-bg2/90 backdrop-blur-md border border-border rounded-md px-2.5 py-2 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
                       <div className="text-[11px] font-bold tracking-[-0.01em] truncate">{p.brand}</div>
-                      <div className="text-[10px] font-mono text-muted">৳{p.vaultPrice}</div>
+                      <div className="text-[10px] font-mono text-muted">৳{p.vaultPrice} • View →</div>
                     </div>
                   </motion.div>
                 ))}
