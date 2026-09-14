@@ -87,6 +87,9 @@ export async function POST(req: Request) {
       const deliveryFee = data.city.toLowerCase().includes("dhaka") ? db.settings.shippingFeeInsideDhaka : db.settings.shippingFeeOutside;
       const totalAmount = product.vaultPrice * data.quantity + deliveryFee;
 
+      // Separate payment vs order vs delivery status - production safe
+      const paymentMethod = (data as any).paymentMethod || "cod";
+      const isCOD = paymentMethod === "cod";
       const order = {
         id: "o" + Date.now() + Math.random().toString(36).slice(2, 6),
         productId: product.id,
@@ -95,7 +98,7 @@ export async function POST(req: Request) {
         amount: product.vaultPrice * data.quantity,
         commission,
         merchantEarning,
-        customerId: auth.user.id, // Link to user for ownership enforcement
+        customerId: auth.user.id,
         customerPhone: data.customerPhone,
         customerName: data.customerName || auth.user.name,
         customerEmail: auth.user.email,
@@ -105,8 +108,9 @@ export async function POST(req: Request) {
         deliveryFee,
         totalAmount,
         status: "confirmed" as const,
-        paymentStatus: "paid" as const,
+        paymentStatus: "pending" as const,
         deliveryStatus: "processing" as const,
+        paymentMethod: paymentMethod,
         courierTracking: `FV-${Date.now().toString().slice(-6)}`,
         courierName: "Pathao",
         idempotencyKey: data.idempotencyKey,

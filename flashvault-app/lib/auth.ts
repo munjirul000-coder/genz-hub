@@ -11,15 +11,35 @@ export type AuthUser = {
   name?: string;
 };
 
-function getAdminKeys(): { adminKey: string; superAdminKey: string } {
+function getAdminKeys(): { adminKey: string; superAdminKey: string } | null {
+  const adminKey = process.env.ADMIN_KEY || process.env.NEXT_PUBLIC_ADMIN_KEY;
+  const superAdminKey = process.env.SUPER_ADMIN_KEY || process.env.ADMIN_KEY;
+
+  // In production, require env vars - fail safe, no default fallback
+  if (process.env.NODE_ENV === "production") {
+    if (!adminKey || !superAdminKey) {
+      console.error("[CRITICAL] ADMIN_KEY/SUPER_ADMIN_KEY missing in production - denying legacy key auth");
+      return null;
+    }
+  }
+
+  // Dev fallback with warning
+  if (!adminKey) {
+    console.warn("[auth] ADMIN_KEY not set, using fallback FLASHVAULT2026 - set ADMIN_KEY env for production");
+    return {
+      adminKey: "FLASHVAULT2026",
+      superAdminKey: process.env.SUPER_ADMIN_KEY || "FLASHVAULT_SUPER_2026",
+    };
+  }
+
   return {
-    adminKey: process.env.ADMIN_KEY || process.env.NEXT_PUBLIC_ADMIN_KEY || "FLASHVAULT2026",
-    superAdminKey: process.env.SUPER_ADMIN_KEY || process.env.ADMIN_KEY || "FLASHVAULT_SUPER_2026",
+    adminKey,
+    superAdminKey: superAdminKey || adminKey,
   };
 }
 
 export function verifyAdminRequest(req: Request | NextRequest): { ok: boolean; role: UserRole | null; user?: any; error?: string } {
-  // First try JWT auth (secure)
+  // First try JWT auth (secure, primary)
   const token = getTokenFromRequest(req);
   if (token) {
     const verified = verifyJWT(token);
@@ -34,8 +54,13 @@ export function verifyAdminRequest(req: Request | NextRequest): { ok: boolean; r
     }
   }
 
-  // Fallback to legacy admin key (for backward compat, still server-verified)
-  const { adminKey, superAdminKey } = getAdminKeys();
+  // Fallback to legacy admin key - but require env in prod, fail safe
+  const keys = getAdminKeys();
+  if (!keys) {
+    return { ok: false, role: null, error: "Admin key auth disabled in production - use JWT login. Set ADMIN_KEY/SUPER_ADMIN_KEY env." };
+  }
+
+  const { adminKey, superAdminKey } = keys;
   const headers = req.headers;
   const authHeader = headers.get("authorization") || headers.get("x-admin-key") || "";
   const key = authHeader.replace("Bearer ", "").trim();
@@ -46,6 +71,12 @@ export function verifyAdminRequest(req: Request | NextRequest): { ok: boolean; r
 
   if (provided === superAdminKey) return { ok: true, role: "SUPER_ADMIN" };
   if (provided === adminKey) return { ok: true, role: "ADMIN" };
+
+  // In prod, if keys are set but provided is legacy default, deny
+  if (process.env.NODE_ENV === "production" && (provided === "FLASHVAULT2026" || provided === "FLASHVAULT_SUPER_2026")) {
+    console.error("[CRITICAL] Attempt to use default admin key in production denied");
+    return { ok: false, role: null, error: "Default admin key not allowed in production" };
+  }
 
   return { ok: false, role: null, error: "Invalid admin key" };
 }
@@ -76,4 +107,3 @@ export function requireRole(allowed: UserRole[], userRole: UserRole | null): boo
   if (userRole === "SUPER_ADMIN") return true;
   return allowed.includes(userRole);
 }
-

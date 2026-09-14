@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LanguageToggle } from "@/components/language-toggle";
+import { MobileDrawer } from "@/components/mobile-drawer";
 import { useLang } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
@@ -110,7 +111,7 @@ export function Header() {
           </motion.div>
 
           {/* Cart */}
-          <Link href="/drop" className="relative">
+          <Link href="/drop" className="relative hidden sm:block">
             <div className="w-9 h-9 rounded-full border border-border bg-white grid place-items-center hover:bg-bg3 transition">
               <span className="text-[14px]">🛒</span>
               {mounted && count > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-ink text-white text-[10px] font-bold grid place-items-center">{count}</span>}
@@ -123,7 +124,7 @@ export function Header() {
               <Link href="/login" className="hidden sm:block">
                 <Button variant="outline" size="sm" className="rounded-pill">Login</Button>
               </Link>
-              <Link href="/drop">
+              <Link href="/drop" className="hidden sm:block">
                 <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                   <Button size="sm" className="rounded-pill group">
                     <span className="group-hover:mr-1 transition-all">{t("nav.enter").replace(" →", "")}</span>
@@ -134,18 +135,21 @@ export function Header() {
             </>
           ) : mounted && user ? (
             <>
-              <Link href="/account">
+              <Link href="/account" className="hidden sm:block">
                 <div className="flex items-center gap-2 pl-1 pr-3 h-9 rounded-pill bg-ink text-white text-[12px] font-medium">
                   <div className="w-7 h-7 rounded-full bg-white/20 grid place-items-center text-[11px] font-bold">{user.name?.[0]?.toUpperCase() || "U"}</div>
                   <span className="hidden sm:block max-w-[80px] truncate">{user.name?.split(" ")[0]}</span>
                 </div>
               </Link>
-              {user.role === "MERCHANT" && <Link href="/merchant"><Button size="sm" variant="outline" className="rounded-pill hidden sm:flex">Merchant</Button></Link>}
-              {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && <Link href="/admin"><Button size="sm" className="rounded-pill bg-ink">Admin</Button></Link>}
+              {user.role === "MERCHANT" && <Link href="/merchant" className="hidden sm:block"><Button size="sm" variant="outline" className="rounded-pill hidden sm:flex">Merchant</Button></Link>}
+              {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && <Link href="/admin" className="hidden sm:block"><Button size="sm" className="rounded-pill bg-ink">Admin</Button></Link>}
             </>
           ) : (
-            <div className="w-9 h-9 rounded-full bg-bg3 animate-pulse" />
+            <div className="w-9 h-9 rounded-full bg-bg3 animate-pulse hidden sm:block" />
           )}
+
+          {/* Mobile drawer - Phase 11 */}
+          <MobileDrawer />
         </div>
       </div>
     </motion.header>

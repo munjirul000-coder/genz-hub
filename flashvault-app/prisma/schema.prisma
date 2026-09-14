@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  MERCHANT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum MerchantStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  LIVE
+  SOLDOUT
+  SUSPENDED
+}
+
+enum ProductCondition {
+  NEW
+  SURPLUS
+  DEADSTOCK
+  SAMPLE
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  SUSPICIOUS
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+  REFUNDED
+  PAYOUT_RELEASED
+  PAID
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum DropState {
+  UPCOMING
+  LIVE
+  ENDED
+  LOCKED
+  CANCELLED
+}
+
+enum AuditAction {
+  ADMIN_LOGIN
+  APPROVE_PRODUCT
+  REJECT_PRODUCT
+  LIVE_PRODUCT
+  SUSPEND_PRODUCT
+  TOGGLE_DROP_LOCK
+  CREATE_DROP
+  UPDATE_DROP
+  CANCEL_DROP
+  SUSPEND_MERCHANT
+  VERIFY_MERCHANT
+  ORDER_STATUS_CHANGE
+  PAYOUT_RELEASED
+  USER_SUSPENDED
+  USER_CREATED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         UserRole @default(CUSTOMER)
+  name         String
+  phone        String?  @default("")
+  email        String?  @unique
+  passwordHash String?
+  merchantId   String?  @unique
+  merchant     Merchant? @relation(fields: [merchantId], references: [id])
+  createdAt    DateTime @default(now())
+  lastLogin    DateTime? @updatedAt
+  isSuspended  Boolean  @default(false)
+  resetToken   String?  @unique
+  resetExpiry  DateTime?
+
+  // Relations
+  orders       Order[]  @relation("CustomerOrders")
+  addresses    Address[]
+  wishlists    Wishlist[]
+  notifications Notification[]
+  auditLogs    AuditLog[] @relation("ActorLogs")
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Merchant {
+  id              String         @id @default(cuid())
+  name            String
+  brand           String
+  phone           String         @unique
+  email           String?        @unique
+  verified        Boolean        @default(false)
+  status          MerchantStatus @default(PENDING)
+  totalSales      Int            @default(0)
+  totalOrders     Int            @default(0)
+  payoutBalance   Int            @default(0)
+  totalPayouts    Int            @default(0)
+  rating          Float?
+  address         String?
+  businessInfo    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  suspendedReason String?
+
+  // Relations
+  products        Product[]
+  user            User?
+
+  @@index([status])
+  @@index([phone])
+  @@index([brand])
+}
+
+model Product {
+  id                 String             @id @default(cuid())
+  brand              String
+  title              String
+  description        String?
+  originalPrice      Int
+  vaultPrice         Int
+  discountPercent    Int
+  stock              Int
+  availableQuantity  Int
+  sold               Int                @default(0)
+  soldQuantity       Int                @default(0)
+  images             String[]           @default([])
+  image              String // primary for backward compat
+  category           String
+  size               String?
+  condition          ProductCondition   @default(SURPLUS)
+  location           String?            @default("Dhaka, Bangladesh")
+  deliveryInfo       String?            @default("Pathao 24h")
+  returnPolicy       String?            @default("No return - vault sale")
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  approvalStatus     ProductStatus      @default(PENDING)
+  status             ProductStatus      @default(PENDING)
+  merchantId         String
+  merchant           Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  dropId             String?
+  drop               Drop?              @relation(fields: [dropId], references: [id])
+  rejectionReason    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  verifiedAt         DateTime?
+  verifiedBy         String?
+
+  // Relations
+  orderItems         OrderItem[]
+  wishlists          Wishlist[]
+  reviews            Review[]
+
+  @@index([status])
+  @@index([merchantId])
+  @@index([category])
+  @@index([brand])
+  @@index([dropId])
+  @@index([createdAt])
+  @@index([vaultPrice])
+  @@index([discountPercent])
+}
+
+model Drop {
+  id              String    @id @default(cuid())
+  title           String
+  scheduledAt     DateTime
+  durationMinutes Int       @default(60)
+  status          DropState @default(UPCOMING)
+  productIds      String[]  @default([])
+  createdAt       DateTime  @default(now())
+  createdBy       String?
+
+  // Relations
+  products        Product[]
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model DropConfig {
+  id            String   @id @default(cuid())
+  isLocked      Boolean  @default(true)
+  nextDropAt    DateTime?
+  liveTraffic   Int      @default(14230)
+  totalGross    Int      @default(0)
+  currentDropId String?
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  productId       String?
+  quantity        Int            @default(1)
+  amount          Int
+  commission      Int
+  merchantEarning Int
+  customerId      String?
+  customer        User?          @relation("CustomerOrders", fields: [customerId], references: [id])
+  customerPhone   String
+  customerName    String?
+  customerEmail   String?
+  shippingAddress String
+  city            String
+  area            String?
+  deliveryFee     Int            @default(80)
+  totalAmount     Int
+  status          OrderStatus    @default(CONFIRMED)
+  paymentStatus   PaymentStatus  @default(PAID)
+  deliveryStatus  DeliveryStatus @default(PROCESSING)
+  courierTracking String?
+  courierName     String?        @default("Pathao")
+  idempotencyKey  String         @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deliveredAt     DateTime?
+  payoutReleasedAt DateTime?
+
+  // Relations
+  items           OrderItem[]
+  payment         Payment?
+  notifications   Notification[]
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([idempotencyKey])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Int
+  title     String
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Int
+  method        String?       // bKash, SSLCommerz, etc
+  status        PaymentStatus @default(PENDING)
+  gatewayId     String?       // transaction id from gateway
+  gatewayResponse Json?
+  verified      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@index([method])
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String? // Home, Office
+  fullName   String
+  phone      String
+  division   String? // Dhaka, Chittagong etc
+  city       String
+  area       String?
+  address    String
+  isDefault  Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isDefault])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String // ORDER_CONFIRMED, PRODUCT_APPROVED, etc
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  rating    Int      @default(5)
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  timestamp DateTime    @default(now())
+  actorId   String
+  actor     User?       @relation("ActorLogs", fields: [actorId], references: [id])
+  actorRole String
+  action    AuditAction
+  targetType String
+  targetId  String
+  metadata  Json?
+  ip        String?
+
+  @@index([actorId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([targetType, targetId])
+}
+
+model Setting {
+  id                    String   @id @default(cuid())
+  platformName          String   @default("FlashVault BD")
+  currency              String   @default("BDT")
+  timezone              String   @default("Asia/Dhaka")
+  dropDay               Int      @default(5)
+  dropStartHour         Int      @default(21)
+  dropStartMinute       Int      @default(0)
+  dropDurationMinutes   Int      @default(60)
+  commissionPercent     Int      @default(10)
+  minOrderAmount        Int      @default(100)
+  shippingFeeInsideDhaka Int     @default(80)
+  shippingFeeOutside    Int      @default(120)
+  maintenanceMode       Boolean  @default(false)
+  logoUrl               String?
+  updatedAt             DateTime @updatedAt
+}
+
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  orderId   String
+  createdAt DateTime @default(now())
+
+  @@index([key])
+  @@index([createdAt])
+}

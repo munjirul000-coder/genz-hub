@@ -12,4 +12,32 @@ services:
         value: 20
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_KEY
+        sync: false
+      - key: SUPER_ADMIN_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://flashvault-bd.onrender.com
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: BKASH_APP_KEY
+        sync: false
+      - key: BKASH_APP_SECRET
+        sync: false
+      - key: SSLCOMMERZ_STORE_ID
+        sync: false
+      - key: SSLCOMMERZ_STORE_PASSWORD
+        sync: false
     healthCheckPath: /

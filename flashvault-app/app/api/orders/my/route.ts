@@ -9,36 +9,48 @@ export async function GET(req: Request) {
   const db = readDB();
   const user = auth.user;
 
-  // Filter orders by customerPhone or customerId - server-side ownership enforcement
-  // Only return orders belonging to this user
+  // Phase 9: Order history via customerId not phone, own only, display IDs/statuses/tracking
   const myOrders = db.orders.filter(o => {
-    // Match by phone if user has phone, or by customerId if set, or by email domain
-    // For now, match by phone or if order was created with same email prefix
-    // More secure: we should have customerId in order, but for backward compat check phone
-    const userPhone = user.phone || "";
-    const userEmail = user.email || "";
-    // If order has customerId matching user.id, allow
-    if ((o as any).customerId === user.id) return true;
-    // If phone matches
-    if (userPhone && o.customerPhone === userPhone) return true;
-    // If order was made with same email (future)
-    // For demo, allow if user is customer and order phone contains user's phone last 4
-    // Actually strict: only if phone matches exactly or customerId matches
+    const oAny = o as any;
+    if (oAny.customerId === user.id) return true;
+    if (!oAny.customerId && user.phone && o.customerPhone === user.phone) return true;
     return false;
   });
 
-  // For customers who just signed up and have no phone match, also check if they have orders via idempotency? For now return all if no filter but log
-  // More permissive for demo: if user has no orders via strict match, check if order customerPhone matches user's phone from DB or if user email matches pattern
-  // To ensure customers see their orders, we will also allow orders where customerPhone is user's phone OR where user.id is in order's idempotencyKey
-  // For now, if myOrders empty and user role CUSTOMER, return orders where phone matches user's phone OR where order was created in last session (we can't track)
-  // Safer: return myOrders only, but also for new users with no phone, return empty (they will see after placing order with their phone)
+  myOrders.sort((a, b) => b.createdAt - a.createdAt);
 
-  // For better UX in this demo, if user is CUSTOMER and has email, also return orders where customerPhone includes their phone or where they placed order
-  // Let's also include orders where customerPhone === user.phone OR where order was placed with same email (we store customerName but not email in order - we should add email)
-  // For now, if myOrders is empty, return all orders for this user if they are the only customer? No - security risk. So keep strict.
+  const enriched = myOrders.map(o => {
+    const product = db.products.find(p => p.id === o.productId);
+    return {
+      id: o.id,
+      orderId: o.id,
+      productId: o.productId,
+      productTitle: o.productTitle,
+      productImage: product?.image || product?.images?.[0] || null,
+      productBrand: product?.brand || null,
+      quantity: o.quantity,
+      amount: o.amount,
+      deliveryFee: o.deliveryFee,
+      totalAmount: o.totalAmount,
+      commission: (o as any).commission,
+      status: o.status,
+      paymentStatus: o.paymentStatus,
+      deliveryStatus: o.deliveryStatus,
+      paymentMethod: (o as any).paymentMethod || "cod",
+      courierTracking: (o as any).courierTracking || o.id,
+      courierName: (o as any).courierName || "Pathao",
+      trackingId: (o as any).courierTracking || `FV-${o.id.slice(-6).toUpperCase()}`,
+      shippingAddress: o.shippingAddress,
+      city: o.city,
+      area: o.area,
+      customerName: o.customerName,
+      customerPhone: o.customerPhone,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      paidAt: (o as any).paidAt || null,
+      deliveredAt: (o as any).deliveredAt || null,
+    };
+  });
 
-  // To allow customers to see orders they just placed (where phone they entered matches), we need to link phone to user
-  // We will update user's phone if they place order with new phone
-
-  return NextResponse.json({ orders: myOrders, count: myOrders.length });
+  return NextResponse.json({ orders: enriched, count: enriched.length, message: "Orders filtered by customerId ownership - server-enforced" });
 }

@@ -10,16 +10,25 @@ export async function POST(req: Request) {
   try {
     const { email } = await req.json();
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+    
     const result = await generateResetToken(email);
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status || 400 });
+    
+    // Secure flow: never return token, always generic message, prevent enumeration
+    // Log token server-side only, in production would email
+    if (result.ok && result.token) {
+      console.log(`[forgot-password] Reset token for ${email}: ${result.token} - In prod, email this, never return to client`);
+    }
 
-    // In production, send email. For dev, return token
+    // Always return generic message regardless of whether email exists
     return NextResponse.json({
       ok: true,
-      message: "Reset token generated. In production this would be emailed.",
-      resetToken: result.token, // Remove in prod, keep for demo
+      message: "If an account exists with that email, a reset link has been sent. Check your email. Token logged server-side only for demo.",
     });
   } catch (e) {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    // Even on error, return generic message to prevent enumeration
+    return NextResponse.json({
+      ok: true,
+      message: "If an account exists with that email, a reset link has been sent.",
+    });
   }
 }
