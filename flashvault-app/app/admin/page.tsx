@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatBDT } from "@/lib/utils";
-import { ADMIN_KEY_STORAGE } from "@/lib/auth";
+import { ADMIN_KEY_STORAGE } from "@/lib/auth-constants";
 
 type Tab = "overview" | "products" | "merchants" | "drops" | "orders" | "audit" | "settings";
 

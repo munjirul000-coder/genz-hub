@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { formatBDT } from "@/lib/utils";
-import type { Product } from "@/lib/db";
+import type { Product } from "@/lib/types";
 
 export function ProductCard({ p, index }: { p: Product; index: number }) {
   const pct = Math.round(((p.originalPrice - p.vaultPrice) / p.originalPrice) * 100);

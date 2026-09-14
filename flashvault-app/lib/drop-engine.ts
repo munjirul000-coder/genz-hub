@@ -1,17 +1,7 @@
-import { defaultSettings, PlatformSettings } from "./settings";
+import type { PlatformSettings, DropSchedule, DropState } from "./types";
+import { defaultSettings } from "./settings";
 
-export type DropState = "UPCOMING" | "LIVE" | "ENDED" | "LOCKED" | "CANCELLED";
-
-export type DropSchedule = {
-  id: string;
-  title: string;
-  scheduledAt: number; // ms timestamp in Dhaka timezone converted to UTC
-  durationMinutes: number;
-  status: DropState;
-  productIds: string[];
-  createdAt: number;
-  createdBy?: string;
-};
+export type { DropState, DropSchedule } from "./types";
 
 export type ComputedDrop = {
   state: DropState;
@@ -24,12 +14,9 @@ export type ComputedDrop = {
   timezone: string;
 };
 
-// Get current time in Asia/Dhaka
 export function nowInDhaka(): Date {
-  // Server may be UTC, we calculate Dhaka time
   const now = new Date();
-  // Convert to Dhaka: UTC+6
-  const dhakaOffset = 6 * 60; // minutes
+  const dhakaOffset = 6 * 60;
   const utc = now.getTime() + now.getTimezoneOffset() * 60000;
   return new Date(utc + dhakaOffset * 60000);
 }
@@ -57,9 +44,7 @@ export function computeDropState(
   const dhakaNow = nowInDhaka();
   const timezone = settings.timezone;
 
-  // If manual override isLocked exists (legacy), respect but also check schedule
   if (override && typeof override.isLocked === "boolean") {
-    // If explicitly unlocked via admin, treat as LIVE regardless of schedule
     if (!override.isLocked) {
       return {
         state: "LIVE",
@@ -74,7 +59,6 @@ export function computeDropState(
     }
   }
 
-  // Find active scheduled drop
   const activeDrop = drops?.find(d => {
     const start = d.scheduledAt;
     const end = start + d.durationMinutes * 60000;
@@ -94,10 +78,7 @@ export function computeDropState(
     };
   }
 
-  // Check if we are within Friday 9PM window automatically
-  const { start, end } = getNextFridayDrop(settings);
-  // Calculate if we are in the *previous* drop window that started 7 days ago and still within duration? No, we need to check if now is within this week's Friday window
-  // Actually getNextFridayDrop returns future, so check if dhakaNow is Friday 21:00-22:00
+  const { start } = getNextFridayDrop(settings);
   const isFriday = dhakaNow.getDay() === settings.dropDay;
   const minutesNow = dhakaNow.getHours() * 60 + dhakaNow.getMinutes();
   const startMinutes = settings.dropStartHour * 60 + settings.dropStartMinute;
@@ -120,7 +101,6 @@ export function computeDropState(
     };
   }
 
-  // Otherwise upcoming
   return {
     state: "UPCOMING",
     isLive: false,

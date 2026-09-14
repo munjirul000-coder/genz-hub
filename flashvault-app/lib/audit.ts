@@ -1,29 +1,5 @@
-export type AuditAction =
-  | "ADMIN_LOGIN"
-  | "APPROVE_PRODUCT"
-  | "REJECT_PRODUCT"
-  | "LIVE_PRODUCT"
-  | "SUSPEND_PRODUCT"
-  | "TOGGLE_DROP_LOCK"
-  | "CREATE_DROP"
-  | "UPDATE_DROP"
-  | "CANCEL_DROP"
-  | "SUSPEND_MERCHANT"
-  | "VERIFY_MERCHANT"
-  | "ORDER_STATUS_CHANGE"
-  | "PAYOUT_RELEASED";
-
-export type AuditLog = {
-  id: string;
-  timestamp: number;
-  actorId: string;
-  actorRole: string;
-  action: AuditAction;
-  targetType: string;
-  targetId: string;
-  metadata?: Record<string, any>;
-  ip?: string;
-};
+import type { AuditAction, AuditLog } from "./types";
+export type { AuditAction, AuditLog } from "./types";
 
 export function createAuditLog(
   action: AuditAction,

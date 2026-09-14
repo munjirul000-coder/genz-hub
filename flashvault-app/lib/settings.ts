@@ -1,25 +1,13 @@
-export type PlatformSettings = {
-  platformName: string;
-  currency: string;
-  timezone: string; // IANA
-  dropDay: number; // 0-6, 5=Friday
-  dropStartHour: number; // 0-23
-  dropStartMinute: number;
-  dropDurationMinutes: number;
-  commissionPercent: number;
-  minOrderAmount: number;
-  shippingFeeInsideDhaka: number;
-  shippingFeeOutside: number;
-  maintenanceMode: boolean;
-  logoUrl?: string;
-};
+import type { PlatformSettings } from "./types";
+
+export type { PlatformSettings } from "./types";
 
 export const defaultSettings: PlatformSettings = {
   platformName: "FlashVault BD",
   currency: "BDT",
   timezone: "Asia/Dhaka",
-  dropDay: 5, // Friday
-  dropStartHour: 21, // 9PM
+  dropDay: 5,
+  dropStartHour: 21,
   dropStartMinute: 0,
   dropDurationMinutes: 60,
   commissionPercent: 10,

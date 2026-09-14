@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useLang } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
+import { useCart } from "@/lib/cart";
 
 const navKeys = [
   { href: "/", labelKey: "nav.vault" },
@@ -21,6 +23,11 @@ export function Header() {
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { t } = useLang();
+  const { user, logout } = useAuth();
+  const { count } = useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     setScrolled(latest > 20);
@@ -39,7 +46,7 @@ export function Header() {
         scrolled ? "bg-[rgba(253,252,250,0.92)] shadow-sm border-border" : "bg-[rgba(253,252,250,0.72)] border-transparent"
       )}
     >
-      <div className="max-w-[1320px] mx-auto h-[72px] flex items-center justify-between px-[20px] sm:px-[28px] gap-5">
+      <div className="max-w-[1320px] mx-auto h-[72px] flex items-center justify-between px-[20px] sm:px-[28px] gap-3">
         <Link href="/" className="flex items-center gap-3 font-extrabold tracking-[-0.04em] text-[20px] group">
           <motion.div
             whileHover={{ rotate: 5, scale: 1.05 }}
@@ -101,16 +108,44 @@ export function Header() {
               {t("badge.next")}
             </Badge>
           </motion.div>
-          <Link href="/drop">
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Button size="sm" className="rounded-pill group">
-                <span className="group-hover:mr-1 transition-all">{t("nav.enter").replace(" →", "")}</span>
-                <motion.span initial={{ x: 0 }} whileHover={{ x: 3 }} className="inline-block">
-                  →
-                </motion.span>
-              </Button>
-            </motion.div>
+
+          {/* Cart */}
+          <Link href="/drop" className="relative">
+            <div className="w-9 h-9 rounded-full border border-border bg-white grid place-items-center hover:bg-bg3 transition">
+              <span className="text-[14px]">🛒</span>
+              {mounted && count > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-ink text-white text-[10px] font-bold grid place-items-center">{count}</span>}
+            </div>
           </Link>
+
+          {/* Auth */}
+          {mounted && !user ? (
+            <>
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="outline" size="sm" className="rounded-pill">Login</Button>
+              </Link>
+              <Link href="/drop">
+                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                  <Button size="sm" className="rounded-pill group">
+                    <span className="group-hover:mr-1 transition-all">{t("nav.enter").replace(" →", "")}</span>
+                    <motion.span className="inline-block">→</motion.span>
+                  </Button>
+                </motion.div>
+              </Link>
+            </>
+          ) : mounted && user ? (
+            <>
+              <Link href="/account">
+                <div className="flex items-center gap-2 pl-1 pr-3 h-9 rounded-pill bg-ink text-white text-[12px] font-medium">
+                  <div className="w-7 h-7 rounded-full bg-white/20 grid place-items-center text-[11px] font-bold">{user.name?.[0]?.toUpperCase() || "U"}</div>
+                  <span className="hidden sm:block max-w-[80px] truncate">{user.name?.split(" ")[0]}</span>
+                </div>
+              </Link>
+              {user.role === "MERCHANT" && <Link href="/merchant"><Button size="sm" variant="outline" className="rounded-pill hidden sm:flex">Merchant</Button></Link>}
+              {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && <Link href="/admin"><Button size="sm" className="rounded-pill bg-ink">Admin</Button></Link>}
+            </>
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-bg3 animate-pulse" />
+          )}
         </div>
       </div>
     </motion.header>

@@ -13,7 +13,7 @@ import { Marquee } from "@/components/marquee";
 import { CountUp } from "@/components/count-up";
 import { useLang } from "@/lib/i18n";
 import { useEffect, useState, useRef } from "react";
-import type { Product } from "@/lib/db";
+import type { Product } from "@/lib/types";
 
 const brands = ["Aarong", "Yellow", "Sailor", "Ecstasy", "Cats Eye", "Richman", "Aarong", "Yellow"];
 

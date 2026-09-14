@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth-context";
+import { CartProvider } from "@/lib/cart";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://flashvault-bd.onrender.com";
 
@@ -55,7 +57,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
       </head>
       <body className="font-sans antialiased min-h-screen bg-bg">
-        <LangProvider>{children}</LangProvider>
+        <LangProvider>
+          <AuthProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </AuthProvider>
+        </LangProvider>
       </body>
     </html>
   );

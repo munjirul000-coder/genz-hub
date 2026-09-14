@@ -4,11 +4,21 @@ import { orderCreateSchema } from "@/lib/validators";
 import { computeDropState } from "@/lib/drop-engine";
 import { dbMutex } from "@/lib/store";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyUserRequest } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") || "anon";
   const rl = rateLimit(`order:${ip}`, 5, 60_000);
   if (!rl.ok) return NextResponse.json({ error: "Too many order attempts. Wait 1 minute." }, { status: 429 });
+
+  // Auth required for checkout - server-enforced
+  const auth = verifyUserRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: "Login required to checkout. Please sign in to continue.", code: "AUTH_REQUIRED" }, { status: 401 });
+  }
+
+  // Only CUSTOMER, MERCHANT, ADMIN, SUPER_ADMIN can order, but check suspended
+  if (auth.user.isSuspended) return NextResponse.json({ error: "Account suspended" }, { status: 403 });
 
   try {
     const body = await req.json();
@@ -42,6 +52,10 @@ export async function POST(req: Request) {
         const existingOrderId = db.idempotencyKeys[data.idempotencyKey].orderId;
         const existingOrder = db.orders.find(o => o.id === existingOrderId);
         if (existingOrder) {
+          // Ensure ownership - user can only see own idempotent order
+          if ((existingOrder as any).customerId && (existingOrder as any).customerId !== auth.user.id) {
+            return NextResponse.json({ error: "Forbidden - not your order" }, { status: 403 });
+          }
           return NextResponse.json({ ok: true, order: existingOrder, duplicate: true, message: "Order already created" });
         }
       }
@@ -81,15 +95,17 @@ export async function POST(req: Request) {
         amount: product.vaultPrice * data.quantity,
         commission,
         merchantEarning,
+        customerId: auth.user.id, // Link to user for ownership enforcement
         customerPhone: data.customerPhone,
-        customerName: data.customerName,
+        customerName: data.customerName || auth.user.name,
+        customerEmail: auth.user.email,
         shippingAddress: data.address,
         city: data.city,
         area: data.area,
         deliveryFee,
         totalAmount,
         status: "confirmed" as const,
-        paymentStatus: "paid" as const, // For now, simulated bKash
+        paymentStatus: "paid" as const,
         deliveryStatus: "processing" as const,
         courierTracking: `FV-${Date.now().toString().slice(-6)}`,
         courierName: "Pathao",
@@ -107,6 +123,12 @@ export async function POST(req: Request) {
         merchant.totalOrders += 1;
         merchant.totalSales += order.amount;
         merchant.updatedAt = Date.now();
+      }
+
+      // Update user's phone if not set
+      const userInDb = db.users.find(u => u.id === auth.user.id);
+      if (userInDb && !userInDb.phone && data.customerPhone) {
+        userInDb.phone = data.customerPhone;
       }
 
       // Cleanup old idempotency keys (>24h)
