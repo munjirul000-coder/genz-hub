@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { LangProvider } from "@/lib/i18n";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -24,15 +25,15 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "FlashVault BD — Surplus Stocks. Top Brands. 80% Off. 1 Hour Only.",
-  description:
-    "Bangladesh's premier 1-hour VIP Flash Drop platform. Every Friday 9 PM, exclusive dead-stock from top BD clothing brands. 80% off, 1 hour only.",
-  themeColor: "#fdfcfa",
+  description: "Bangladesh's premier 1-hour VIP Flash Drop platform. Every Friday 9 PM, exclusive dead-stock from top BD clothing brands. 80% off, 1 hour only.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${bricolage.variable} ${instrument.variable} ${jetbrains.variable}`}>
-      <body className="font-sans antialiased min-h-screen bg-bg">{children}</body>
+      <body className="font-sans antialiased min-h-screen bg-bg">
+        <LangProvider>{children}</LangProvider>
+      </body>
     </html>
   );
 }

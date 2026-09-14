@@ -11,6 +11,7 @@ import { ScrollProgress } from "@/components/scroll-progress";
 import { MagneticButton } from "@/components/magnetic-button";
 import { Marquee } from "@/components/marquee";
 import { CountUp } from "@/components/count-up";
+import { useLang } from "@/lib/i18n";
 import { useEffect, useState, useRef } from "react";
 import type { Product } from "@/lib/db";
 
@@ -22,6 +23,7 @@ export default function LandingPage() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "8%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const { t, lang } = useLang();
 
   useEffect(() => {
     fetch("/api/products")
@@ -47,15 +49,19 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.6 }}>
               <Badge variant="gold" className="mb-5 gap-2 px-3 py-1.5 text-[11px] backdrop-blur-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-goldDark animate-pulse" />
-                EVERY FRIDAY • 9PM • 1 HOUR ONLY
+                {t("badge.friday")}
               </Badge>
             </motion.div>
 
-            {/* Text reveal staggered */}
             <h1 className="font-extrabold tracking-[-0.05em] leading-[0.9] text-[44px] sm:text-[64px] lg:text-[88px] overflow-hidden">
-              {["SURPLUS", "Stocks.", "TOP", "BRANDS."].map((word, i) => (
+              {[
+                lang === "bn" ? "সারপ্লাস" : "SURPLUS",
+                lang === "bn" ? "স্টক।" : "Stocks.",
+                lang === "bn" ? "টপ" : "TOP",
+                lang === "bn" ? "ব্র্যান্ড।" : "BRANDS.",
+              ].map((word, i) => (
                 <motion.div
-                  key={word}
+                  key={word + i}
                   initial={{ y: "110%" }}
                   animate={{ y: "0%" }}
                   transition={{ delay: 0.15 + i * 0.12, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
@@ -69,30 +75,19 @@ export default function LandingPage() {
               ))}
             </h1>
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7, duration: 0.6 }}
-              className="mt-6 flex items-center gap-4"
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7, duration: 0.6 }} className="mt-6 flex items-center gap-4">
               <motion.div initial={{ width: 0 }} animate={{ width: 48 }} transition={{ delay: 0.9, duration: 0.8 }} className="h-[1px] bg-ink" />
-              <p className="font-mono text-[12px] tracking-[0.14em] text-muted uppercase">80% OFF • Deadstock • VIP Access</p>
+              <p className="font-mono text-[12px] tracking-[0.14em] text-muted uppercase">{t("hero.sub")}</p>
             </motion.div>
 
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
-              className="mt-8 max-w-[48ch] text-[16px] sm:text-[18px] leading-[1.6] text-ink2"
-            >
-              Bangladesh&apos;s most wanted 1-hour drop. We unlock surplus from top factories —
-              <span className="font-serif italic"> once it&apos;s gone, it&apos;s vaulted forever.</span>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, duration: 0.6 }} className="mt-8 max-w-[48ch] text-[16px] sm:text-[18px] leading-[1.6] text-ink2">
+              {t("hero.desc")}
             </motion.p>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.6 }} className="mt-10">
               <div className="flex items-center gap-3 mb-4">
                 <span className="w-2 h-2 rounded-full bg-ink animate-pulse" />
-                <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-muted">Next Drop Unlocks In</span>
+                <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-muted">{t("hero.nextDrop")}</span>
               </div>
               <Countdown />
               <div className="mt-8 flex gap-3">
@@ -100,49 +95,31 @@ export default function LandingPage() {
                   <Link href="/drop">
                     <Button size="lg" className="rounded-pill px-8 h-[54px] text-[14px] group relative overflow-hidden">
                       <span className="relative z-10 flex items-center gap-2">
-                        Enter Live Vault
-                        <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                          →
-                        </motion.span>
+                        {t("hero.enterVault")}
+                        <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>→</motion.span>
                       </span>
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-ink via-ink2 to-ink"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "0%" }}
-                        transition={{ duration: 0.4 }}
-                      />
                     </Button>
                   </Link>
                 </MagneticButton>
                 <Link href="/merchant">
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Button variant="outline" size="lg" className="rounded-pill h-[54px] backdrop-blur-sm">
-                      Sell Your Stock
+                      {t("hero.sellStock")}
                     </Button>
                   </motion.div>
                 </Link>
               </div>
             </motion.div>
 
-            {/* Social proof with count-up */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, duration: 0.7 }}
-              className="mt-12 grid grid-cols-3 gap-6 border-t border-border pt-8 max-w-[420px]"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2, duration: 0.7 }} className="mt-12 grid grid-cols-3 gap-6 border-t border-border pt-8 max-w-[420px]">
               {[
-                { k: 14200, suffix: "", l: "LIVE NOW", plus: true },
-                { k: 80, suffix: "%", l: "AVG DISCOUNT" },
-                { k: 2300, suffix: "", l: "SOLD / DROP" },
+                { k: 14200, suffix: "", lKey: "hero.liveNow", plus: true },
+                { k: 80, suffix: "%", lKey: "hero.avgDiscount" },
+                { k: 2300, suffix: "", lKey: "hero.soldPerDrop" },
               ].map((s, i) => (
-                <motion.div key={s.l} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                  <div className="font-bold text-[22px] tracking-[-0.03em] flex items-baseline">
-                    <CountUp value={s.k} suffix={s.suffix} />
-                    {s.plus && <span className="text-gold">+</span>}
-                  </div>
-                  <div className="font-mono text-[10px] tracking-[0.12em] text-muted mt-1">{s.l}</div>
+                <motion.div key={s.lKey} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                  <div className="font-bold text-[22px] tracking-[-0.03em] flex items-baseline"><CountUp value={s.k} suffix={s.suffix} />{s.plus && <span className="text-gold">+</span>}</div>
+                  <div className="font-mono text-[10px] tracking-[0.12em] text-muted mt-1">{t(s.lKey)}</div>
                 </motion.div>
               ))}
             </motion.div>

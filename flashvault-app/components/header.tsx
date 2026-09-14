@@ -6,11 +6,13 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useLang } from "@/lib/i18n";
 
-const nav = [
-  { href: "/", label: "Vault" },
-  { href: "/drop", label: "Live Drop" },
-  { href: "/merchant", label: "Merchants" },
+const navKeys = [
+  { href: "/", labelKey: "nav.vault" },
+  { href: "/drop", labelKey: "nav.drop" },
+  { href: "/merchant", labelKey: "nav.merchant" },
 ];
 
 export function Header() {
@@ -18,6 +20,7 @@ export function Header() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { t } = useLang();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     setScrolled(latest > 20);
@@ -60,7 +63,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {nav.map((n, i) => {
+          {navKeys.map((n, i) => {
             const active = pathname === n.href;
             return (
               <motion.div
@@ -83,7 +86,7 @@ export function Header() {
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
-                  <span className="relative z-10">{n.label}</span>
+                  <span className="relative z-10">{t(n.labelKey)}</span>
                 </Link>
               </motion.div>
             );
@@ -91,16 +94,17 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageToggle />
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
             <Badge variant="secondary" className="hidden lg:flex font-mono text-[10px] gap-1.5 px-3 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
-              NEXT: FRI 9PM
+              {t("badge.next")}
             </Badge>
           </motion.div>
           <Link href="/drop">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Button size="sm" className="rounded-pill group">
-                <span className="group-hover:mr-1 transition-all">Enter Vault</span>
+                <span className="group-hover:mr-1 transition-all">{t("nav.enter").replace(" →", "")}</span>
                 <motion.span initial={{ x: 0 }} whileHover={{ x: 3 }} className="inline-block">
                   →
                 </motion.span>
