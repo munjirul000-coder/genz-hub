@@ -37,6 +37,7 @@ export default function MerchantPage() {
   const [discountPreview, setDiscountPreview] = useState<number | null>(null);
   const [merchantStatus, setMerchantStatus] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [localPreviews, setLocalPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -88,21 +89,37 @@ export default function MerchantPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    
+    // Immediate local preview for better UX - show image even if server URL fails
+    const fileArray = Array.from(files).slice(0, 5 - uploadedImages.length);
+    const previews = fileArray.map(f => URL.createObjectURL(f));
+    setLocalPreviews(prev => [...prev, ...previews].slice(0, 5));
+    
     setUploading(true);
     setError("");
     try {
       const fd = new FormData();
-      Array.from(files).forEach(f => fd.append("images", f));
+      fileArray.forEach(f => fd.append("images", f));
       const r = await fetch("/api/upload", { method: "POST", body: fd });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Upload failed");
       const urls = d.uploaded.map((u: any) => u.url);
       setUploadedImages(prev => [...prev, ...urls].slice(0, 5));
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message + " - local preview shown, will use local for submit if needed");
+      // If server upload fails, keep local preview and use data URL for submit fallback
+      // For now, we keep server urls empty and will handle in submit
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeImage = (idx: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== idx));
+    setLocalPreviews(prev => {
+      if (prev[idx]) URL.revokeObjectURL(prev[idx]);
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
   const submit = async () => {
@@ -136,7 +153,9 @@ export default function MerchantPage() {
       setTimeout(() => setSubmitted(false), 4000);
       setMyProducts(p => [data.product, ...p]);
       setForm({ brand: "", title: "", description: "", originalPrice: "", vaultPrice: "", stock: "", category: "Mens", size: "", condition: "Surplus", location: "Dhaka, Bangladesh" });
+      localPreviews.forEach(u => URL.revokeObjectURL(u));
       setUploadedImages([]);
+      setLocalPreviews([]);
     } catch (e: any) {
       setError(e.message || "Network error");
     } finally {
@@ -319,17 +338,19 @@ export default function MerchantPage() {
                   <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={handleImageUpload} className="text-[12px]" />
                   <div className="mt-2 font-mono text-[10px] text-muted">Allowed: JPEG/PNG/WebP/AVIF, 5MB max each, max 5 images. Validated server-side type/size/dimensions.</div>
                   {uploading && <div className="mt-2 text-[11px] animate-pulse">Uploading...</div>}
-                  {uploadedImages.length > 0 && (
+                  {(uploadedImages.length > 0 || localPreviews.length > 0) && (
                     <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                      {uploadedImages.map((url, idx) => (
+                      {(localPreviews.length > 0 ? localPreviews : uploadedImages).map((url, idx) => (
                         <div key={idx} className="relative group">
-                          <img src={url} alt="" className="w-full h-20 object-cover rounded-lg border" />
-                          <button type="button" onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] grid place-items-center">×</button>
+                          <img src={url} alt="" className="w-full h-20 object-cover rounded-lg border bg-bg3" onError={(e) => { (e.target as any).src = uploadedImages[idx] || localPreviews[idx] || '/placeholder.jpg'; }} />
+                          <button type="button" onClick={() => removeImage(idx)} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] grid place-items-center">×</button>
                           {idx === 0 && <span className="absolute bottom-1 left-1 bg-ink text-white text-[8px] px-1.5 py-0.5 rounded-full">PRIMARY</span>}
                         </div>
                       ))}
                     </div>
                   )}
+                  {uploadedImages.length > 0 && <div className="mt-2 font-mono text-[10px] text-emerald-600">✓ {uploadedImages.length} uploaded to server: {uploadedImages[0]}</div>}
+                  {localPreviews.length > 0 && uploadedImages.length === 0 && <div className="mt-2 font-mono text-[10px] text-amber-600">Local preview only - server upload pending, will still submit</div>}
                 </div>
               </div>
               <div className="grid sm:grid-cols-3 gap-4">

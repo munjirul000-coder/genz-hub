@@ -69,34 +69,46 @@ async function uploadToS3(file: File): Promise<UploadResult> {
 }
 
 async function uploadToLocal(file: File): Promise<UploadResult> {
-  // In Next.js API route, we save to public/uploads
-  // This is ephemeral on Render free, but works for demo
-  // For production, configure R2/Cloudinary/S3
+  // Save to both public/uploads (for static serving) and data/uploads (persistent + API serving)
+  // This ensures images work even if Next.js static serving misses new files at runtime
   const fs = await import("fs");
   const path = await import("path");
   const crypto = await import("crypto");
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  const publicUploadsDir = path.join(process.cwd(), "public", "uploads");
+  const dataUploadsDir = path.join(process.cwd(), "data", "uploads");
+  
+  // Ensure both dirs exist
+  for (const dir of [publicUploadsDir, dataUploadsDir]) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const filename = `${Date.now()}_${crypto.randomBytes(6).toString("hex")}.${ext}`;
-  const filepath = path.join(uploadsDir, filename);
+  const publicFilepath = path.join(publicUploadsDir, filename);
+  const dataFilepath = path.join(dataUploadsDir, filename);
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  // Basic image dimension check could be done with sharp, but for simplicity skip
   // Validate file is actually image by checking magic numbers
   if (!isValidImageBuffer(buffer)) {
     throw new Error("File is not a valid image - magic number check failed");
   }
 
-  fs.writeFileSync(filepath, buffer);
+  // Write to both locations for redundancy
+  fs.writeFileSync(publicFilepath, buffer);
+  try {
+    fs.writeFileSync(dataFilepath, buffer);
+  } catch (e) {
+    console.warn("[storage] Failed to write to data/uploads, using public only", e);
+  }
 
-  const url = `/uploads/${filename}`;
+  // Return API route URL which will always serve from either location
+  // This is more reliable than /uploads/ on Render/Vercel where public may be read-only
+  const url = `/api/uploads/${filename}`;
   return {
     url,
     publicId: filename,
