@@ -1,0 +1,230 @@
+{
+  "products": [
+    {
+      "id": "p1",
+      "brand": "Aarong",
+      "title": "Handloom Cotton Panjabi \u2014 Surplus Lot",
+      "description": "Authentic handloom cotton panjabi from Aarong surplus stock.",
+      "originalPrice": 4500,
+      "vaultPrice": 890,
+      "discountPercent": 80,
+      "stock": 42,
+      "availableQuantity": 42,
+      "sold": 18,
+      "soldQuantity": 18,
+      "images": [
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=750&fit=crop"
+      ],
+      "image": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=750&fit=crop",
+      "category": "Mens",
+      "condition": "Surplus",
+      "location": "Dhaka, Bangladesh",
+      "deliveryInfo": "Pathao 24h inside Dhaka, 48h outside",
+      "returnPolicy": "No return - vault sale",
+      "verificationStatus": "verified",
+      "approvalStatus": "live",
+      "status": "live",
+      "merchantId": "m1",
+      "createdAt": 1789286409303,
+      "updatedAt": 1789286409303,
+      "verifiedAt": 1789372809303,
+      "verifiedBy": "admin"
+    },
+    {
+      "id": "p2",
+      "brand": "Yellow",
+      "title": "Oversized Linen Shirt \u2014 Export Leftover",
+      "description": "Oversized linen shirt, export quality.",
+      "originalPrice": 3200,
+      "vaultPrice": 650,
+      "discountPercent": 80,
+      "stock": 28,
+      "availableQuantity": 28,
+      "sold": 22,
+      "soldQuantity": 22,
+      "images": [
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=750&fit=crop&crop=top"
+      ],
+      "image": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=750&fit=crop&crop=top",
+      "category": "Womens",
+      "condition": "Deadstock",
+      "location": "Dhaka, Bangladesh",
+      "deliveryInfo": "Pathao 24h",
+      "returnPolicy": "No return",
+      "verificationStatus": "verified",
+      "approvalStatus": "live",
+      "status": "live",
+      "merchantId": "m1",
+      "createdAt": 1789372809303,
+      "updatedAt": 1789372809303,
+      "verifiedAt": 1789372809303,
+      "verifiedBy": "admin"
+    },
+    {
+      "id": "p3",
+      "brand": "Sailor",
+      "title": "Raw Denim Jeans \u2014 Deadstock",
+      "description": "Raw denim jeans deadstock.",
+      "originalPrice": 3800,
+      "vaultPrice": 720,
+      "discountPercent": 81,
+      "stock": 15,
+      "availableQuantity": 15,
+      "sold": 9,
+      "soldQuantity": 9,
+      "images": [
+        "https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&h=800&fit=crop"
+      ],
+      "image": "https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&h=800&fit=crop",
+      "category": "Mens",
+      "condition": "Deadstock",
+      "location": "Gazipur, Bangladesh",
+      "deliveryInfo": "Pathao",
+      "returnPolicy": "No return",
+      "verificationStatus": "unverified",
+      "approvalStatus": "pending",
+      "status": "pending",
+      "merchantId": "m2",
+      "createdAt": 1789455609303,
+      "updatedAt": 1789455609303
+    }
+  ],
+  "merchants": [
+    {
+      "id": "m1",
+      "name": "Rafsan J.",
+      "brand": "Dhaka Surplus Co.",
+      "phone": "01712345678",
+      "email": "rafsan@surplus.bd",
+      "verified": true,
+      "status": "approved",
+      "totalSales": 124500,
+      "totalOrders": 40,
+      "payoutBalance": 12000,
+      "totalPayouts": 112500,
+      "createdAt": 1788595209303,
+      "updatedAt": 1789286409303
+    },
+    {
+      "id": "m2",
+      "name": "Nusrat A.",
+      "brand": "Nusrat Fabrics",
+      "phone": "01887654321",
+      "email": "nusrat@fab.bd",
+      "verified": false,
+      "status": "pending",
+      "totalSales": 0,
+      "totalOrders": 0,
+      "payoutBalance": 0,
+      "totalPayouts": 0,
+      "createdAt": 1789455609303,
+      "updatedAt": 1789455609303
+    }
+  ],
+  "users": [
+    {
+      "id": "u_admin",
+      "role": "SUPER_ADMIN",
+      "name": "Super Admin",
+      "phone": "01700000000",
+      "email": "admin@flashvault.bd",
+      "createdAt": 1786867209303,
+      "passwordHash": "fafa7aee41df1700750a1dabfcc220d0:3fc7dc28039e24ede893cc358ff7a7d1a0ff7fcb1d75df4e3e19922d07301a46d5f49cf6de0270d485f7161a7fd5150ca554900a6efb08c8122e9a830f65d006:120000",
+      "isSuspended": false
+    },
+    {
+      "id": "u_admin2",
+      "role": "ADMIN",
+      "name": "Admin",
+      "phone": "01700000001",
+      "email": "admin2@flashvault.bd",
+      "passwordHash": "fafa7aee41df1700750a1dabfcc220d0:3fc7dc28039e24ede893cc358ff7a7d1a0ff7fcb1d75df4e3e19922d07301a46d5f49cf6de0270d485f7161a7fd5150ca554900a6efb08c8122e9a830f65d006:120000",
+      "createdAt": 1786867209304,
+      "isSuspended": false
+    }
+  ],
+  "orders": [
+    {
+      "id": "o1",
+      "productId": "p1",
+      "productTitle": "Handloom Cotton Panjabi \u2014 Surplus Lot",
+      "quantity": 1,
+      "amount": 890,
+      "commission": 89,
+      "merchantEarning": 801,
+      "customerPhone": "017xx-xxx123",
+      "shippingAddress": "Dhanmondi, Dhaka",
+      "city": "Dhaka",
+      "deliveryFee": 80,
+      "totalAmount": 970,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "deliveryStatus": "delivered",
+      "courierTracking": "PATHAO-89231",
+      "courierName": "Pathao",
+      "idempotencyKey": "idem_o1",
+      "createdAt": 1789372809303,
+      "updatedAt": 1789372809303,
+      "deliveredAt": 1789444809303
+    },
+    {
+      "id": "o2",
+      "productId": "p2",
+      "productTitle": "Oversized Linen Shirt",
+      "quantity": 1,
+      "amount": 650,
+      "commission": 65,
+      "merchantEarning": 585,
+      "customerPhone": "018xx-xxx456",
+      "shippingAddress": "Gulshan, Dhaka",
+      "city": "Dhaka",
+      "deliveryFee": 80,
+      "totalAmount": 730,
+      "status": "shipped",
+      "paymentStatus": "paid",
+      "deliveryStatus": "shipped",
+      "courierTracking": "REDX-44123",
+      "courierName": "RedX",
+      "idempotencyKey": "idem_o2",
+      "createdAt": 1789441209303,
+      "updatedAt": 1789441209303
+    }
+  ],
+  "drops": [
+    {
+      "id": "drop_next",
+      "title": "Friday Night Vault \u2014 Oct 18",
+      "scheduledAt": 1789642809303,
+      "durationMinutes": 60,
+      "status": "UPCOMING",
+      "productIds": [
+        "p1",
+        "p2"
+      ],
+      "createdAt": 1789372809303,
+      "createdBy": "system"
+    }
+  ],
+  "drop": {
+    "isLocked": true,
+    "nextDropAt": 1789642809303,
+    "liveTraffic": 14230,
+    "totalGross": 847230
+  },
+  "settings": {
+    "platformName": "FlashVault BD",
+    "currency": "BDT",
+    "timezone": "Asia/Dhaka",
+    "dropDay": 5,
+    "dropStartHour": 21,
+    "dropStartMinute": 0,
+    "dropDurationMinutes": 60,
+    "commissionPercent": 10,
+    "minOrderAmount": 100,
+    "shippingFeeInsideDhaka": 80,
+    "shippingFeeOutside": 120,
+    "maintenanceMode": false
+  },
+  "auditLogs": [],
+  "idempotencyKeys": {}
+}
