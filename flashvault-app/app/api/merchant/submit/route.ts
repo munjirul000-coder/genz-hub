@@ -61,6 +61,10 @@ export async function POST(req: Request) {
       const discount = calculateDiscountPercent(data.originalPrice, data.vaultPrice);
       const isSuspicious = discount > 85 || data.originalPrice > data.vaultPrice * 10;
 
+      // Handle real uploaded images if provided, else fallback placeholder
+      const uploadedImages = (body as any).images && Array.isArray((body as any).images) ? (body as any).images.filter((u: string) => typeof u === "string" && u.length > 0).slice(0, 5) : [];
+      const finalImages = uploadedImages.length > 0 ? uploadedImages : ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=750&fit=crop"];
+
       const newProduct = {
         id: "p" + Date.now() + Math.random().toString(36).slice(2, 6),
         brand: data.brand,
@@ -73,8 +77,8 @@ export async function POST(req: Request) {
         availableQuantity: data.stock,
         sold: 0,
         soldQuantity: 0,
-        images: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=750&fit=crop"],
-        image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=750&fit=crop",
+        images: finalImages,
+        image: finalImages[0],
         category: data.category,
         size: data.size,
         condition: data.condition || "Surplus",

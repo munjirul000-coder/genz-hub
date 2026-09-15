@@ -36,6 +36,8 @@ export default function MerchantPage() {
   const [error, setError] = useState("");
   const [discountPreview, setDiscountPreview] = useState<number | null>(null);
   const [merchantStatus, setMerchantStatus] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch("/api/products").then(r => r.json()).then(d => setProducts(d.products ?? []));
@@ -83,6 +85,26 @@ export default function MerchantPage() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach(f => fd.append("images", f));
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Upload failed");
+      const urls = d.uploaded.map((u: any) => u.url);
+      setUploadedImages(prev => [...prev, ...urls].slice(0, 5));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     if (!user || user.role !== "MERCHANT") return setError("Merchant login required");
     if (merchantStatus === "pending") return setError("Your merchant account is under review. Cannot submit yet.");
@@ -101,6 +123,7 @@ export default function MerchantPage() {
           originalPrice: Number(form.originalPrice),
           vaultPrice: Number(form.vaultPrice),
           stock: Number(form.stock),
+          images: uploadedImages.length > 0 ? uploadedImages : undefined,
         }),
       });
       const data = await res.json();
@@ -113,6 +136,7 @@ export default function MerchantPage() {
       setTimeout(() => setSubmitted(false), 4000);
       setMyProducts(p => [data.product, ...p]);
       setForm({ brand: "", title: "", description: "", originalPrice: "", vaultPrice: "", stock: "", category: "Mens", size: "", condition: "Surplus", location: "Dhaka, Bangladesh" });
+      setUploadedImages([]);
     } catch (e: any) {
       setError(e.message || "Network error");
     } finally {
@@ -289,6 +313,25 @@ export default function MerchantPage() {
               </div>
               <div><label className="font-mono text-[11px] text-muted">TITLE *</label><Input className="mt-2" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Handloom Cotton Panjabi" /></div>
               <div><label className="font-mono text-[11px] text-muted">DESCRIPTION</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="mt-2 w-full min-h-[60px] rounded-md border border-border bg-bg2 px-3 py-2 text-[14px]" placeholder="Fabric, condition..." /></div>
+              <div>
+                <label className="font-mono text-[11px] text-muted">PRODUCT IMAGES * (Multiple upload, preview, remove, primary)</label>
+                <div className="mt-2 border border-dashed border-border rounded-lg p-4 bg-bg2">
+                  <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={handleImageUpload} className="text-[12px]" />
+                  <div className="mt-2 font-mono text-[10px] text-muted">Allowed: JPEG/PNG/WebP/AVIF, 5MB max each, max 5 images. Validated server-side type/size/dimensions.</div>
+                  {uploading && <div className="mt-2 text-[11px] animate-pulse">Uploading...</div>}
+                  {uploadedImages.length > 0 && (
+                    <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {uploadedImages.map((url, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={url} alt="" className="w-full h-20 object-cover rounded-lg border" />
+                          <button type="button" onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] grid place-items-center">×</button>
+                          {idx === 0 && <span className="absolute bottom-1 left-1 bg-ink text-white text-[8px] px-1.5 py-0.5 rounded-full">PRIMARY</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div><label className="font-mono text-[11px] text-muted">ORIGINAL ৳ *</label><Input type="number" className="mt-2" value={form.originalPrice} onChange={e => setForm({ ...form, originalPrice: e.target.value })} /></div>
                 <div><label className="font-mono text-[11px] text-muted">VAULT ৳ *</label><Input type="number" className="mt-2" value={form.vaultPrice} onChange={e => setForm({ ...form, vaultPrice: e.target.value })} />{discountPreview !== null && <div className="mt-1 text-[11px] font-mono text-emerald-600">{discountPreview}% OFF</div>}</div>
