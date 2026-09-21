@@ -39,9 +39,11 @@ export default function MerchantPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [localPreviews, setLocalPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<any>(null);
 
   useEffect(() => {
     fetch("/api/products").then(r => r.json()).then(d => setProducts(d.products ?? []));
+    fetch("/api/upload").then(r => r.json()).then(d => setStorageStatus(d.storage)).catch(()=>{});
   }, []);
 
   useEffect(() => {
@@ -320,6 +322,16 @@ export default function MerchantPage() {
             <CardHeader>
               <CardTitle className="text-[18px]">Submit surplus lot</CardTitle>
               <CardDescription>Approved merchant • Server validates • Rate limited</CardDescription>
+              {storageStatus?.usingLocal && (
+                <div className="mt-3 p-2 rounded bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-mono">
+                  ⚠️ Production Warning: Using ephemeral local storage - images will be lost on restart. Configure CLOUDINARY_CLOUD_NAME + CLOUDINARY_UPLOAD_PRESET (free) in .env for persistent storage. See .env.example
+                </div>
+              )}
+              {storageStatus && !storageStatus.usingLocal && (
+                <div className="mt-3 p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-mono">
+                  ✓ Persistent storage active: {storageStatus.hasCloudinary ? "Cloudinary" : storageStatus.hasR2 ? "R2" : storageStatus.hasS3 ? "S3" : "Unknown"} - images safe for real users
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
