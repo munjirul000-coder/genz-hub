@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useLang } from "@/lib/i18n";
@@ -10,9 +11,14 @@ import { Badge } from "@/components/ui/badge";
 
 export function MobileDrawer() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { t } = useLang();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setOpen(false);
@@ -40,21 +46,10 @@ export function MobileDrawer() {
     return true;
   });
 
-  return (
-    <>
-      <button
-        onClick={() => setOpen(!open)}
-        className="md:hidden w-10 h-10 rounded-full bg-ink text-white grid place-items-center shadow-sm relative z-[60]"
-        aria-label="Menu"
-      >
-        <div className="w-4 h-3 flex flex-col justify-between">
-          <motion.span animate={{ rotate: open ? 45 : 0, y: open ? 4 : 0 }} className="block h-[2px] bg-white rounded-full" />
-          <motion.span animate={{ opacity: open ? 0 : 1 }} className="block h-[2px] bg-white rounded-full" />
-          <motion.span animate={{ rotate: open ? -45 : 0, y: open ? -4 : 0 }} className="block h-[2px] bg-white rounded-full" />
-        </div>
-      </button>
-
-      <AnimatePresence>
+  // Portal target: document.body — the header has backdrop-filter + transform,
+  // which breaks position:fixed inside it (drawer was trapped in 72px header).
+  const drawerUI = (
+    <AnimatePresence>
         {open && (
           <>
             <motion.div
@@ -126,7 +121,23 @@ export function MobileDrawer() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(!open)}
+        className="md:hidden w-10 h-10 rounded-full bg-ink text-white grid place-items-center shadow-sm relative z-[60]"
+        aria-label="Menu"
+      >
+        <div className="w-4 h-3 flex flex-col justify-between">
+          <motion.span animate={{ rotate: open ? 45 : 0, y: open ? 4 : 0 }} className="block h-[2px] bg-white rounded-full" />
+          <motion.span animate={{ opacity: open ? 0 : 1 }} className="block h-[2px] bg-white rounded-full" />
+          <motion.span animate={{ rotate: open ? -45 : 0, y: open ? -4 : 0 }} className="block h-[2px] bg-white rounded-full" />
+        </div>
+      </button>
+      {mounted && createPortal(drawerUI, document.body)}
     </>
   );
 }
