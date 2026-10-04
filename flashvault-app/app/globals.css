@@ -42,6 +42,10 @@ body::before {
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* Horizontal swipe carousel: hide scrollbar visually, keep scroll functionality */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Selection */
 ::selection { background: var(--ink); color: var(--bg); }
 

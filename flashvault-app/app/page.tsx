@@ -98,10 +98,10 @@ export default function LandingPage() {
                 <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-muted">{t("hero.nextDrop")}</span>
               </div>
               <Countdown />
-              <div className="mt-8 flex gap-3">
+              <div className="mt-8 flex flex-wrap items-start gap-3">
                 <MagneticButton>
                   <Link href="/drop">
-                    <Button size="lg" className="rounded-pill px-8 h-[54px] text-[14px] group relative overflow-hidden">
+                    <Button size="lg" className="rounded-pill px-6 sm:px-8 h-[54px] text-[14px] group relative overflow-hidden">
                       <span className="relative z-10 flex items-center gap-2">
                         {t("hero.enterVault")}
                         <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>→</motion.span>
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 </MagneticButton>
                 <Link href="/merchant">
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button variant="outline" size="lg" className="rounded-pill h-[54px] backdrop-blur-sm">
+                    <Button variant="outline" size="lg" className="rounded-pill h-[54px] px-6 sm:px-8 backdrop-blur-sm">
                       {t("hero.sellStock")}
                     </Button>
                   </motion.div>
@@ -198,7 +198,7 @@ export default function LandingPage() {
               animate={{ y: [0, 10, 0], rotate: [0, -1, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
               whileHover={{ scale: 1.05 }}
-              className="absolute -bottom-6 -left-4 sm:-left-8 bg-bg2 border border-border rounded-lg px-3 py-2.5 shadow-md backdrop-blur-md"
+              className="absolute -bottom-6 -left-4 lg:-left-8 bg-bg2 border border-border rounded-lg px-3 py-2.5 shadow-md backdrop-blur-md"
             >
               <div className="font-mono text-[10px] text-muted">LIVE TRAFFIC</div>
               <div className="font-bold text-[16px] tracking-[-0.02em] flex items-center gap-2">
@@ -251,9 +251,12 @@ export default function LandingPage() {
           </motion.div>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+        {/* Mobile: horizontal swipe carousel (2 cards visible, snap) — sm+: same grid as before */}
+        <div className="flex sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth no-scrollbar -mx-5 px-5 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible">
           {products.map((p, i) => (
-            <ProductCard key={p.id} p={p} index={i} />
+            <div key={p.id} className="snap-start shrink-0 w-[calc((100%-12px)/2)] sm:w-auto">
+              <ProductCard p={p} index={i} />
+            </div>
           ))}
         </div>
       </section>
