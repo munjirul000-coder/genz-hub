@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/header";
 import { ProductCard } from "@/components/product-card";
@@ -28,6 +28,8 @@ function DropContent() {
   const [quantity, setQuantity] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [justWentLive, setJustWentLive] = useState(false);
+  const wasLiveRef = useRef(false);
 
   const { user } = useAuth();
   const { add: addToCart, items: cartItems } = useCart();
@@ -67,6 +69,39 @@ function DropContent() {
 
   const isLive = dropState?.isLive || dropState?.state === "LIVE" || false;
   const isLocked = !isLive;
+
+  // Vault went LIVE while page is open -> celebration + browser tab alert
+  const resolvedOnceRef = useRef(false);
+  useEffect(() => {
+    if (!dropState) return;
+    if (!resolvedOnceRef.current) {
+      // first status resolution: record only, no celebration (banner already shows live state)
+      resolvedOnceRef.current = true;
+      wasLiveRef.current = isLive;
+      return;
+    }
+    if (isLive && !wasLiveRef.current) {
+      // real locked -> live transition while page open: celebrate!
+      wasLiveRef.current = true;
+      setJustWentLive(true);
+      const t = setTimeout(() => setJustWentLive(false), 4500);
+      return () => clearTimeout(t);
+    }
+    wasLiveRef.current = isLive;
+  }, [isLive, dropState]);
+
+  // Browser tab shows LIVE status so everyone notices even from another tab
+  useEffect(() => {
+    if (!isLive) return;
+    document.title = "🔴 LIVE NOW — FlashVault BD";
+    const id = setInterval(() => {
+      document.title = document.title.includes("🔴") ? "🔥 VAULT OPEN — 60 MIN" : "🔴 LIVE NOW — FlashVault BD";
+    }, 1600);
+    return () => {
+      clearInterval(id);
+      document.title = "Live Drop | FlashVault BD";
+    };
+  }, [isLive]);
 
   const handleAddToCart = (p: Product) => {
     addToCart({ id: p.id, title: p.title, brand: p.brand, vaultPrice: p.vaultPrice, originalPrice: p.originalPrice, image: p.image }, quantity);
@@ -134,21 +169,52 @@ function DropContent() {
   return (
     <div className="min-h-screen bg-bg">
       <Header />
-      <div className="sticky top-[72px] z-40 border-y border-border bg-bg2/80 backdrop-blur-xl">
-        <div className="max-w-[1320px] mx-auto px-[20px] sm:px-[28px] h-[48px] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-red-500 animate-pulse"}`} />
+      {/* Status bar — mobile: normal document flow, auto height, wraps to 2 lines without overlapping; sm+: sticky exactly as before */}
+      <div className="sm:sticky sm:top-[72px] sm:z-40 border-y border-border bg-bg2/80 backdrop-blur-xl">
+        <div className="max-w-[1320px] mx-auto px-[20px] sm:px-[28px] min-h-[48px] py-2 sm:py-0 sm:h-[48px] flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "bg-emerald-500 animate-pulse" : "bg-red-500 animate-pulse"}`} />
             <span className="font-mono text-[11px] tracking-[0.12em]">LIVE DROP • FRI 9PM • Asia/Dhaka</span>
-            <Badge variant={isLive ? "gold" : "secondary"} className="ml-2">{dropState?.state || (isLive ? "LIVE" : "LOCKED")}</Badge>
+            <Badge variant={isLive ? "gold" : "secondary"} className="ml-2 shrink-0">{dropState?.state || (isLive ? "LIVE" : "LOCKED")}</Badge>
             {user && <Badge variant="secondary" className="hidden sm:flex text-[10px]">✓ {user.name?.split(" ")[0]} logged in</Badge>}
           </div>
-          <div className="flex items-center gap-4 font-mono text-[11px]">
+          <div className="flex items-center gap-3 sm:gap-4 font-mono text-[11px]">
             <span className="hidden sm:inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{liveTraffic.toLocaleString()} ONLINE</span>
             <span className="text-muted">{products.length} VAULT PIECES</span>
             {cartItems.length > 0 && <span className="hidden sm:inline text-ink font-bold">{cartItems.length} in cart</span>}
           </div>
         </div>
       </div>
+
+      {/* LIVE announcement banner — full-width gold strip, impossible to miss when vault is live */}
+      <AnimatePresence>
+        {isLive && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden bg-gold text-ink">
+            <div className="max-w-[1320px] mx-auto px-[20px] sm:px-[28px] py-3 flex items-center justify-center gap-3">
+              <motion.span animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }} transition={{ duration: 1.4, repeat: Infinity }} className="w-2.5 h-2.5 rounded-full bg-ink shrink-0" />
+              <span className="font-mono text-[11px] sm:text-[13px] tracking-[0.16em] font-bold text-center">VAULT IS LIVE NOW — 60 MINUTES ONLY</span>
+              <motion.span animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }} transition={{ duration: 1.4, repeat: Infinity, delay: 0.7 }} className="w-2.5 h-2.5 rounded-full bg-ink shrink-0" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Vault went LIVE while page open — big celebration overlay */}
+      <AnimatePresence>
+        {justWentLive && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] grid place-items-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setJustWentLive(false)}>
+            <motion.div
+              initial={{ scale: 0.85, y: 24 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 18, stiffness: 260 }}
+              className="bg-ink text-white rounded-[22px] border border-white/10 px-8 sm:px-12 py-10 text-center shadow-2xl max-w-[92vw]"
+            >
+              <motion.div animate={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 0.8, repeat: 2 }} className="text-[44px] leading-none">🔓</motion.div>
+              <div className="mt-4 font-extrabold text-[26px] sm:text-[32px] tracking-[-0.03em]">THE VAULT IS LIVE</div>
+              <div className="mt-2 font-mono text-[11px] sm:text-[12px] text-gold tracking-[0.22em]">60 MINUTES • REAL INVENTORY • NO RESTOCK</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="max-w-[1320px] mx-auto px-[20px] sm:px-[28px] py-8 sm:py-12">
         {isLocked ? (

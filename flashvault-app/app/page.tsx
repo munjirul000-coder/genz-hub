@@ -21,6 +21,7 @@ export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [realStats, setRealStats] = useState<{ liveCount: number; totalSold: number; avgDiscount: number; totalStock: number } | null>(null);
   const [liveTraffic, setLiveTraffic] = useState(14230);
+  const [isLive, setIsLive] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "8%"]);
@@ -34,6 +35,7 @@ export default function LandingPage() {
         setProducts(d.products ?? []);
         if (d.stats) setRealStats(d.stats);
         if (d.drop?.liveTraffic) setLiveTraffic(d.drop.liveTraffic);
+        setIsLive(!!(d.drop?.computed?.isLive || d.drop?.computed?.state === "LIVE"));
       });
     const id = setInterval(() => setLiveTraffic((n) => n + Math.floor(Math.random() * 20) - 10), 5000);
     return () => clearInterval(id);
@@ -55,9 +57,9 @@ export default function LandingPage() {
         <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-10 lg:gap-8 items-start">
           <motion.div style={{ opacity }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}>
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.6 }}>
-              <Badge variant="gold" className="mb-5 gap-2 px-3 py-1.5 text-[11px] backdrop-blur-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-goldDark animate-pulse" />
-                {t("badge.friday")}
+              <Badge variant={isLive ? "live" : "gold"} className="mb-5 gap-2 px-3 py-1.5 text-[11px] backdrop-blur-md">
+                <span className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-emerald-400" : "bg-goldDark"} animate-pulse`} />
+                {isLive ? "VAULT IS LIVE NOW — ENTER FAST" : t("badge.friday")}
               </Badge>
             </motion.div>
 
@@ -101,9 +103,16 @@ export default function LandingPage() {
               <div className="mt-8 flex flex-wrap items-start gap-3">
                 <MagneticButton>
                   <Link href="/drop">
-                    <Button size="lg" className="rounded-pill px-6 sm:px-8 h-[54px] text-[14px] group relative overflow-hidden">
+                    <Button size="lg" className={`rounded-pill px-6 sm:px-8 h-[54px] text-[14px] group relative overflow-hidden ${isLive ? "bg-gold text-ink hover:bg-gold" : ""}`}>
                       <span className="relative z-10 flex items-center gap-2">
-                        {t("hero.enterVault")}
+                        {isLive ? (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-ink animate-pulse" />
+                            ENTER NOW — LIVE
+                          </>
+                        ) : (
+                          t("hero.enterVault")
+                        )}
                         <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>→</motion.span>
                       </span>
                     </Button>
