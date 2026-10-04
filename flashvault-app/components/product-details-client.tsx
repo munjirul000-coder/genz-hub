@@ -10,6 +10,7 @@ import { formatBDT } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
 import { AuthModal } from "@/components/auth-modal";
+import { CheckoutModal } from "@/components/checkout-modal";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 
@@ -28,8 +29,7 @@ export default function ProductDetailsPage() {
   const [quantity, setQuantity] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [wishlist, setWishlist] = useState<string[]>([]);
-  const [checkoutError, setCheckoutError] = useState("");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [ordered, setOrdered] = useState(false);
 
   const { user } = useAuth();
@@ -112,40 +112,8 @@ export default function ProductDetailsPage() {
     }
     if (isLocked) return;
     if (isSoldOut) return;
-
-    setCheckoutError("");
-    setCheckoutLoading(true);
-    const idempotencyKey = `order_${product.id}_${user.id}_${Date.now()}`;
-    try {
-      const r = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: product.id,
-          quantity,
-          customerPhone: user.phone || "01700000000",
-          customerName: user.name,
-          address: "Dhanmondi, Dhaka",
-          city: "Dhaka",
-          idempotencyKey,
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        if (d.code === "AUTH_REQUIRED") {
-          setShowAuthModal(true);
-        }
-        throw new Error(d.error || "Order failed");
-      }
-      setOrdered(true);
-      setTimeout(() => {
-        router.push("/account");
-      }, 2000);
-    } catch (e: any) {
-      setCheckoutError(e.message);
-    } finally {
-      setCheckoutLoading(false);
-    }
+    // Delivery details + charge collected in checkout modal — never order without full address
+    setShowCheckout(true);
   };
 
   if (loading) {
@@ -381,9 +349,9 @@ export default function ProductDetailsPage() {
                     size="lg"
                     className="rounded-pill h-[52px] font-bold"
                     onClick={handleBuyNow}
-                    disabled={isLocked || isSoldOut || checkoutLoading}
+                    disabled={isLocked || isSoldOut}
                   >
-                    {checkoutLoading ? "..." : isLocked ? "Vault Locked" : isSoldOut ? "Sold Out" : `Buy Now — ${formatBDT(product.vaultPrice * quantity)}`}
+                    {isLocked ? "Vault Locked" : isSoldOut ? "Sold Out" : `Buy Now — ${formatBDT(product.vaultPrice * quantity)}`}
                   </Button>
                 </div>
 
@@ -401,8 +369,7 @@ export default function ProductDetailsPage() {
                   </Button>
                 </div>
 
-                {checkoutError && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-[12px]">{checkoutError}</div>}
-                {ordered && <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] font-bold">✓ Order locked! Redirecting to account...</div>}
+                {ordered && <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] font-bold">✓ Order confirmed! Redirecting to account...</div>}
 
                 <div className="pt-2 text-center font-mono text-[10px] text-muted leading-[1.5]">
                   {isLocked ? "View only • Login not required to view • Login required to buy" : "Real inventory • No overselling • Idempotency protected • Server-enforced vault • Guest can view, login required to buy"}
@@ -419,6 +386,16 @@ export default function ProductDetailsPage() {
       </div>
 
       <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} mode="login" onSuccess={() => { setShowAuthModal(false); }} />
+      <CheckoutModal
+        open={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        product={product}
+        quantity={quantity}
+        onSuccess={() => {
+          setOrdered(true);
+          setTimeout(() => router.push("/account"), 2000);
+        }}
+      />
     </div>
   );
 }

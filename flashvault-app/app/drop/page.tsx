@@ -10,6 +10,7 @@ import type { Product } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
 import { AuthModal } from "@/components/auth-modal";
+import { CheckoutModal } from "@/components/checkout-modal";
 
 function DropContent() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,14 +18,6 @@ function DropContent() {
   const [liveTraffic, setLiveTraffic] = useState(14230);
   const [selected, setSelected] = useState<Product | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("Dhanmondi, Dhaka");
-  const [city, setCity] = useState("Dhaka");
-  const [customerName, setCustomerName] = useState("");
-  const [ordered, setOrdered] = useState(false);
-  const [orderResult, setOrderResult] = useState<any>(null);
-  const [checkoutError, setCheckoutError] = useState("");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
@@ -59,13 +52,6 @@ function DropContent() {
       clearInterval(trafficId);
     };
   }, []);
-
-  useEffect(() => {
-    if (user) {
-      setCustomerName(user.name || "");
-      setPhone(user.phone || "");
-    }
-  }, [user]);
 
   const isLive = dropState?.isLive || dropState?.state === "LIVE" || false;
   const isLocked = !isLive;
@@ -114,56 +100,6 @@ function DropContent() {
       return;
     }
     setShowCheckout(true);
-  };
-
-  const handleOrder = async () => {
-    if (!selected) return;
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-    setCheckoutError("");
-    setCheckoutLoading(true);
-    const idempotencyKey = `order_${selected.id}_${user.id}_${Date.now()}`;
-    try {
-      const r = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: selected.id,
-          quantity,
-          customerPhone: phone || user.phone,
-          customerName: customerName || user.name,
-          address,
-          city,
-          idempotencyKey,
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        if (d.code === "AUTH_REQUIRED") {
-          setShowAuthModal(true);
-          setCheckoutError("Login required - please sign in");
-        } else {
-          setCheckoutError(d.error || "Order failed");
-        }
-        setCheckoutLoading(false);
-        return;
-      }
-      setOrderResult(d.order);
-      setOrdered(true);
-      setTimeout(() => {
-        setShowCheckout(false);
-        setSelected(null);
-        setOrdered(false);
-        setOrderResult(null);
-        load();
-      }, 3000);
-    } catch (e: any) {
-      setCheckoutError(e.message || "Network error");
-    } finally {
-      setCheckoutLoading(false);
-    }
   };
 
   return (
@@ -277,39 +213,20 @@ function DropContent() {
         </motion.div>
       )}</AnimatePresence>
 
-      <AnimatePresence>{showCheckout && selected && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-[16px] p-4 grid place-items-center">
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="w-full max-w-[460px] bg-bg2 border border-border rounded-xl shadow-lg p-6 max-h-[90vh] overflow-auto">
-            {!ordered ? (
-              <>
-                <h3 className="font-bold text-[18px]">Secure Checkout • {user?.name}</h3>
-                <p className="mt-1 text-[13px] text-muted">{selected.title} x{quantity}</p>
-                <div className="mt-5 space-y-4">
-                  <div><label className="font-mono text-[11px] text-muted">FULL NAME</label><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Your name" className="mt-2 w-full h-[44px] rounded-md border border-border bg-bg2 px-3 text-[14px]" /></div>
-                  <div><label className="font-mono text-[11px] text-muted">PHONE *</label><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="017xxxxxxxx" className="mt-2 w-full h-[44px] rounded-md border border-border bg-bg2 px-3 text-[14px]" /></div>
-                  <div><label className="font-mono text-[11px] text-muted">ADDRESS *</label><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House, Road, Area" className="mt-2 w-full h-[44px] rounded-md border border-border bg-bg2 px-3 text-[14px]" /></div>
-                  <div><label className="font-mono text-[11px] text-muted">CITY *</label><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Dhaka" className="mt-2 w-full h-[44px] rounded-md border border-border bg-bg2 px-3 text-[14px]" /></div>
-                </div>
-                <div className="mt-4 p-3 rounded-md bg-bg3 border text-[11px]">
-                  <div className="flex justify-between"><span>Subtotal</span><span>{formatBDT(selected.vaultPrice * quantity)}</span></div>
-                  <div className="flex justify-between font-bold mt-2 pt-2 border-t"><span>Total</span><span>{formatBDT(selected.vaultPrice * quantity + (city.toLowerCase().includes("dhaka") ? 80 : 120))}</span></div>
-                </div>
-                {checkoutError && <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-[12px]">{checkoutError}</div>}
-                <div className="mt-6 flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-pill" onClick={() => setShowCheckout(false)} disabled={checkoutLoading}>Cancel</Button>
-                  <Button className="flex-1 rounded-pill" disabled={checkoutLoading} onClick={handleOrder}>{checkoutLoading ? "..." : `Pay ${formatBDT(selected.vaultPrice * quantity + 80)}`}</Button>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 rounded-full bg-emerald-500 text-white grid place-items-center mx-auto text-[20px]">✓</div>
-                <h3 className="mt-4 font-bold text-[18px]">Order Locked! {orderResult?.id}</h3>
-                <p className="mt-2 text-[13px] text-muted">Tracking: {orderResult?.courierTracking}</p>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      )}</AnimatePresence>
+      <CheckoutModal
+        open={showCheckout && !!selected}
+        onClose={() => setShowCheckout(false)}
+        product={selected}
+        quantity={quantity}
+        onSuccess={() => {
+          setTimeout(() => {
+            setShowCheckout(false);
+            setSelected(null);
+            setQuantity(1);
+            load();
+          }, 3200);
+        }}
+      />
 
       <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} mode={authMode} onSuccess={() => setShowCheckout(true)} />
     </div>

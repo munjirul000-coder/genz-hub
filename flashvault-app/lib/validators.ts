@@ -27,9 +27,9 @@ export const productSubmitSchema = z.object({
 export const orderCreateSchema = z.object({
   productId: z.string().min(1),
   quantity: z.number().int().min(1).max(10).default(1),
-  customerPhone: z.string().min(11).max(15),
+  customerPhone: z.string().regex(/^01[3-9]\d{8}$/, "Valid BD phone required (01XXXXXXXXX)"),
   customerName: z.string().min(2).max(100).optional(),
-  address: z.string().min(5).max(500),
+  address: z.string().min(10, "Full delivery address required (house, road, area)").max(500),
   city: z.string().min(2).max(100),
   area: z.string().optional(),
   idempotencyKey: z.string().min(5).max(100),
