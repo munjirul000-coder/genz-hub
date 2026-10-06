@@ -59,8 +59,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (authed) {
       load();
-      const id = setInterval(load, 15000);
-      return () => clearInterval(id);
+      // Real-time: fast poll + instant refresh when tab regains focus
+      const id = setInterval(load, 5000);
+      const onFocus = () => load();
+      const onVisible = () => { if (document.visibilityState === "visible") load(); };
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", onVisible);
+      return () => {
+        clearInterval(id);
+        window.removeEventListener("focus", onFocus);
+        document.removeEventListener("visibilitychange", onVisible);
+      };
     }
   }, [authed]);
 

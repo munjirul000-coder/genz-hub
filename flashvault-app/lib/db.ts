@@ -1,6 +1,7 @@
 import fs from "fs";
 import { DB_PATH, ensureDataDir } from "./store";
 import { defaultSettings } from "./settings";
+import { isPersistent, hydrateFromPrisma, syncToPrisma } from "./prisma-sync";
 import type { Product, Merchant, User, Order, DropConfig, PlatformSettings, AuditLog, DropSchedule } from "./types";
 
 export type { Product, Merchant, User, Order, DropConfig, PlatformSettings, AuditLog, DropSchedule } from "./types";
@@ -270,31 +271,89 @@ function migrateDB(raw: any): DB {
 }
 
 export function readDB(): DB {
+  // Persistent mode: serve from hydrated in-memory snapshot (boot: loaded from Postgres)
+  if (memoryDB) return cloneDB(memoryDB);
   try {
     ensureDataDir();
     if (!fs.existsSync(DB_PATH)) {
       fs.writeFileSync(DB_PATH, JSON.stringify(defaultDB, null, 2));
-      return defaultDB;
+      return cloneDB(defaultDB);
     }
     const raw = fs.readFileSync(DB_PATH, "utf8");
     const parsed = JSON.parse(raw);
     return migrateDB(parsed);
   } catch (e) {
     console.error("[db] read failed, using default", e);
-    return defaultDB;
+    return cloneDB(defaultDB);
   }
 }
 
 export function writeDB(db: DB) {
   try {
+    // carry over side collections (notifications etc.) that live on the db object
+    if (memoryDB) {
+      const mem: any = memoryDB;
+      const next: any = db;
+      for (const k of Object.keys(mem)) {
+        if (!(k in next)) next[k] = mem[k];
+      }
+    }
+    memoryDB = db;
     ensureDataDir();
     const tmpPath = DB_PATH + ".tmp";
     fs.writeFileSync(tmpPath, JSON.stringify(db, null, 2));
     fs.renameSync(tmpPath, DB_PATH);
+    // Mirror to Postgres (Supabase) — survives Render restarts/redeploys
+    if (isPersistent()) {
+      syncToPrisma(db).catch(() => {});
+    }
   } catch (e) {
     console.error("[db] write failed", e);
     throw e;
   }
+}
+
+function cloneDB(db: DB): DB {
+  try {
+    return JSON.parse(JSON.stringify(db));
+  } catch {
+    return db;
+  }
+}
+
+// ---------------------------------------------------------------- persistence boot
+// On server start with DATABASE_URL: pull everything from Postgres into memory.
+// This is why orders placed before a restart still show in admin after restart.
+let memoryDB: DB | null = null;
+
+export async function ensureHydrated(): Promise<void> {
+  if (memoryDB || !isPersistent()) return;
+  try {
+    const fromDb = await hydrateFromPrisma();
+    if (memoryDB) return; // a write completed while we were hydrating — keep it
+    if (fromDb) {
+      const merged = { ...readDB(), ...fromDb } as DB;
+      memoryDB = merged;
+      try {
+        ensureDataDir();
+        fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2));
+      } catch {}
+      console.log("[db] hydrated from Postgres:", {
+        users: merged.users?.length || 0,
+        products: merged.products?.length || 0,
+        orders: merged.orders?.length || 0,
+      });
+    } else {
+      memoryDB = readDB(); // empty Postgres -> keep JSON seed, first write pushes it up
+    }
+  } catch (e) {
+    console.error("[db] hydration error", e);
+  }
+}
+
+// Kick off hydration immediately at module load (server boot)
+if (isPersistent()) {
+  ensureHydrated();
 }
 
 export function getRealStats() {

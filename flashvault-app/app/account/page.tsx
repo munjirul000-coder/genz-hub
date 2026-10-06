@@ -46,6 +46,17 @@ export default function AccountPage() {
 
   useEffect(() => {
     load();
+    // Real-time: poll every 8s + refresh when tab focused (orders appear without manual refresh)
+    const id = setInterval(load, 8000);
+    const onFocus = () => load();
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const logout = async () => {

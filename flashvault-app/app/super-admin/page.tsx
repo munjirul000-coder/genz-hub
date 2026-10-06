@@ -15,6 +15,18 @@ export default function SuperAdminPage() {
   const [tab, setTab] = useState<"overview" | "audit" | "settings">("overview");
   const router = useRouter();
 
+  // Real-time data refresh — poll + focus (no manual refresh needed)
+  const loadRealtime = async () => {
+    try {
+      const [auditRes, statsRes] = await Promise.all([
+        fetch("/api/audit?limit=50", { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/admin/stats", { cache: "no-store" }).then(r => r.json()),
+      ]);
+      if (auditRes.logs) setAuditLogs(auditRes.logs);
+      if (statsRes.stats) setStats(statsRes.stats);
+    } catch {}
+  };
+
   useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" }).then(async r => {
       if (!r.ok) { router.push("/login"); return; }
@@ -26,16 +38,23 @@ export default function SuperAdminPage() {
       }
       setUser(d.user);
       setLoading(false);
-      try {
-        const [auditRes, statsRes] = await Promise.all([
-          fetch("/api/audit?limit=50").then(r => r.json()),
-          fetch("/api/admin/stats").then(r => r.json()),
-        ]);
-        if (auditRes.logs) setAuditLogs(auditRes.logs);
-        if (statsRes.stats) setStats(statsRes.stats);
-      } catch {}
+      loadRealtime();
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(loadRealtime, 5000);
+    const onFocus = () => loadRealtime();
+    const onVisible = () => { if (document.visibilityState === "visible") loadRealtime(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user]);
 
   if (loading) return <div className="min-h-screen grid place-items-center font-mono text-[12px]"><div className="animate-pulse">Checking SUPER_ADMIN access • Server-enforced • No hardcoded password...</div></div>;
 
