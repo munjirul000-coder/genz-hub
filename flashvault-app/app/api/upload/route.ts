@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyUserRequest } from "@/lib/auth";
-import { uploadImage, validateImageFile, getStorageConfig } from "@/lib/storage";
+import { uploadImage, validateImageFile, getStorageConfig, uploadVideo } from "@/lib/storage";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
@@ -36,12 +36,13 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const files = formData.getAll("images") as File[];
-    
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: "No images provided - use 'images' field" }, { status: 400 });
+    const hasVideo = formData.get("video") instanceof File && (formData.get("video") as File).size > 0;
+
+    if ((!files || files.length === 0) && !hasVideo) {
+      return NextResponse.json({ error: "No files provided - use 'images' field (up to 5 images) and/or 'video' field (1 video)" }, { status: 400 });
     }
 
-    if (files.length > 5) {
+    if (files && files.length > 5) {
       return NextResponse.json({ error: "Too many files - max 5 images" }, { status: 400 });
     }
 
@@ -69,11 +70,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "All uploads failed", errors }, { status: 400 });
     }
 
+    // Optional single product video (max 1, max 50MB, max 90s — enforced by storage lib)
+    const videoFile = formData.get("video");
+    let video: { url: string; size: number; format: string } | null = null;
+    if (videoFile instanceof File && videoFile.size > 0) {
+      try {
+        const uploadedVideo = await uploadVideo(videoFile);
+        video = { url: uploadedVideo.url, size: uploadedVideo.size, format: uploadedVideo.format };
+      } catch (e: any) {
+        errors.push({ file: videoFile.name, error: e.message });
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       uploaded: results,
       errors: errors.length > 0 ? errors : undefined,
       count: results.length,
+      video,
       storage: getStorageConfig(),
     });
   } catch (e: any) {

@@ -14,6 +14,40 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "i
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_DIMENSION = 4000;
 
+// Video upload support — like big e-commerce sites (Daraz etc.)
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB (Cloudinary free allows 100MB — safe margin)
+export const MAX_VIDEO_DURATION = 90; // seconds — 1.5 minutes
+
+// Detect a video URL inside the images/media array (Cloudinary or extension based)
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  if (url.includes("/video/upload/")) return true;
+  return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+}
+
+// Cloudinary video poster frame (first second) — nice preview before play
+export function videoPosterUrl(url: string): string {
+  if (url.includes("/video/upload/")) {
+    return url.replace("/video/upload/", "/video/upload/so_0.jpg");
+  }
+  return "";
+}
+
+export function validateVideoFile(file: File | { type: string; size: number; name: string }): { valid: boolean; error?: string } {
+  if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+    return { valid: false, error: `Invalid video type ${file.type || "(unknown)"}. Allowed: MP4, WebM, MOV` };
+  }
+  if (file.size > MAX_VIDEO_SIZE) {
+    return { valid: false, error: `Video too large ${Math.round(file.size / 1024 / 1024)}MB. Max 50MB` };
+  }
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (!ext || !["mp4", "webm", "mov", "m4v"].includes(ext)) {
+    return { valid: false, error: `Invalid video extension .${ext}. Allowed: mp4, webm, mov` };
+  }
+  return { valid: true };
+}
+
 export function validateImageFile(file: File | { type: string; size: number; name: string }): { valid: boolean; error?: string } {
   if (!ALLOWED_TYPES.includes(file.type)) {
     return { valid: false, error: `Invalid file type ${file.type}. Allowed: JPEG, PNG, WebP, AVIF` };
@@ -61,6 +95,45 @@ export async function uploadImage(file: File): Promise<UploadResult> {
   // Fallback to local storage - works for demo, but ephemeral on Render/Vercel
   // For real users, configure CLOUDINARY or R2
   return uploadToLocal(file);
+}
+
+export async function uploadVideo(file: File): Promise<UploadResult> {
+  const validation = validateVideoFile(file);
+  if (!validation.valid) throw new Error(validation.error);
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_URL?.split("@")[1];
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+
+  if (cloudName && uploadPreset) {
+    // Raw multipart upload (efficient for large files — no base64 bloat)
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+    formData.append("folder", "flashvault/products");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+      method: "POST",
+      body: formData as any,
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "Cloudinary video upload failed");
+
+    // Server-side duration enforcement — Cloudinary reports exact duration
+    if (typeof data.duration === "number" && data.duration > MAX_VIDEO_DURATION + 5) {
+      throw new Error(`Video is ${Math.round(data.duration)}s — max ${MAX_VIDEO_DURATION}s (1.5 minutes)`);
+    }
+
+    return {
+      url: data.secure_url,
+      publicId: data.public_id,
+      size: data.bytes,
+      format: data.format,
+    };
+  }
+
+  // No Cloudinary configured — local fallback (ephemeral, dev only)
+  return uploadToLocal(file, "video");
 }
 
 async function uploadToCloudinary(file: File): Promise<UploadResult> {
@@ -155,7 +228,7 @@ async function uploadToS3(file: File): Promise<UploadResult> {
   );
 }
 
-async function uploadToLocal(file: File): Promise<UploadResult> {
+async function uploadToLocal(file: File, kind: "image" | "video" = "image"): Promise<UploadResult> {
   const fs = await import("fs");
   const path = await import("path");
   const crypto = await import("crypto");
@@ -169,7 +242,7 @@ async function uploadToLocal(file: File): Promise<UploadResult> {
     }
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const ext = file.name.split(".").pop()?.toLowerCase() || (kind === "video" ? "mp4" : "jpg");
   const filename = `${Date.now()}_${crypto.randomBytes(6).toString("hex")}.${ext}`;
   const publicFilepath = path.join(publicUploadsDir, filename);
   const dataFilepath = path.join(dataUploadsDir, filename);
@@ -177,7 +250,8 @@ async function uploadToLocal(file: File): Promise<UploadResult> {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  if (!isValidImageBuffer(buffer)) {
+  // deep image magic-number check only for images (video containers vary)
+  if (kind === "image" && !isValidImageBuffer(buffer)) {
     throw new Error("File is not a valid image - magic number check failed");
   }
 

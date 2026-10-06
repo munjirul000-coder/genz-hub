@@ -183,6 +183,11 @@ function DropContent() {
               <div className="relative aspect-[4/5] bg-bg3">
                 <img src={selected.image} alt={selected.title} className="w-full h-full object-cover" />
                 <div className="absolute top-4 left-4 flex gap-2"><Badge variant="gold">-{selected.discountPercent}%</Badge><Badge variant="secondary">{selected.brand}</Badge></div>
+                {(() => { const vid = (selected.images || []).find((u: string) => u.includes("/video/upload/") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)); return vid ? (
+                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+                    <video src={vid} controls playsInline preload="metadata" poster={vid.includes("/video/upload/") ? vid.replace("/video/upload/", "/video/upload/so_0.jpg") : undefined} className="w-full max-h-[180px] rounded-lg bg-black" />
+                  </div>
+                ) : null; })()}
               </div>
               <div className="p-6 sm:p-8 flex flex-col">
                 <div className="flex-1">

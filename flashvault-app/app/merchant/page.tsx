@@ -40,6 +40,10 @@ export default function MerchantPage() {
   const [localPreviews, setLocalPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [storageStatus, setStorageStatus] = useState<any>(null);
+  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoError, setVideoError] = useState("");
 
   useEffect(() => {
     fetch("/api/products").then(r => r.json()).then(d => setProducts(d.products ?? []));
@@ -124,6 +128,60 @@ export default function MerchantPage() {
     });
   };
 
+  // Product video upload — max 1, 50MB, 90 seconds (like big e-commerce sites)
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setVideoError("");
+
+    // client-side type/size checks (server re-checks)
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
+      return setVideoError("Only MP4, WebM or MOV video allowed");
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      return setVideoError(`Video ${(file.size / 1024 / 1024).toFixed(0)}MB — max 50MB`);
+    }
+
+    // duration check via local metadata BEFORE uploading (saves bandwidth)
+    const localUrl = URL.createObjectURL(file);
+    const durationOk = await new Promise<boolean>((resolve) => {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.onloadedmetadata = () => resolve(v.duration <= 93);
+      v.onerror = () => resolve(false);
+      v.src = localUrl;
+    });
+    if (!durationOk) {
+      URL.revokeObjectURL(localUrl);
+      return setVideoError("Video too long — max 1.5 minutes (90 seconds)");
+    }
+
+    setVideoPreview(localUrl);
+    setVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("video", file);
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await r.json();
+      if (!r.ok || !d.video) throw new Error(d.errors?.[0]?.error || d.error || "Video upload failed");
+      setUploadedVideo(d.video.url);
+    } catch (err: any) {
+      setVideoError(err.message);
+      setVideoPreview(null);
+      URL.revokeObjectURL(localUrl);
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const removeVideo = () => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoPreview(null);
+    setUploadedVideo(null);
+    setVideoError("");
+  };
+
   const submit = async () => {
     if (!user || user.role !== "MERCHANT") return setError("Merchant login required");
     if (merchantStatus === "pending") return setError("Your merchant account is under review. Cannot submit yet.");
@@ -142,7 +200,7 @@ export default function MerchantPage() {
           originalPrice: Number(form.originalPrice),
           vaultPrice: Number(form.vaultPrice),
           stock: Number(form.stock),
-          images: uploadedImages.length > 0 ? uploadedImages : undefined,
+          images: uploadedImages.length > 0 ? [...uploadedImages, ...(uploadedVideo ? [uploadedVideo] : [])] : uploadedVideo ? [uploadedVideo] : undefined,
         }),
       });
       const data = await res.json();
@@ -345,6 +403,21 @@ export default function MerchantPage() {
               <div><label className="font-mono text-[11px] text-muted">TITLE *</label><Input className="mt-2" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Handloom Cotton Panjabi" /></div>
               <div><label className="font-mono text-[11px] text-muted">DESCRIPTION</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="mt-2 w-full min-h-[60px] rounded-md border border-border bg-bg2 px-3 py-2 text-[14px]" placeholder="Fabric, condition..." /></div>
               <div>
+                <label className="font-mono text-[11px] text-muted">PRODUCT VIDEO (Optional — 1 video, max 90 seconds)</label>
+                <div className="mt-2 p-3 rounded-lg border border-border bg-bg2">
+                  <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoUpload} className="text-[12px]" disabled={videoUploading} />
+                  <div className="mt-2 font-mono text-[10px] text-muted">MP4 / WebM / MOV • max 50MB • max 1.5 min — video of the real product builds buyer trust</div>
+                  {videoUploading && <div className="mt-2 text-[11px] animate-pulse">Uploading video… (larger file, may take a minute)</div>}
+                  {videoError && <div className="mt-2 text-[11px] text-red-600 font-medium">✗ {videoError}</div>}
+                  {(videoPreview || uploadedVideo) && (
+                    <div className="mt-3 relative">
+                      <video src={videoPreview || uploadedVideo || undefined} controls preload="metadata" className="w-full max-h-[240px] rounded-lg border bg-black" />
+                      <button type="button" onClick={removeVideo} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 text-white text-[14px] grid place-items-center">×</button>
+                      {uploadedVideo && <div className="mt-1 font-mono text-[10px] text-emerald-600">✓ Uploaded to Cloudinary</div>}
+                    </div>
+                  )}
+                </div>
+
                 <label className="font-mono text-[11px] text-muted">PRODUCT IMAGES * (Multiple upload, preview, remove, primary)</label>
                 <div className="mt-2 border border-dashed border-border rounded-lg p-4 bg-bg2">
                   <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={handleImageUpload} className="text-[12px]" />

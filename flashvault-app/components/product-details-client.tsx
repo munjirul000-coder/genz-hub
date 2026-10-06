@@ -149,7 +149,11 @@ export default function ProductDetailsPage() {
   }
 
   const discount = Math.round(((product.originalPrice - product.vaultPrice) / product.originalPrice) * 100);
-  const images = product.images && product.images.length > 0 ? product.images : [product.image];
+  const isVideo = (u: string) => u.includes("/video/upload/") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
+  const allMedia = product.images && product.images.length > 0 ? product.images : [product.image];
+  const productVideo = allMedia.find(u => isVideo(u)) || null;
+  const images = allMedia.filter(u => !isVideo(u));
+  const videoPoster = productVideo && productVideo.includes("/video/upload/") ? productVideo.replace("/video/upload/", "/video/upload/so_0.jpg") : undefined;
 
   return (
     <div className="min-h-screen bg-bg">
@@ -243,6 +247,24 @@ export default function ProductDetailsPage() {
                 </div>
               )}
             </div>
+
+            {/* Product video — merchant uploaded, max 90s */}
+            {productVideo && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-ink animate-pulse" />
+                  <span className="font-mono text-[10px] tracking-[0.14em] text-muted">PRODUCT VIDEO • REAL FOOTAGE</span>
+                </div>
+                <video
+                  src={productVideo}
+                  poster={videoPoster}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full aspect-[4/5] sm:aspect-video object-cover bg-black rounded-[20px] sm:rounded-[28px] border border-border shadow-sm"
+                />
+              </div>
+            )}
 
             {/* Trust badges */}
             <div className="mt-6 grid grid-cols-3 gap-3">

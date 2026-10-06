@@ -135,6 +135,9 @@ export function ProductCard({ p, index }: { p: Product; index: number }) {
             <Badge variant="secondary" className="shadow-sm font-mono backdrop-blur-md">{p.brand}</Badge>
           </motion.div>
           <div className="absolute top-3 right-3 flex gap-1.5">
+            {(p.images || []).some((u: string) => u.includes("/video/upload/") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)) && (
+              <Badge variant="secondary" className="shadow-sm gap-1 backdrop-blur-md">▶ VIDEO</Badge>
+            )}
             <Badge variant="live" className="shadow-sm gap-1.5 backdrop-blur-md">
               <span className={`w-1.5 h-1.5 rounded-full ${isSoldOut ? "bg-red-400" : "bg-emerald-400 animate-pulseDot"}`} />
               {isSoldOut ? "SOLD OUT" : `${p.availableQuantity} LEFT`}

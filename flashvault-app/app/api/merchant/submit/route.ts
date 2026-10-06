@@ -62,8 +62,12 @@ export async function POST(req: Request) {
       const isSuspicious = discount > 85 || data.originalPrice > data.vaultPrice * 10;
 
       // Handle real uploaded images if provided, else fallback placeholder
-      const uploadedImages = (body as any).images && Array.isArray((body as any).images) ? (body as any).images.filter((u: string) => typeof u === "string" && u.length > 0).slice(0, 5) : [];
+      // Note: images array may also contain ONE product video URL at the end (max 5 images + 1 video)
+      const uploadedImages = (body as any).images && Array.isArray((body as any).images) ? (body as any).images.filter((u: string) => typeof u === "string" && u.length > 0).slice(0, 6) : [];
       const finalImages = uploadedImages.length > 0 ? uploadedImages : ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=750&fit=crop"];
+      // primary image must be a real image — never a video URL
+      const isVideo = (u: string): boolean => u.includes("/video/upload/") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
+      const primaryImage = finalImages.find((u: string) => !isVideo(u)) || finalImages[0];
 
       const newProduct = {
         id: "p" + Date.now() + Math.random().toString(36).slice(2, 6),
@@ -78,7 +82,7 @@ export async function POST(req: Request) {
         sold: 0,
         soldQuantity: 0,
         images: finalImages,
-        image: finalImages[0],
+        image: primaryImage,
         category: data.category,
         size: data.size,
         condition: data.condition || "Surplus",

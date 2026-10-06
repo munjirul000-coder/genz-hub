@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { filename: st
 
     // Validate extension
     const ext = filename.split(".").pop()?.toLowerCase();
-    const allowedExts = ["jpg", "jpeg", "png", "webp", "avif"];
+    const allowedExts = ["jpg", "jpeg", "png", "webp", "avif", "mp4", "webm", "mov", "m4v"];
     if (!ext || !allowedExts.includes(ext)) {
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
     }
@@ -50,6 +50,10 @@ export async function GET(req: NextRequest, { params }: { params: { filename: st
       png: "image/png",
       webp: "image/webp",
       avif: "image/avif",
+      mp4: "video/mp4",
+      webm: "video/webm",
+      mov: "video/quicktime",
+      m4v: "video/x-m4v",
     };
     
     const contentType = contentTypeMap[ext] || "application/octet-stream";
