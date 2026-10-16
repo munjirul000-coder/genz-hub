@@ -70,6 +70,9 @@ export type User = {
   isSuspended?: boolean;
   resetToken?: string;
   resetExpiry?: number;
+  emailVerified?: boolean;
+  emailVerifyToken?: string;
+  emailVerifyExpires?: number;
 };
 
 export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "returned" | "refunded" | "payout_released" | "paid";

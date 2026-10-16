@@ -2,6 +2,7 @@ import { readDB, writeDB, DB } from "./db";
 import { hashPassword, verifyPassword, isStrongPassword } from "./password";
 import { signJWT, verifyJWT, getTokenFromRequest } from "./jwt";
 import { dbMutex } from "./store";
+import { sendEmail, verificationEmailHtml, loginAlertEmailHtml, isEmailConfigured } from "./mailer";
 import crypto from "crypto";
 
 export type AuthResult = {
@@ -47,33 +48,98 @@ export async function signupCustomer(data: { name: string; email: string; passwo
       createdAt: Date.now(),
       lastLogin: Date.now(),
       isSuspended: false,
+      emailVerified: false,
+      emailVerifyToken: crypto.randomBytes(24).toString("hex"),
+      emailVerifyExpires: Date.now() + 24 * 60 * 60 * 1000,
     };
 
     db.users.push(newUser);
     writeDB(db);
 
+    // Send verification email (skips silently if SMTP not configured)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://flashvault-bd.onrender.com";
+    const verifyLink = `${siteUrl}/api/auth/verify-email?token=${newUser.emailVerifyToken}`;
+    sendEmail(newUser.email!, "Verify your FlashVault account", verificationEmailHtml(newUser.name, verifyLink)).catch(() => {});
+
     const token = signJWT({ id: newUser.id, role: newUser.role, email: newUser.email });
-    const { passwordHash, ...safeUser } = newUser as any;
+    const { passwordHash, resetToken, resetExpiry, emailVerifyToken, emailVerifyExpires, ...safeUser } = newUser as any;
     return { ok: true, user: safeUser, token };
   } finally {
     release();
   }
 }
 
+// ---------------------------------------------------------------
+// Account lockout — brute-force protection (5 wrong passwords = 15 min lock)
+// Stored in module memory: survives within a server instance. An attacker
+// losing progress on restart is acceptable; DB columns not needed.
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000;
+const failedLogins = new Map<string, { count: number; lockedUntil?: number }>();
+
+function lockoutKey(email: string) {
+  return email.toLowerCase().trim();
+}
+
+function getLockState(email: string) {
+  const s = failedLogins.get(lockoutKey(email));
+  if (!s) return null;
+  if (s.lockedUntil && Date.now() > s.lockedUntil) {
+    failedLogins.delete(lockoutKey(email)); // lock expired
+    return null;
+  }
+  return s;
+}
+
+function recordFailedLogin(email: string) {
+  const key = lockoutKey(email);
+  const s = failedLogins.get(key) || { count: 0 };
+  s.count += 1;
+  if (s.count >= MAX_FAILED_ATTEMPTS) {
+    s.lockedUntil = Date.now() + LOCKOUT_MS;
+    s.count = 0;
+  }
+  failedLogins.set(key, s);
+}
+
+function clearFailedLogins(email: string) {
+  failedLogins.delete(lockoutKey(email));
+}
+
 export async function loginCustomer(email: string, password: string): Promise<AuthResult> {
   if (!email || !password) return { ok: false, error: "Email and password required", status: 400 };
+
+  // Account lockout check — before even touching the DB (also hides account existence while locked)
+  const lock = getLockState(email);
+  if (lock?.lockedUntil) {
+    const mins = Math.ceil((lock.lockedUntil - Date.now()) / 60000);
+    return { ok: false, error: `Too many failed attempts. Account locked for ${mins} more minute(s).`, status: 423 };
+  }
+
   const db = readDB();
   const user = db.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
   if (!user) return { ok: false, error: "Account not found", status: 404 };
   if (user.isSuspended) return { ok: false, error: "Account suspended. Contact support.", status: 403 };
   if (!user.passwordHash) return { ok: false, error: "Invalid account. Reset password.", status: 400 };
-  if (!verifyPassword(password, user.passwordHash)) return { ok: false, error: "Incorrect password", status: 401 };
+  if (!verifyPassword(password, user.passwordHash)) {
+    recordFailedLogin(email);
+    const s = getLockState(email);
+    const left = s ? MAX_FAILED_ATTEMPTS - s.count : MAX_FAILED_ATTEMPTS;
+    return { ok: false, error: left > 0 && left <= 2 ? `Incorrect password. ${left} attempt(s) left before 15-min lock.` : "Incorrect password", status: 401 };
+  }
 
+  clearFailedLogins(email);
   user.lastLogin = Date.now();
   writeDB(db);
 
+  // Security alert email on every login (if SMTP configured)
+  if (user.email && isEmailConfigured()) {
+    const when = new Date().toLocaleString("en-GB", { timeZone: "Asia/Dhaka" });
+    sendEmail(user.email, "New login to your FlashVault account", loginAlertEmailHtml(user.name, when)).catch(() => {});
+  }
+
   const token = signJWT({ id: user.id, role: user.role, email: user.email });
-  const { passwordHash, ...safeUser } = user as any;
+  const { passwordHash, resetToken, resetExpiry, emailVerifyToken, emailVerifyExpires, ...safeUser } = user as any;
   return { ok: true, user: safeUser, token };
 }
 
@@ -133,7 +199,7 @@ export async function signupMerchant(data: { name: string; brand: string; email:
     writeDB(db);
 
     const token = signJWT({ id: newUser.id, role: newUser.role, email: newUser.email });
-    const { passwordHash, ...safeUser } = newUser as any;
+    const { passwordHash, resetToken, resetExpiry, emailVerifyToken, emailVerifyExpires, ...safeUser } = newUser as any;
     return { ok: true, user: { ...safeUser, merchant: newMerchant }, token };
   } finally {
     release();
@@ -155,7 +221,7 @@ export async function loginMerchant(email: string, password: string): Promise<Au
   writeDB(db);
 
   const token = signJWT({ id: user.id, role: user.role, email: user.email });
-  const { passwordHash, ...safeUser } = user as any;
+  const { passwordHash, resetToken, resetExpiry, emailVerifyToken, emailVerifyExpires, ...safeUser } = user as any;
   return { ok: true, user: { ...safeUser, merchant }, token };
 }
 

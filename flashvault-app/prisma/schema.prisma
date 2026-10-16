@@ -111,6 +111,9 @@ model User {
   isSuspended  Boolean  @default(false)
   resetToken   String?  @unique
   resetExpiry  DateTime?
+  emailVerified     Boolean  @default(false)
+  emailVerifyToken  String?
+  emailVerifyExpiry DateTime?
 
   // Relations
   orders       Order[]  @relation("CustomerOrders")

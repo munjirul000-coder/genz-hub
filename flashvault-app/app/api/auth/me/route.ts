@@ -12,7 +12,8 @@ export async function GET(req: Request) {
     const fullUser = db.users.find(u => u.id === user.id);
     if (!fullUser) return NextResponse.json({ user: null }, { status: 401 });
 
-    const { passwordHash, ...safe } = fullUser as any;
+    // Never leak secrets to the browser
+    const { passwordHash, resetToken, resetExpiry, emailVerifyToken, emailVerifyExpires, ...safe } = fullUser as any;
     // Include merchant if applicable
     let merchant = null;
     if (fullUser.merchantId) {

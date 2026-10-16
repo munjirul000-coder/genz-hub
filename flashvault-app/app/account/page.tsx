@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 export default function AccountPage() {
   const [user, setUser] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
+  const [resendBusy, setResendBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"profile" | "orders" | "addresses" | "wishlist">("profile");
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -89,6 +90,27 @@ export default function AccountPage() {
             <Button variant="outline" className="rounded-pill" onClick={logout}>Logout</Button>
           </div>
         </div>
+
+        {/* Email verification banner */}
+        {(user as any).emailVerified === false && (
+          <div className="mb-6 p-4 rounded-xl bg-goldLight border border-gold/30 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-goldDark animate-pulse" />
+              <div>
+                <div className="font-bold text-[13px] text-goldDark">Verify your email to secure your account</div>
+                <div className="font-mono text-[11px] text-goldDark/80">Confirmation link sent to {user.email} — check spam folder too</div>
+              </div>
+            </div>
+            <Button size="sm" className="rounded-pill" disabled={resendBusy} onClick={async () => {
+              setResendBusy(true);
+              try {
+                const r = await fetch("/api/auth/resend-verification", { method: "POST" });
+                const d = await r.json();
+                alert(d.message || d.error || "Done");
+              } finally { setResendBusy(false); }
+            }}>{resendBusy ? "Sending…" : "Resend email →"}</Button>
+          </div>
+        )}
 
         <div className="flex gap-1.5 mb-6 overflow-x-auto">
           {[

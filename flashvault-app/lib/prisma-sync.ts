@@ -72,6 +72,9 @@ export async function hydrateFromPrisma(): Promise<Partial<DB> | null> {
       isSuspended: !!u.isSuspended,
       resetToken: u.resetToken ?? undefined,
       resetExpiry: u.resetExpiry ? new Date(u.resetExpiry).getTime() : undefined,
+      emailVerified: u.emailVerified ?? false,
+      emailVerifyToken: (u as any).emailVerifyToken ?? undefined,
+      emailVerifyExpires: (u as any).emailVerifyExpiry ? new Date((u as any).emailVerifyExpiry).getTime() : undefined,
     }));
 
     db.products = products.map((p2: any): Product => ({
@@ -254,6 +257,9 @@ async function doSync(db: DB): Promise<void> {
       isSuspended: !!u.isSuspended,
       resetToken: u.resetToken ?? null,
       resetExpiry: dateOrNull(u.resetExpiry),
+      emailVerified: !!(u as any).emailVerified,
+      emailVerifyToken: (u as any).emailVerifyToken ?? null,
+      emailVerifyExpiry: dateOrNull((u as any).emailVerifyExpires),
     };
     await p.user.upsert({
       where: { id: u.id },
