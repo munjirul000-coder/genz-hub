@@ -68,7 +68,10 @@ export function MobileDrawer() {
             >
               <div className="h-[72px] flex items-center justify-between px-6 border-b border-border">
                 <Link href="/" className="flex items-center gap-2 font-extrabold text-[18px]">
-                  <div className="w-8 h-8 rounded-lg bg-ink text-bg grid place-items-center font-mono text-[12px]">FV</div>
+                  <div className="relative w-8 h-8 rounded-lg bg-ink overflow-hidden shadow-sm">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="FlashVault BD logo" className="absolute inset-0 w-full h-full object-cover" />
+                  </div>
                   FLASH<span className="font-serif font-normal italic">Vault</span>
                 </Link>
                 <Badge variant="live" className="gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Live</Badge>

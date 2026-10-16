@@ -52,9 +52,11 @@ export function Header() {
           <motion.div
             whileHover={{ rotate: 5, scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-[38px] h-[38px] rounded-[11px] bg-ink text-bg grid place-items-center shadow-sm relative overflow-hidden"
+            className="w-[38px] h-[38px] rounded-[11px] bg-ink shadow-sm relative overflow-hidden"
           >
-            <span className="relative z-10 font-mono text-[14px] font-bold">FV</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="FlashVault BD logo" className="absolute inset-0 w-full h-full object-cover" />
+            <span className="relative z-10 font-mono text-[14px] font-bold sr-only">FV</span>
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
               animate={{ x: ["-100%", "100%"] }}
