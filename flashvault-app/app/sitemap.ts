@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { readDB } from "@/lib/db";
+import { peekDB } from "@/lib/db";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://flashvault-bd.onrender.com";
@@ -7,7 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   let db: any;
   try {
-    db = readDB();
+    db = peekDB();
   } catch {
     db = { products: [], drops: [] };
   }
@@ -20,6 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/refund`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   const productRoutes: MetadataRoute.Sitemap = (db.products || [])

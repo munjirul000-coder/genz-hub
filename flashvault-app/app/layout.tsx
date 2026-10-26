@@ -3,6 +3,7 @@ import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
 import { CartProvider } from "@/lib/cart";
+import { FbPixel } from "@/components/fb-pixel";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://flashvault-bd.onrender.com";
 
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LangProvider>
           <AuthProvider>
             <CartProvider>
+              <FbPixel />
               {children}
             </CartProvider>
           </AuthProvider>

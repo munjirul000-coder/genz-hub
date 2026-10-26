@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatBDT } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/pixel";
 import type { Product } from "@/lib/types";
 
 const BD_PHONE = /^01[3-9]\d{8}$/;
@@ -30,6 +32,14 @@ export function CheckoutModal({ open, onClose, product, quantity, onSuccess }: C
   // Prefill from logged-in user + reset on open
   useEffect(() => {
     if (open) {
+      if (product) {
+        trackEvent("InitiateCheckout", {
+          value: product.vaultPrice * quantity,
+          currency: "BDT",
+          content_ids: [product.id],
+          content_type: "product",
+        });
+      }
       setPlacedOrder(null);
       setServerError("");
       setErrors({});
@@ -85,6 +95,13 @@ export function CheckoutModal({ open, onClose, product, quantity, onSuccess }: C
         return;
       }
       setPlacedOrder(d.order);
+      trackEvent("Purchase", {
+        value: d.order?.totalAmount ?? product.vaultPrice * quantity,
+        currency: "BDT",
+        content_ids: [product.id],
+        content_type: "product",
+        num_items: quantity,
+      });
       onSuccess?.(d.order);
       setTimeout(() => onClose(), 3200);
     } catch (e: any) {
@@ -163,6 +180,7 @@ export function CheckoutModal({ open, onClose, product, quantity, onSuccess }: C
                   </Button>
                 </div>
                 <p className="mt-3 text-center font-mono text-[10px] text-muted">Cash on Delivery • Real inventory lock • Order confirmed instantly</p>
+                <p className="mt-1.5 text-center font-mono text-[10px] text-muted">By placing this order you agree to our <Link href="/terms" className="underline hover:text-ink">Terms</Link> &amp; <Link href="/refund" className="underline hover:text-ink">Refund Policy</Link>.</p>
               </>
             ) : (
               <div className="text-center py-8">

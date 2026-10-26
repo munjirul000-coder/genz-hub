@@ -1,4 +1,4 @@
-import { readDB, writeDB, DB } from "./db";
+import { readDB, writeDB, ensureHydrated, DB } from "./db";
 import { hashPassword, verifyPassword, isStrongPassword } from "./password";
 import { signJWT, verifyJWT, getTokenFromRequest } from "./jwt";
 import { dbMutex } from "./store";
@@ -225,13 +225,53 @@ export async function loginMerchant(email: string, password: string): Promise<Au
   return { ok: true, user: { ...safeUser, merchant }, token };
 }
 
+// Keeps the super admin's password in sync with the SUPER_ADMIN_PASSWORD env var.
+// Why: the original password was leaked in public docs — setting this env var
+// immediately locks the old password out on the next boot, without any email flow.
+let superAdminPwSynced = false;
+export async function syncSuperAdminPasswordFromEnv(): Promise<void> {
+  if (superAdminPwSynced) return;
+  superAdminPwSynced = true;
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!password) return;
+  try {
+    await ensureHydrated(); // never write before Postgres hydration completes
+    const release = await dbMutex.acquire();
+    try {
+      const db = readDB();
+      const email = (process.env.SUPER_ADMIN_EMAIL || "admin@flashvault.bd").toLowerCase();
+      const su = db.users.find(u => u.role === "SUPER_ADMIN" && (u.email || "").toLowerCase() === email)
+        || db.users.find(u => u.role === "SUPER_ADMIN");
+      if (!su) return;
+      if (su.passwordHash && verifyPassword(password, su.passwordHash)) return; // already in sync
+      const pwCheck = isStrongPassword(password);
+      if (!pwCheck.ok) {
+        console.warn("[auth] SUPER_ADMIN_PASSWORD not strong enough, not applying:", pwCheck.reason);
+        return;
+      }
+      su.passwordHash = hashPassword(password);
+      writeDB(db);
+      console.log("[auth] Super admin password updated from SUPER_ADMIN_PASSWORD env (old/leaked password no longer works)");
+    } finally {
+      release();
+    }
+  } catch (e) {
+    console.error("[auth] super admin env password sync failed", e);
+  }
+}
+
 export async function createSuperAdminIfNotExists(): Promise<void> {
   // Safe creation: only if no SUPER_ADMIN exists, create from env vars
+  await ensureHydrated(); // never write before Postgres hydration completes
   const release = await dbMutex.acquire();
   try {
     const db = readDB();
     const hasSuper = db.users.some(u => u.role === "SUPER_ADMIN");
-    if (hasSuper) return;
+    if (hasSuper) {
+      release();
+      await syncSuperAdminPasswordFromEnv();
+      return;
+    }
 
     const email = process.env.SUPER_ADMIN_EMAIL || "admin@flashvault.bd";
     const password = process.env.SUPER_ADMIN_PASSWORD;
@@ -307,4 +347,11 @@ export async function resetPassword(token: string, newPassword: string): Promise
   } finally {
     release();
   }
+}
+
+// At server boot: apply the SUPER_ADMIN_PASSWORD env override (if set) right
+// after Postgres hydration finishes, so a leaked old password can't be used
+// even once before the owner logs in.
+if (typeof window === "undefined" && process.env.NEXT_RUNTIME !== "edge") {
+  syncSuperAdminPasswordFromEnv().catch(() => {});
 }

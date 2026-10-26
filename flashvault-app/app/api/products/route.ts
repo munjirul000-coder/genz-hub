@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
-import { readDB, getRealStats } from "@/lib/db";
+import { peekDB, getRealStats } from "@/lib/db";
 import { computeDropState } from "@/lib/drop-engine";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
   const ip = req.headers.get("x-forwarded-for") || "anon";
-  const rl = rateLimit(`products:${ip}`, 60, 60_000);
+  // 300/min per IP: generous for real users (BD mobile carriers share CGNAT IPs,
+  // so many legit visitors can come from one address) while still stopping scrapers
+  const rl = rateLimit(`products:${ip}`, 300, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
 
   try {
-    const db = readDB();
+    const db = peekDB(); // read-only fast path — no full-DB clone per request
     const dropState = computeDropState(db.settings, db.drop, db.drops);
     const stats = getRealStats();
 

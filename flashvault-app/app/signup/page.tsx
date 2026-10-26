@@ -71,6 +71,9 @@ export default function SignupPage() {
               <div className="text-center font-mono text-[11px] pt-2">
                 <span className="text-muted">Already have account? </span><Link href="/login" className="font-bold hover:underline">Login</Link>
               </div>
+              <div className="text-center font-mono text-[10px] text-muted leading-relaxed">
+                By creating an account you agree to our <Link href="/terms" className="underline hover:text-ink">Terms</Link> &amp; <Link href="/privacy" className="underline hover:text-ink">Privacy Policy</Link>.
+              </div>
             </CardContent>
           </Card>
         </motion.div>

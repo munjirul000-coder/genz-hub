@@ -9,13 +9,14 @@ import { formatBDT } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
+import { getViewerId } from "@/lib/traffic";
 import { AuthModal } from "@/components/auth-modal";
 import { CheckoutModal } from "@/components/checkout-modal";
 
 function DropContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [dropState, setDropState] = useState<any>(null);
-  const [liveTraffic, setLiveTraffic] = useState(14230);
+  const [liveTraffic, setLiveTraffic] = useState(0); // real viewer count (server-tracked)
   const [selected, setSelected] = useState<Product | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -32,7 +33,6 @@ function DropContent() {
       const r = await fetch("/api/drop/status", { cache: "no-store" });
       const d = await r.json();
       setDropState(d.computed || d.drop);
-      setLiveTraffic(d.drop?.liveTraffic || 14230);
 
       const rp = await fetch("/api/products", { cache: "no-store" });
       const dp = await rp.json();
@@ -46,7 +46,17 @@ function DropContent() {
   useEffect(() => {
     load();
     const id = setInterval(load, 10000);
-    const trafficId = setInterval(() => setLiveTraffic((n) => n + Math.floor(Math.random() * 20) - 10), 5000);
+    // real viewers: server-tracked count (no fake numbers)
+    const pollViewers = () => {
+      fetch(`/api/traffic?v=${encodeURIComponent(getViewerId())}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.viewers === "number") setLiveTraffic(d.viewers);
+        })
+        .catch(() => {});
+    };
+    pollViewers();
+    const trafficId = setInterval(pollViewers, 30_000);
     return () => {
       clearInterval(id);
       clearInterval(trafficId);

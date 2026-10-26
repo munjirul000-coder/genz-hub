@@ -1,7 +1,7 @@
 import fs from "fs";
 import { DB_PATH, ensureDataDir } from "./store";
 import { defaultSettings } from "./settings";
-import { isPersistent, hydrateFromPrisma, syncToPrisma } from "./prisma-sync";
+import { isPersistent, hydrateFromPrisma, syncToPrisma, seedSyncSnapshots } from "./prisma-sync";
 import type { Product, Merchant, User, Order, DropConfig, PlatformSettings, AuditLog, DropSchedule } from "./types";
 
 export type { Product, Merchant, User, Order, DropConfig, PlatformSettings, AuditLog, DropSchedule } from "./types";
@@ -288,6 +288,29 @@ export function readDB(): DB {
   }
 }
 
+// Fast READ-ONLY view of the DB. Avoids deep-cloning the whole database on
+// every request (with 1500+ orders that clone cost ~50-350ms per request).
+// RULE: callers must NOT mutate the returned object or anything nested in it.
+// Use readDB() when you need a private mutable copy (read-modify-write).
+let peekCache: { db: DB; mtimeMs: number } | null = null;
+
+export function peekDB(): DB {
+  if (memoryDB) return memoryDB;
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(DB_PATH)) return readDB();
+    const st = fs.statSync(DB_PATH);
+    // reload only when the file changed (dev: manual db.json edits still work)
+    if (!peekCache || peekCache.mtimeMs !== st.mtimeMs) {
+      const raw = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+      peekCache = { db: migrateDB(raw), mtimeMs: st.mtimeMs };
+    }
+    return peekCache.db;
+  } catch {
+    return readDB();
+  }
+}
+
 export function writeDB(db: DB) {
   try {
     // carry over side collections (notifications etc.) that live on the db object
@@ -299,6 +322,7 @@ export function writeDB(db: DB) {
       }
     }
     memoryDB = db;
+    peekCache = null;
     ensureDataDir();
     const tmpPath = DB_PATH + ".tmp";
     fs.writeFileSync(tmpPath, JSON.stringify(db, null, 2));
@@ -334,6 +358,8 @@ export async function ensureHydrated(): Promise<void> {
     if (fromDb) {
       const merged = { ...readDB(), ...fromDb } as DB;
       memoryDB = merged;
+      // remember what Postgres already has so the next write only syncs the delta
+      try { seedSyncSnapshots(merged); } catch {}
       try {
         ensureDataDir();
         fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2));
@@ -357,7 +383,7 @@ if (isPersistent()) {
 }
 
 export function getRealStats() {
-  const db = readDB();
+  const db = peekDB(); // read-only — no per-request deep clone
   const liveProducts = db.products.filter(p => p.status === "live" || p.status === "approved");
   const totalProducts = db.products.length;
   const pendingProducts = db.products.filter(p => p.status === "pending").length;

@@ -208,6 +208,50 @@ export async function hydrateFromPrisma(): Promise<Partial<DB> | null> {
 // ---------------------------------------------------------------- sync (after every write)
 let syncChain: Promise<void> = Promise.resolve();
 
+// ---- delta sync: remember the JSON of every entity already pushed to Postgres,
+// so a single new order doesn't re-upsert thousands of unchanged users/products.
+type SnapMap = Map<string, string>;
+const syncedSnaps = new Map<string, SnapMap>();
+let lastDropSnap = "";
+let lastSettingsSnap = "";
+
+function shouldSync(type: string, id: string, obj: any): boolean {
+  try {
+    const m = syncedSnaps.get(type);
+    if (!m) return true;
+    return m.get(id) !== JSON.stringify(obj);
+  } catch {
+    return true; // any doubt -> sync (safe fallback = old full-mirror behavior)
+  }
+}
+
+function markSynced(type: string, id: string, obj: any) {
+  try {
+    let m = syncedSnaps.get(type);
+    if (!m) {
+      m = new Map();
+      syncedSnaps.set(type, m);
+    }
+    m.set(id, JSON.stringify(obj));
+  } catch {}
+}
+
+// Called after hydrating from Postgres: everything loaded from the DB is by
+// definition already synced, so the first write only pushes what actually changed.
+export function seedSyncSnapshots(db: any) {
+  try {
+    for (const m of db.merchants || []) markSynced("merchant", m.id, m);
+    for (const u of db.users || []) markSynced("user", u.id, u);
+    for (const x of db.products || []) markSynced("product", x.id, x);
+    for (const o of db.orders || []) markSynced("order", o.id, o);
+    for (const d of db.drops || []) markSynced("drop", d.id, d);
+    for (const a of (db.auditLogs || []).slice(-200)) markSynced("auditLog", a.id, a);
+    for (const n of ((db as any).notifications || []).slice(-200)) markSynced("notification", n.id, n);
+    if (db.drop) lastDropSnap = JSON.stringify(db.drop);
+    if (db.settings) lastSettingsSnap = JSON.stringify(db.settings);
+  } catch {}
+}
+
 export function syncToPrisma(db: DB): Promise<void> {
   // serialize syncs so concurrent writes can't interleave
   syncChain = syncChain.then(() => doSync(db)).catch((e) => console.error("[prisma-sync] sync failed", e));
@@ -225,6 +269,7 @@ async function doSync(db: DB): Promise<void> {
 
   // ---- merchants (no FK)
   for (const m of db.merchants) {
+    if (!shouldSync("merchant", m.id, m)) continue;
     await p.merchant.upsert({
       where: { id: m.id },
       create: {
@@ -243,6 +288,7 @@ async function doSync(db: DB): Promise<void> {
         updatedAt: new Date(m.updatedAt), suspendedReason: m.suspendedReason ?? null,
       },
     });
+    markSynced("merchant", m.id, m);
   }
 
   // ---- users (FK: merchant)
@@ -266,10 +312,12 @@ async function doSync(db: DB): Promise<void> {
       create: { id: u.id, createdAt: new Date(u.createdAt), lastLogin: dateOrNull(u.lastLogin), ...data },
       update: { ...data, lastLogin: dateOrNull(u.lastLogin) ?? undefined },
     });
+    markSynced("user", u.id, u);
   }
 
   // ---- products (FK: merchant, drop)
   for (const x of db.products) {
+    if (!shouldSync("product", x.id, x)) continue;
     const data = {
       brand: x.brand, title: x.title, description: x.description ?? null,
       originalPrice: num(x.originalPrice), vaultPrice: num(x.vaultPrice), discountPercent: num(x.discountPercent),
@@ -290,10 +338,12 @@ async function doSync(db: DB): Promise<void> {
       create: { id: x.id, createdAt: new Date(x.createdAt), updatedAt: new Date(x.updatedAt), ...data },
       update: { ...data, updatedAt: new Date(x.updatedAt) },
     });
+    markSynced("product", x.id, x);
   }
 
   // ---- drops
   for (const d of db.drops) {
+    if (!shouldSync("drop", d.id, d)) continue;
     const data = {
       title: d.title, scheduledAt: new Date(d.scheduledAt), durationMinutes: num(d.durationMinutes),
       status: upper(d.status || "UPCOMING") as any, productIds: d.productIds || [],
@@ -304,10 +354,12 @@ async function doSync(db: DB): Promise<void> {
       create: { id: d.id, createdAt: new Date(d.createdAt), ...data },
       update: data,
     });
+    markSynced("drop", d.id, d);
   }
 
   // ---- orders (+ item + payment) — FK: user, product
   for (const o of db.orders) {
+    if (!shouldSync("order", o.id, o)) continue;
     const oData = {
       productId: o.productId && productIds.has(o.productId) ? o.productId : null,
       quantity: num(o.quantity), amount: num(o.amount), commission: num(o.commission), merchantEarning: num(o.merchantEarning),
@@ -349,24 +401,31 @@ async function doSync(db: DB): Promise<void> {
       create: { orderId: o.id, amount: num(o.totalAmount), method: "cod", status: upper(o.paymentStatus || "PENDING") as any, verified: o.paymentStatus === "paid" },
       update: { amount: num(o.totalAmount), status: upper(o.paymentStatus || "PENDING") as any, verified: o.paymentStatus === "paid" },
     }).catch(() => {}); // payment table optional
+    markSynced("order", o.id, o);
   }
 
   // ---- drop config (single row)
   if (db.drop) {
+    const dropSnap = JSON.stringify(db.drop);
+    if (dropSnap !== lastDropSnap) {
     const dcData = {
       isLocked: !!db.drop.isLocked,
       nextDropAt: dateOrNull(db.drop.nextDropAt),
       liveTraffic: num(db.drop.liveTraffic), totalGross: num(db.drop.totalGross),
       currentDropId: db.drop.currentDropId ?? null,
     };
-    const existing = await p.dropConfig.findFirst();
-    if (existing) await p.dropConfig.update({ where: { id: existing.id }, data: dcData });
-    else await p.dropConfig.create({ data: dcData });
+      const existing = await p.dropConfig.findFirst();
+      if (existing) await p.dropConfig.update({ where: { id: existing.id }, data: dcData });
+      else await p.dropConfig.create({ data: dcData });
+      lastDropSnap = dropSnap;
+    }
   }
 
   // ---- settings (single row)
   if (db.settings) {
-    const sData = {
+    const settingsSnap = JSON.stringify(db.settings);
+    if (settingsSnap !== lastSettingsSnap) {
+      const sData = {
       platformName: db.settings.platformName, currency: db.settings.currency, timezone: db.settings.timezone,
       dropDay: num(db.settings.dropDay), dropStartHour: num(db.settings.dropStartHour), dropStartMinute: num(db.settings.dropStartMinute),
       dropDurationMinutes: num(db.settings.dropDurationMinutes), commissionPercent: num(db.settings.commissionPercent),
@@ -374,13 +433,16 @@ async function doSync(db: DB): Promise<void> {
       shippingFeeOutside: num(db.settings.shippingFeeOutside), maintenanceMode: !!db.settings.maintenanceMode,
       logoUrl: (db.settings as any).logoUrl ?? null,
     };
-    const existing = await p.setting.findFirst();
-    if (existing) await p.setting.update({ where: { id: existing.id }, data: sData });
-    else await p.setting.create({ data: sData });
+      const existing = await p.setting.findFirst();
+      if (existing) await p.setting.update({ where: { id: existing.id }, data: sData });
+      else await p.setting.create({ data: sData });
+      lastSettingsSnap = settingsSnap;
+    }
   }
 
   // ---- audit logs
   for (const a of (db.auditLogs || []).slice(-200)) {
+    if (!shouldSync("auditLog", a.id, a)) continue;
     await p.auditLog.upsert({
       where: { id: a.id },
       create: {
@@ -390,12 +452,13 @@ async function doSync(db: DB): Promise<void> {
         metadata: (a.metadata ?? undefined) as any, ip: a.ip ?? null,
       },
       update: { actorRole: a.actorRole, action: upper(a.action) as any, metadata: (a.metadata ?? undefined) as any },
-    }).catch(() => {});
+    }).then(() => markSynced("auditLog", a.id, a)).catch(() => {});
   }
 
   // ---- notifications (stored on db via routes)
   const notifs: any[] = (db as any).notifications || [];
   for (const n of notifs.slice(-200)) {
+    if (!shouldSync("notification", n.id, n)) continue;
     await p.notification.upsert({
       where: { id: n.id },
       create: {
@@ -406,7 +469,7 @@ async function doSync(db: DB): Promise<void> {
         isRead: !!n.read, createdAt: new Date(n.createdAt || Date.now()),
       },
       update: { isRead: !!n.read, title: n.title || "", message: n.message || "" },
-    }).catch(() => {});
+    }).then(() => markSynced("notification", n.id, n)).catch(() => {});
   }
 
   // ---- prune rows deleted from JSON (mirror = source of truth)

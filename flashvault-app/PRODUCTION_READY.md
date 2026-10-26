@@ -62,5 +62,6 @@ NEXT_PUBLIC_SITE_URL=https://yourdomain.com
 Visit `/api/health` - should say readyForRealUsers true
 
 ## Super Admin
-- admin@flashvault.bd / FlashVault@2026Admin
-- Set SUPER_ADMIN_PASSWORD env for production
+- Login email: admin@flashvault.bd (or the SUPER_ADMIN_EMAIL env)
+- **Never store the password in any file.** Set the SUPER_ADMIN_PASSWORD env var in Render.
+- Setting SUPER_ADMIN_PASSWORD automatically resets the admin password on next boot — the old password stops working immediately.

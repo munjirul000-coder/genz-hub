@@ -39,6 +39,15 @@ function getAdminKeys(): { adminKey: string; superAdminKey: string } | null {
 }
 
 export function verifyAdminRequest(req: Request | NextRequest): { ok: boolean; role: UserRole | null; user?: any; error?: string } {
+  // HARD GUARD: in production, admin auth is completely disabled until a strong
+  // JWT_SECRET is configured. Without this, anyone can read the default secret
+  // from the public repo and forge a SUPER_ADMIN token (verified attack in audit).
+  const jwtSecretConfigured = !!(process.env.JWT_SECRET || process.env.AUTH_SECRET);
+  if (process.env.NODE_ENV === "production" && !jwtSecretConfigured) {
+    console.error("[CRITICAL] JWT_SECRET/AUTH_SECRET not set in production — admin API DISABLED. Set JWT_SECRET in your hosting environment variables.");
+    return { ok: false, role: null, error: "Server misconfigured: admin login disabled until JWT_SECRET is set" };
+  }
+
   // First try JWT auth (secure, primary)
   const token = getTokenFromRequest(req);
   if (token) {

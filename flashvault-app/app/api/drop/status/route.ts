@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readDB, writeDB } from "@/lib/db";
+import { peekDB, readDB, writeDB } from "@/lib/db";
 import { computeDropState } from "@/lib/drop-engine";
 import { verifyAdminRequest } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
@@ -7,7 +7,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
   try {
-    const db = readDB();
+    const db = peekDB(); // read-only fast path — this endpoint is polled every 10s by every drop tab
     const computed = computeDropState(db.settings, db.drop, db.drops);
     return NextResponse.json({
       drop: db.drop,

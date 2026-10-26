@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
 import { AuthModal } from "@/components/auth-modal";
 import { CheckoutModal } from "@/components/checkout-modal";
+import { trackEvent } from "@/lib/pixel";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 
@@ -39,6 +40,19 @@ export default function ProductDetailsPage() {
     const saved = localStorage.getItem("fv_wishlist");
     if (saved) setWishlist(JSON.parse(saved));
   }, []);
+
+  // Facebook Pixel: ViewContent when a product page is opened
+  useEffect(() => {
+    if (product) {
+      trackEvent("ViewContent", {
+        content_name: product.title,
+        content_ids: [product.id],
+        content_type: "product",
+        value: product.vaultPrice,
+        currency: "BDT",
+      });
+    }
+  }, [product?.id]);
 
   const toggleWishlist = (productId: string) => {
     if (!user) {

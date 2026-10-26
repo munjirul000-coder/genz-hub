@@ -12,6 +12,7 @@ import { MagneticButton } from "@/components/magnetic-button";
 import { Marquee } from "@/components/marquee";
 import { CountUp } from "@/components/count-up";
 import { useLang } from "@/lib/i18n";
+import { getViewerId } from "@/lib/traffic";
 import { useEffect, useState, useRef } from "react";
 import type { Product } from "@/lib/types";
 
@@ -20,7 +21,7 @@ const brands = ["Aarong", "Yellow", "Sailor", "Ecstasy", "Cats Eye", "Richman", 
 export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [realStats, setRealStats] = useState<{ liveCount: number; totalSold: number; avgDiscount: number; totalStock: number } | null>(null);
-  const [liveTraffic, setLiveTraffic] = useState(14230);
+  const [liveTraffic, setLiveTraffic] = useState(0); // real viewer count (server-tracked)
   const [isLive, setIsLive] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
@@ -34,10 +35,19 @@ export default function LandingPage() {
       .then((d) => {
         setProducts(d.products ?? []);
         if (d.stats) setRealStats(d.stats);
-        if (d.drop?.liveTraffic) setLiveTraffic(d.drop.liveTraffic);
         setIsLive(!!(d.drop?.computed?.isLive || d.drop?.computed?.state === "LIVE"));
       });
-    const id = setInterval(() => setLiveTraffic((n) => n + Math.floor(Math.random() * 20) - 10), 5000);
+    // real viewers: poll the server-tracked count (no fake numbers)
+    const pollViewers = () => {
+      fetch(`/api/traffic?v=${encodeURIComponent(getViewerId())}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.viewers === "number") setLiveTraffic(d.viewers);
+        })
+        .catch(() => {});
+    };
+    pollViewers();
+    const id = setInterval(pollViewers, 30_000);
     return () => clearInterval(id);
   }, []);
 
@@ -334,9 +344,24 @@ export default function LandingPage() {
           <motion.span initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
             © 2026 FlashVault BD • Surplus, not waste.
           </motion.span>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 sm:gap-6 justify-end">
             <Link href="/merchant" className="hover:text-white transition-colors hover:tracking-wide">
               Merchants
+            </Link>
+            <Link href="/about" className="hover:text-white transition-colors hover:tracking-wide">
+              About
+            </Link>
+            <Link href="/contact" className="hover:text-white transition-colors hover:tracking-wide">
+              Contact
+            </Link>
+            <Link href="/refund" className="hover:text-white transition-colors hover:tracking-wide">
+              Refund
+            </Link>
+            <Link href="/terms" className="hover:text-white transition-colors hover:tracking-wide">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-white transition-colors hover:tracking-wide">
+              Privacy
             </Link>
             <Link href="/admin" className="hover:text-white transition-colors">
               Admin
