@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * NOVA Windows bridge — explicit, allowlisted, one action at a time.
+ * Run: node nova-agent.js --server https://your-nova-host --token-file nova-bridge.token
+ * --dry-run is for development/tests and NEVER executes desktop actions.
+ * No shell interpolation, arbitrary commands, file deletion, or screen capture.
+ */
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
+
+const ACTIONS = Object.freeze({
+  open_youtube: { label: 'Open YouTube', url: 'https://www.youtube.com' },
+  open_spotify: { label: 'Open Spotify', url: 'https://open.spotify.com' },
+  open_whatsapp: { label: 'Open WhatsApp', url: 'https://web.whatsapp.com' },
+  open_notepad: { label: 'Open Notepad' },
+  open_calculator: { label: 'Open Calculator' },
+  open_explorer: { label: 'Open Downloads' },
+  system_info: { label: 'System information' },
+  whatsapp_draft: { label: 'Open WhatsApp draft' },
+});
+const VERSION = '0.1.0';
+function argsOf(argv) {
+  const args = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (!argv[i].startsWith('--')) continue;
+    const key = argv[i].slice(2);
+    if (['dry-run', 'self-test', 'help'].includes(key)) args[key] = true;
+    else args[key] = argv[++i];
+  }
+  return args;
+}
+function validate(kind, params = {}) {
+  if (!Object.prototype.hasOwnProperty.call(ACTIONS, kind)) throw new Error('Action is not allowlisted.');
+  if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error('Invalid parameters.');
+  if (kind === 'whatsapp_draft') {
+    const phone = String(params.phone || '').replace(/[\s()-]/g, '');
+    const text = String(params.text || '').trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(phone) || !text || text.length > 500) throw new Error('Invalid WhatsApp draft.');
+    return { phone, text };
+  }
+  if (Object.keys(params).length) throw new Error('This action accepts no parameters.');
+  return {};
+}
+function systemInfo() {
+  return { hostname: os.hostname(), os: `${os.platform()} ${os.release()}`, arch: os.arch(), cpu: os.cpus()[0]?.model || 'Unknown', cores: os.cpus().length, memoryGB: +(os.totalmem() / 1073741824).toFixed(1), freeMemoryGB: +(os.freemem() / 1073741824).toFixed(1), uptimeHours: +(os.uptime() / 3600).toFixed(1), agentVersion: VERSION };
+}
+function launch(exe, args = []) {
+  return new Promise((resolve, reject) => {
+    // shell is deliberately false. Arguments are never interpreted as a command line.
+    const child = spawn(exe, args, { shell: false, windowsHide: false, stdio: 'ignore', detached: true });
+    const timer = setTimeout(() => { child.removeAllListeners(); reject(new Error(`${exe} did not start within 10 seconds.`)); }, 10000);
+    child.once('error', (err) => { clearTimeout(timer); reject(err); });
+    child.once('spawn', () => { clearTimeout(timer); child.unref(); resolve(); });
+  });
+}
+async function execute(action, dryRun = false) {
+  const params = validate(action.kind, action.params);
+  const item = ACTIONS[action.kind];
+  if (dryRun) return `[DRY RUN] ${item.label}: no desktop operation was performed.`;
+  if (process.platform !== 'win32') throw new Error('The NOVA bridge executes actions on Windows only. Use --dry-run for protocol tests.');
+  if (item.url) await launch('rundll32.exe', ['url.dll,FileProtocolHandler', item.url]);
+  else if (action.kind === 'open_notepad') await launch('notepad.exe');
+  else if (action.kind === 'open_calculator') await launch('calc.exe');
+  else if (action.kind === 'open_explorer') await launch('explorer.exe', [path.join(os.homedir(), 'Downloads')]);
+  else if (action.kind === 'system_info') { const s = systemInfo(); return `${s.hostname} · ${s.os} (${s.arch})\n${s.cpu} · ${s.cores} logical cores\nMemory: ${s.freeMemoryGB} GB free / ${s.memoryGB} GB\nUptime: ${s.uptimeHours} hours`; }
+  else if (action.kind === 'whatsapp_draft') await launch('rundll32.exe', ['url.dll,FileProtocolHandler', `https://wa.me/${params.phone.slice(1)}?text=${encodeURIComponent(params.text)}`]);
+  return `${item.label} was launched on your desktop.${action.kind === 'whatsapp_draft' ? ' The draft was not sent. Press Send in WhatsApp yourself.' : ''}`;
+}
+async function request(base, route, token, body) {
+  const res = await fetch(base + '/api/nova/bridge/' + route, {
+    method: 'POST', signal: AbortSignal.timeout(12000),
+    headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { const err = new Error(data.error || `Server returned HTTP ${res.status}`); err.status = res.status; throw err; }
+  return data;
+}
+async function main() {
+  const args = argsOf(process.argv.slice(2));
+  if (args.help) { console.log('NOVA bridge\n  --server URL          HTTPS server (or http://localhost for development)\n  --token-file PATH     File containing your one-time bridge token\n  --dry-run             Poll and report without executing anything\n  --self-test           Validate the safety allowlist and exit'); return; }
+  if (args['self-test']) {
+    const invalid = [{ kind: 'shell', params: {} }, { kind: 'open_youtube', params: { url: 'https://evil.example' } }, { kind: 'whatsapp_draft', params: { phone: '123', text: 'hi' } }, { kind: '__proto__', params: {} }];
+    for (const a of invalid) { let rejected = false; try { validate(a.kind, a.params); } catch { rejected = true; } if (!rejected) throw new Error('Safety self-test failed: ' + a.kind); }
+    for (const kind of Object.keys(ACTIONS)) validate(kind, kind === 'whatsapp_draft' ? { phone: '+8801712345678', text: 'Hello' } : {});
+    console.log('PASS: allowlist, parameter validation and dangerous-action rejection.'); return;
+  }
+  const base = (args.server || process.env.NOVA_SERVER || 'http://localhost:3000').replace(/\/$/, '');
+  let url; try { url = new URL(base); } catch { throw new Error('Invalid --server URL.'); }
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) throw new Error('Use HTTPS for a remote server. Plain HTTP is allowed only on localhost.');
+  const tokenFile = args['token-file'] || process.env.NOVA_BRIDGE_TOKEN_FILE || path.join(process.cwd(), 'nova-bridge.token');
+  let token = process.env.NOVA_BRIDGE_TOKEN || '';
+  if (!token) { try { token = fs.readFileSync(tokenFile, 'utf8').trim(); } catch { throw new Error(`No bridge token. Save the token from NOVA → Desktop control in ${tokenFile}, or set NOVA_BRIDGE_TOKEN.`); } }
+  if (!/^[A-Za-z0-9_-]{40,100}$/.test(token)) throw new Error('The bridge token is malformed. Generate a fresh token in NOVA.');
+  const dryRun = !!args['dry-run'];
+  if (!dryRun && process.platform !== 'win32') throw new Error('Desktop execution requires Windows 10/11. This platform can only use --dry-run or --self-test.');
+  console.log(`NOVA bridge ${VERSION} → ${base}${dryRun ? ' [DRY RUN — nothing will execute]' : ''}`);
+  console.log('Only approved, allowlisted actions run. Press Ctrl+C to disconnect.');
+  let failures = 0; let stopping = false;
+  process.on('SIGINT', () => { stopping = true; console.log('\nDisconnecting…'); });
+  process.on('SIGTERM', () => { stopping = true; });
+  while (!stopping) {
+    try {
+      const { action } = await request(base, 'poll', token, { system: systemInfo() });
+      failures = 0;
+      if (action) {
+        console.log(`Running approved action: ${action.label}`);
+        let ok = true, result;
+        try { result = await execute(action, dryRun); } catch (err) { ok = false; result = err.message; }
+        await request(base, 'result', token, { id: action.id, ok, result });
+        console.log(`${ok ? 'Completed' : 'Failed'}: ${result}`);
+      }
+    } catch (err) {
+      if (err.status === 401) throw new Error('Bridge token was revoked or replaced. Generate a new token and restart the agent.');
+      failures++; console.error(`Connection issue (${failures}): ${err.message}`);
+    }
+    if (!stopping) await new Promise(r => setTimeout(r, Math.min(15000, 2000 * Math.max(1, failures))));
+  }
+}
+if (require.main === module) main().catch(err => { console.error('NOVA bridge:', err.message); process.exitCode = 1; });
+module.exports = { ACTIONS, validate, execute, systemInfo, argsOf };

@@ -1,6 +1,7 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
@@ -146,6 +147,13 @@ app.use('/api/polls', arena.polls);
 app.use('/api/ideas', arena.ideas);
 app.use('/api/arena', arena.arena);
 app.use('/api/ads', arena.ads);
+// NOVA — isolated personal AI workspace (own SQLite database, own sessions).
+const nova = require('./nova/router').createNovaRouter({
+  dataDir: path.join(DATA_DIR, 'nova'),
+  agentFile: path.join(__dirname, '..', 'desktop', 'nova-agent.js'),
+});
+app.use('/api/nova', nova.router);
+
 app.get('/api/payments/status', (req, res) => res.json(require('./payments').status()));
 app.post('/api/payments/callback', (req, res) => {
   const out = require('./payments').confirmCallback(req.body);
@@ -187,7 +195,7 @@ function computeAssetVersion() {
       else { const m = fs.statSync(full).mtimeMs; if (m > newest) newest = m; }
     }
   };
-  try { walk(path.join(PUBLIC, 'js')); walk(path.join(PUBLIC, 'css')); } catch (e) {}
+  try { walk(path.join(PUBLIC, 'js')); walk(path.join(PUBLIC, 'css')); walk(path.join(PUBLIC, 'nova', 'js')); walk(path.join(PUBLIC, 'nova', 'css')); } catch (e) {}
   return Math.round(newest).toString(36);
 }
 const ASSET_V = computeAssetVersion();
@@ -198,8 +206,13 @@ function sendIndex(req, res) {
   res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   res.type('html').send(INDEX_HTML);
 }
-app.get('/', sendIndex);
+const NOVA_HTML = fs.readFileSync(path.join(PUBLIC, 'nova', 'index.html'), 'utf8')
+  .replace(/(src|href)="(\/nova\/(?:js|css)\/[^"?]+)\?v=[^"]*"/g, (m, attr, url) => `${attr}="${url}?v=${ASSET_V}"`);
+function sendNova(req, res) { res.setHeader('Cache-Control', 'no-cache, must-revalidate'); res.type('html').send(NOVA_HTML); }
+// The companion is additive: Gen-Z Hub keeps its existing home unless NOVA_HOME=1.
+app.get('/', (req, res, next) => (process.env.NOVA_HOME === '1' || process.argv.includes('--nova-home')) ? res.redirect(302, '/nova') : next(), sendIndex);
 app.get('/index.html', sendIndex);
+app.get(['/nova', '/nova/'], sendNova);
 app.use(express.static(PUBLIC, {
   extensions: ['html'],
   etag: true,
@@ -246,7 +259,7 @@ const server = app.listen(PORT, '0.0.0.0', () => console.log(`Gen-Z Hub running 
 
 function shutdown(sig) {
   console.log(`[${sig}] shutting down…`);
-  server.close(() => { try { db.close(); } catch (e) {} process.exit(0); });
+  server.close(() => { try { nova.store.close(); db.close(); } catch (e) {} process.exit(0); });
   setTimeout(() => process.exit(1), 8000).unref();
 }
 ['SIGTERM', 'SIGINT'].forEach((s) => process.on(s, () => shutdown(s)));

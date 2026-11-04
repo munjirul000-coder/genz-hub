@@ -3,7 +3,9 @@
 
 A complete, original social networking platform for Gen-Z builders, freelancers, students and gamers — with two specialised ecosystems inside one product: **Business Hub** and **Gaming Hub**.
 
-No marketplace. No buying/selling. No AI assistant/chatbot/generator. Every button in the UI is wired to a real backend endpoint.
+Every button in the UI is wired to a real backend endpoint.
+
+> **New: NOVA Personal AI Workspace** — an optional, isolated desktop-companion MVP lives at `/nova` (chat, memory, voice, focus, phone remote and permission-first Windows bridge). Run `npm run nova` to make it the home page, or double-click `START-NOVA.bat` on Windows. Groq can be connected inside Settings → Intelligence (no `.env` editing). See [`NOVA.md`](NOVA.md) and [`LAPTOP-SETUP.md`](LAPTOP-SETUP.md). The original social platform remains available at `/` with `npm start`.
 
 ---
 

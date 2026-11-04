@@ -3,3 +3,7 @@ data/
 screenshots/
 .env
 *.log
+*.token
+nova-bridge.token
+.cache/
+nova-vault.key

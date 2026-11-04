@@ -24,6 +24,7 @@
     ['messages', 'messages', 'Messages', '#/messages'],
     ['saved', 'saved', 'Saved', '#/saved'],
     ['settings', 'settings', 'Settings', '#/settings'],
+    ['nova', 'sparkle', 'NOVA AI', '/nova'],
   ];
 
   G.mountFull = function (html) {

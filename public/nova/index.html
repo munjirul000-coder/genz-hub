@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d12">
+  <meta name="description" content="NOVA — your personal AI workspace. Conversation, memory, focus and permission-first Windows desktop control.">
+  <title>NOVA — Your mind, amplified.</title>
+  <link rel="icon" href="/nova/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/nova/css/nova.css?v=1">
+</head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
+  <div class="app-shell" id="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <a class="brand" href="/nova" aria-label="NOVA home"><span class="brand-mark"><i></i><i></i><i></i></span><span>NOVA<span class="brand-sub">PERSONAL AI</span></span></a>
+      <button class="workspace-switch" data-action="workspace"><span class="workspace-icon">N</span><span><strong id="workspace-name">My workspace</strong><small>Personal space</small></span><span data-icon="chevron-down"></span></button>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="main-nav">
+        <button data-view="overview" class="nav-item active"><span data-icon="grid"></span>Overview</button>
+        <button data-view="conversation" class="nav-item"><span data-icon="message"></span>Conversation<span class="nav-key">⌘ J</span></button>
+        <button data-view="memory" class="nav-item"><span data-icon="brain"></span>Memory vault<span class="nav-count" id="memory-count">0</span></button>
+        <button data-view="desktop" class="nav-item"><span data-icon="monitor"></span>Desktop control</button>
+        <button data-view="activity" class="nav-item"><span data-icon="activity"></span>Activity</button>
+      </nav>
+      <div class="nav-label tools-label">PREFERENCES</div>
+      <nav class="main-nav">
+        <button data-view="settings" class="nav-item"><span data-icon="settings"></span>Settings</button>
+        <button data-action="remote" class="nav-item"><span data-icon="phone"></span>Connect phone<span class="tiny-new">NEW</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="bridge-mini"><span class="bridge-mini-icon" data-icon="monitor"></span><div><strong>Desktop bridge</strong><small id="sidebar-bridge-status"><i class="status-dot"></i>Not connected</small></div><button class="icon-button" data-action="connect-desktop" aria-label="Connect desktop"><span data-icon="arrow-up-right"></span></button></div>
+        <button class="profile-button" data-view="settings"><span class="avatar" id="user-avatar">Y</span><span><strong id="profile-name">Your workspace</strong><small id="profile-role">Owner · Local session</small></span><span data-icon="chevron-down"></span></button>
+      </div>
+    </aside>
+    <div class="sidebar-scrim" id="sidebar-scrim"></div>
+    <main class="workspace-main">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Open navigation"><span data-icon="menu"></span></button>
+        <div class="breadcrumb"><span>Workspace</span><span data-icon="chevron-right"></span><strong id="breadcrumb-current">Overview</strong></div>
+        <div class="topbar-actions">
+          <button class="search-trigger" data-action="palette"><span data-icon="search"></span><span>Search anything…</span><kbd>Ctrl K</kbd></button>
+          <span class="engine-pill" id="engine-pill"><i class="status-dot"></i>Local engine</span>
+          <button class="icon-button help-button" data-action="help" aria-label="Help and capabilities"><span data-icon="help"></span></button>
+          <button class="avatar top-avatar" data-view="settings" aria-label="Workspace settings">Y</button>
+        </div>
+      </header>
+      <div id="view" tabindex="-1"><div class="loading-screen"><span class="loading-orbit"></span><strong>Waking up your workspace…</strong></div></div>
+      <footer class="workspace-footer"><span><span data-icon="shield"></span>Your workspace. Your permissions. Always.</span><span>NOVA <span class="muted">v0.1 · MVP</span></span></footer>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <script src="/nova/js/app.js?v=1"></script>
+</body>
+</html>
