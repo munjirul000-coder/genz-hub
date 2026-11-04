@@ -7,7 +7,7 @@ const path = require('node:path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const { createNovaRouter } = require('../src/nova/router');
-const { calculate, localReply, actionIntent, aiConfig, providerError } = require('../src/nova/assistant');
+const { calculate, localReply, actionIntent, aiConfig, providerError, testAiConnection } = require('../src/nova/assistant');
 const { Vault } = require('../src/nova/vault');
 const agent = require('../desktop/nova-agent');
 
@@ -202,6 +202,26 @@ test('in-app Groq connect tests, encrypts, uses and disconnects the workspace ke
     const disconnected = await req('/ai/disconnect', { method: 'POST', token: owner, body: {} });
     assert.equal(disconnected.status, 200); assert.equal(disconnected.data.ai.configured, false);
     assert.equal(store.aiProvider(workspaceId), null);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('reasoning-model probe uses a real completion budget and accepts hidden reasoning', async () => {
+  const originalFetch = global.fetch;
+  let probe = null;
+  global.fetch = async (url, opts = {}) => {
+    if (String(url).startsWith('https://api.groq.com/')) {
+      probe = JSON.parse(opts.body || '{}');
+      return new Response(JSON.stringify({ choices: [{ message: { content: '', reasoning: 'hidden thought' }, finish_reason: 'stop' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return originalFetch(url, opts);
+  };
+  try {
+    const config = aiConfig({ provider: 'groq', model: 'openai/gpt-oss-120b', base: 'https://api.groq.com/openai/v1', key: 'gsk_reasoning_test_key_123456789' });
+    const result = await testAiConnection(config);
+    assert.equal(result.ok, true);
+    assert.ok(probe.max_completion_tokens >= 1024);
+    assert.equal(probe.max_tokens, undefined);
+    assert.equal(probe.reasoning_effort, 'low');
   } finally { global.fetch = originalFetch; }
 });
 

@@ -100,6 +100,21 @@ function aiConfig(saved) {
   return { configured, provider, model, base, key, source: configured ? 'env' : 'none' };
 }
 
+// Reasoning models spend part of the completion budget on hidden reasoning.
+// A tiny `max_tokens` probe can therefore return HTTP 200 with no visible text.
+const REASONING_MODEL = /gpt-oss|(?:^|\/)o[134](?:[-/]|$)|deepseek-r1|qwq|reasoner/i;
+const SUPPORTS_REASONING_EFFORT = /gpt-oss/i;
+function completionOptions(model, { maxOutput = 700, temperature = 0.7, probe = false } = {}) {
+  if (REASONING_MODEL.test(String(model || ''))) {
+    const options = { max_completion_tokens: probe ? 1024 : Math.max(maxOutput, 4096) };
+    if (SUPPORTS_REASONING_EFFORT.test(model)) options.reasoning_effort = 'low';
+    // OpenAI o-series does not accept arbitrary temperature values; Groq gpt-oss does.
+    if (!/(?:^|\/)o[134](?:[-/]|$)/i.test(model)) options.temperature = temperature;
+    return options;
+  }
+  return { max_tokens: maxOutput, temperature };
+}
+
 function providerError(status) {
   if (status === 401 || status === 403) return 'AI provider rejected the API key. Check the key in Settings → Intelligence, or generate a new one in the provider console.';
   if (status === 404) return 'AI model or endpoint was not found. Try another model in Settings → Intelligence.';
@@ -114,12 +129,16 @@ async function cloudReply(config, text, settings, memories, history, timezone) {
   const response = await fetch(config.base + '/chat/completions', {
     method: 'POST', signal: AbortSignal.timeout(30000),
     headers: { 'Content-Type': 'application/json', ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}) },
-    body: JSON.stringify({ model: config.model, messages, max_tokens: 700, temperature: 0.7 }),
+    body: JSON.stringify({ model: config.model, messages, ...completionOptions(config.model) }),
   });
   if (!response.ok) throw new Error(providerError(response.status));
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('AI provider returned an empty response');
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error(REASONING_MODEL.test(config.model)
+      ? 'The reasoning model returned no visible answer. Try a shorter question, or switch to llama-3.3-70b-versatile in Settings → Intelligence.'
+      : 'AI provider returned an empty response');
+  }
   return content.trim().slice(0, 6000);
 }
 
@@ -142,11 +161,14 @@ async function testAiConnection(savedConfig) {
     const response = await fetch(config.base + '/chat/completions', {
       method: 'POST', signal: AbortSignal.timeout(20000),
       headers: { 'Content-Type': 'application/json', ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}) },
-      body: JSON.stringify({ model: config.model, messages: [{ role: 'user', content: 'Reply with exactly: OK' }], max_tokens: 8, temperature: 0 }),
+      body: JSON.stringify({ model: config.model, messages: [{ role: 'user', content: 'Reply with exactly: OK' }], ...completionOptions(config.model, { maxOutput: 1024, temperature: 0, probe: true }) }),
     });
     if (!response.ok) return { ok: false, error: providerError(response.status) };
     const data = await response.json();
-    if (!data.choices?.[0]?.message?.content) return { ok: false, error: 'AI provider returned an empty response.' };
+    if (data.error) return { ok: false, error: data.error.message || 'AI provider returned an error.' };
+    // A successful completion proves the key/model/endpoint work. Reasoning models may
+    // use the probe budget on hidden reasoning, so do not require visible probe text.
+    if (!Array.isArray(data.choices) || !data.choices.length) return { ok: false, error: 'AI provider returned an empty response. Try llama-3.3-70b-versatile if this model is unavailable.' };
     return { ok: true, provider: config.provider, model: config.model, latencyMs: Date.now() - started };
   } catch (err) {
     return { ok: false, error: err.name === 'TimeoutError'

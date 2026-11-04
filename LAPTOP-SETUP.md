@@ -97,5 +97,6 @@ Bridge window open থাকলে desktop control কাজ করবে। ব
 - **Port 3000 busy:** অন্য app বন্ধ করো, অথবা PowerShell-এ `$env:PORT=3001; npm run nova` দিয়ে `http://localhost:3001/nova` খোলো।
 - **Groq 401/403:** key ভুল/expired। নতুন key দিয়ে আবার Connect করো।
 - **Groq 429:** free-tier rate limit। কিছুক্ষণ পরে চেষ্টা করো।
-- **Groq 404:** model name ভুল/unavailable। `llama-3.1-8b-instant` চেষ্টা করো।
+- **Groq 404:** model name ভুল/unavailable। `llama-3.1-8b-instant` চেষ্টা করো。
+- **Empty response with `gpt-oss` / reasoning model:** পুরনো NOVA version হলে update করে নতুন ZIP চালাও, অথবা আপাতত `llama-3.3-70b-versatile` ব্যবহার করো। নতুন version reasoning model-এর জন্য আলাদা token budget ব্যবহার করে।
 - **Desktop offline:** `START-BRIDGE.bat` চলছে কি না, token file ঠিক জায়গায় আছে কি না দেখো। Token বদলালে পুরোনো agent disconnect হয়।
