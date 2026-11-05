@@ -461,3 +461,96 @@ test('expanded PC skills use fixed destinations and require approval', async () 
     assert.throws(() => agent.validate(kind, { url: 'https://evil.example' }));
   }
 });
+
+test('one project approval creates isolated files, sandboxed preview and ZIP', async () => {
+  const realFetch = global.fetch; let generationCalls = 0;
+  const html = '<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body><h1>Bakery</h1><button id="go">Go</button><script src="app.js" defer></script></body></html>';
+  const css = 'body { color: purple; }';
+  const js = 'document.querySelector("#go").onclick = () => document.querySelector("h1").textContent = "Done";';
+  global.fetch = async (url, options = {}) => {
+    if (String(url).startsWith('https://api.groq.com/')) {
+      const body = JSON.parse(options.body);
+      const isProbe = body.messages.length === 1;
+      const content = isProbe ? 'OK' : [html, css, js][generationCalls++];
+      return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content } }] }), { status: 200 });
+    }
+    return realFetch(url, options);
+  };
+  try {
+    const owner = store.createWorkspace().token, stranger = store.createWorkspace().token;
+    const workspaceId = (await req('/state', { token: owner })).data.workspace.id;
+    const pair = store.createPairing((await req('/state', { token: owner })).data.workspace.id);
+    const remote = store.redeemPairing(pair.code).token;
+    await req('/ai/connect', { method: 'POST', token: owner, body: { apiKey: 'gsk_test_key_abcdefghijklmnopqrstuvwxyz' } });
+    assert.equal((await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Bakery' } })).status, 400);
+    assert.equal((await req('/builder/generate', { method: 'POST', token: remote, body: { brief: 'Bakery', confirm: true } })).status, 403);
+    assert.equal(generationCalls, 0);
+    const result = await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Bakery', confirm: true } });
+    assert.equal(result.data.ok, true); assert.equal(generationCalls, 3);
+    const id = result.data.project.id;
+    assert.equal((await req('/builder/projects/' + id, { token: stranger })).status, 404);
+    assert.equal((await req('/builder/projects/' + id, { token: remote })).status, 403);
+    assert.deepEqual(fs.readdirSync(path.join(dir, 'built-projects', workspaceId, id)).sort(), ['app.js', 'index.html', 'project.json', 'styles.css']);
+    assert.deepEqual((await req('/builder/projects', { token: owner })).data.projects.map(p => p.id), [id]);
+    const preview = await realFetch(base + '/builder/projects/' + id + '/preview', { headers: { 'X-Nova-Session': owner } });
+    assert.match(preview.headers.get('content-security-policy'), /connect-src 'none'/);
+    const page = await preview.text(); assert.match(page, /color: purple/); assert.match(page, /querySelector/);
+    const zip = await realFetch(base + '/builder/projects/' + id + '/download', { headers: { 'X-Nova-Session': owner } });
+    const unpacked = require('fflate').unzipSync(new Uint8Array(await zip.arrayBuffer()));
+    assert.deepEqual(Object.keys(unpacked).sort(), ['app.js', 'index.html', 'styles.css']);
+    assert.equal(require('fflate').strFromU8(unpacked['app.js']), js);
+    assert.equal((await req('/builder/projects/not-a-uuid', { token: owner })).status, 404);
+  } finally { global.fetch = realFetch; }
+});
+
+test('project builder rejects incomplete and syntactically invalid code without saving', async () => {
+  const { generateProject } = require('../src/nova/project-builder');
+  const oldFetch = global.fetch; let i = 0;
+  try {
+    global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: ['<!doctype html><html><head><link href="styles.css"></head><body><script src="app.js"></script></body></html>', 'body{}', 'function {'][i++] } }] }) });
+    const r = await generateProject({ configured: true, base: 'https://example.test', model: 'test' }, 'test');
+    assert.equal(r.ok, false); assert.match(r.error, /syntax/i);
+    i = 0; global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'length', message: { content: 'partial' } }] }) });
+    assert.equal((await generateProject({ configured: true, base: 'https://example.test', model: 'test' }, 'test')).ok, false);
+    const controller = new AbortController(); controller.abort();
+    assert.match((await generateProject({ configured: true }, 'test', controller.signal)).error, /stopped/i);
+  } finally { global.fetch = oldFetch; }
+});
+
+test('screen analysis is owner-only, explicitly requested and not saved', async () => {
+  const realFetch = global.fetch; const seen = [];
+  global.fetch = async (url, options = {}) => {
+    if (String(url).startsWith('https://api.groq.com/')) {
+      seen.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: seen.length === 1 ? 'OK' : 'A test screen.' } }] }), { status: 200 });
+    }
+    return realFetch(url, options);
+  };
+  try {
+    const owner = store.createWorkspace().token;
+    const pair = store.createPairing((await req('/state', { token: owner })).data.workspace.id);
+    const remote = store.redeemPairing(pair.code).token;
+    await req('/ai/connect', { method: 'POST', token: owner, body: { apiKey: 'gsk_test_key_abcdefghijklmnopqrstuvwxyz' } });
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2, 3]).toString('base64');
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: remote, body: { image, model: 'vision' } })).status, 403);
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: owner, body: { image: 'data:image/jpeg;base64,YmFk', model: 'vision' } })).status, 400);
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: owner, body: { image, model: 'https://bad.example' } })).status, 400);
+    const result = await req('/screen/analyze', { method: 'POST', token: owner, body: { image, model: 'vision', question: 'What is here?' } });
+    assert.equal(result.data.answer, 'A test screen.'); assert.equal(seen.length, 2);
+    assert.equal(seen[1].messages[1].content[1].image_url.url, image);
+    assert.ok(!JSON.stringify((await req('/state', { token: owner })).data).includes(image));
+  } finally { global.fetch = realFetch; }
+});
+
+test('stopping a project aborts its in-flight AI request', async () => {
+  const { generateProject } = require('../src/nova/project-builder'); const original = global.fetch;
+  const controller = new AbortController(); let entered = false;
+  global.fetch = async (url, options) => new Promise((resolve, reject) => {
+    entered = true; options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+  });
+  try {
+    const pending = generateProject({ configured: true, base: 'https://example.test', model: 'test' }, 'Build a site', controller.signal);
+    assert.equal(entered, true); controller.abort();
+    assert.match((await pending).error, /stopped/i);
+  } finally { global.fetch = original; }
+});

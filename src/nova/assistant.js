@@ -94,7 +94,7 @@ function localReply(text, settings, memories, timezone) {
   const keyboard = keyboardIntent(t);
   if (keyboard) return { content: say('I prepared text for Notepad. Review it and approve; then focus Notepad within five seconds. Never include secrets.', 'Notepad-এ লেখার জন্য action প্রস্তুত। দেখে অনুমতি দাও, তারপর পাঁচ সেকেন্ডের মধ্যে Notepad-এ যাও। গোপন তথ্য লিখবে না।'), action: keyboard };
   const mouse = mouseIntent(t);
-  if (mouse) return { content: say('I prepared a mouse action. Review the coordinates and approve it before anything happens. I cannot see your screen.', 'Mouse action প্রস্তুত করেছি। Coordinates দেখে অনুমতি দিলে চলবে। আমি তোমার screen দেখতে পারি না।'), action: mouse };
+  if (mouse) return { content: say('I prepared a mouse action. Review the coordinates and approve it before anything happens. This action does not use screen analysis.', 'Mouse action প্রস্তুত করেছি। Coordinates দেখে অনুমতি দিলে চলবে। এই action screen analysis ব্যবহার করে না।'), action: mouse };
   const kind = actionIntent(t);
   if (kind) return { content: say(`I've prepared **${CATALOG[kind].label}**. Review the action below and approve it before anything happens on your PC.`, `আমি **${CATALOG[kind].label}** অ্যাকশনটি প্রস্তুত করেছি। নিচে দেখে অনুমোদন দিলে তবেই তোমার PC-তে চলবে।`), action: { kind, params: {} } };
   const math = calculate(t);
@@ -262,4 +262,4 @@ async function testAiConnection(savedConfig) {
       : 'This NOVA server could not reach the AI provider. Hosted previews often block outbound AI calls — run NOVA on your own laptop (START-NOVA.bat) and connect there. On your own server, check internet/firewall.' };
   }
 }
-module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent, websiteEditIntent, mouseIntent, keyboardIntent };
+module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, completionOptions, generateWebsite, websiteIntent, websiteEditIntent, mouseIntent, keyboardIntent };

@@ -11,8 +11,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist node_modules (
-  echo First run: dependencies install hocche...
+if not exist node_modules\fflate\package.json (
+  echo Dependencies install/update hocche...
   call npm install --omit=dev
   if errorlevel 1 (
     echo npm install failed. Internet connection check korun.

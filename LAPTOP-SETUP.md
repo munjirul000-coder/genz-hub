@@ -70,6 +70,12 @@ npm run nova
 - Settings-এ **JARVIS**, **Mentor**, **Custom** বেছে voice/name/behaviour save করো। একই workspace-এ paired ফোন একই character settings পায়।
 - Sidebar → **World monitor** → **3D globe** বা **2D map**। USGS-এর সাম্প্রতিক earthquake ও BBC World headline ইন্টারনেট পেলে দেখাবে। Feed বন্ধ থাকলে error দেখাবে; এখানে সব ধরনের world event নেই।
 
+## Project builder ও screen viewer (পরীক্ষামূলক)
+
+Conversation → **Project builder**-এ কী ধরনের website চাও লেখো। **Approve by voice** চেপে `অনুমতি দিচ্ছি` বললে NOVA একটি নতুন static website-এর তিনটি file বানানোর চেষ্টা করবে। এটি এক project-এর অনুমতি, পুরো PC চালানোর অনুমতি নয়। Preview দেখে project ZIP download করা যায়। Internet ও Groq connection দরকার। Generated code verify করে ব্যবহার করবে।
+
+Desktop control → **Share screen** চাপলে browser-এ screen বেছে নিতে হবে। **Analyze screen** চাপলে নির্বাচিত screen-এর একটি ছবি এবং প্রশ্ন তোমার AI provider-এ যাবে—private তথ্য আগে বন্ধ করো। Vision model support না থাকলে error দেখাবে। Screen দেখে নিজে click বা type করা এখনো হয় না। বাস্তব Windows microphone ও screen sharing পরীক্ষা করা হয়নি।
+
 ## Website বানানো (প্রথম version)
 
 Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠালেও NOVA একটি নতুন static website তৈরি করার চেষ্টা করে। Voice input থাকলে microphone button চেপে বলাও যায়; এটি সব ধরনের project বা desktop control নয়। Speech recognition browser-এর ওপর নির্ভর করে, আর তোমার অনুরোধ সংযুক্ত AI provider-এ পাঠানো হয়।

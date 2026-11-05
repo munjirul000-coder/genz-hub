@@ -2,7 +2,7 @@
 
 **Your mind, amplified.** একটি Stonic-অনুপ্রাণিত, কিন্তু সম্পূর্ণ original desktop-companion MVP। এটি Gen-Z Hub repo-র ভেতরে আলাদা route, আলাদা SQLite database এবং আলাদা session দিয়ে চলে; existing social platform অপরিবর্তিত থাকে।
 
-> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; screen awareness, always-on wake word এবং arbitrary desktop automation এই build-এ নেই। World monitor শুধু নিচের উল্লিখিত public feed দেখায়।
+> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; automatic screen-driven desktop control, always-on wake word এবং arbitrary desktop automation এই build-এ নেই। World monitor শুধু নিচের উল্লিখিত public feed দেখায়।
 
 ---
 
@@ -149,6 +149,16 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 
 ---
 
+## নতুন project builder ও screen viewer
+
+- **Conversation → Project builder**-এ website-এর বিবরণ লিখে **Approve & build** অথবা **Approve by voice** চাপো। Voice-এ `অনুমতি দিচ্ছি` বললে একটি project build-এর অনুমতি দেওয়া হয়। পরিচয় voice দিয়ে যাচাই হয় না। Voice input দিয়ে স্পষ্ট website তৈরির অনুরোধ করলেও এই অনুমতির window খোলে।
+- এটি connected AI-কে তিনবার অনুরোধ করে নতুন `index.html`, `styles.css`, `app.js` বানায়; JavaScript syntax check করে। সব সফল হলে আলাদা folder `data/nova/built-projects/`-এ রাখে। **Saved projects** থেকে দেখা ও **Download project ZIP** করা যায়। Preview-তে network ও forms বন্ধ। Generated code ভুল হতে পারে—ব্যবহারের আগে review করো।
+- এই অনুমতি **শুধু নতুন static website files** তৈরি করতে প্রযোজ্য। Screen দেখে নিজে desktop operate করা, existing project edit, app/backend বানানো, package install, test run, deploy বা file delete করে না। Stop দিলে চলমান AI request বন্ধের চেষ্টা করে; save শুরু হয়ে গেলে project থেকে যেতে পারে।
+- **Desktop control → Share screen**-এ browser picker দিয়ে screen/window বেছে নিতে হয়। Preview নিজ browser-এ থাকে। **Analyze screen** না চাপা পর্যন্ত AI-তে পাঠানো হয় না; চাপলে একটি frame ও প্রশ্ন connected AI provider-এ যায়, তাই private content আগে বন্ধ করো। Compatible vision model ও internet দরকার; model availability বদলাতে পারে। Screen frame NOVA database-এ রাখা হয় না। Sharing বন্ধ করতে **Stop sharing** বা window বন্ধ করো। এখানে এটি একটি description; স্বয়ংক্রিয় mouse/keyboard control নয়।
+- Real Windows screen sharing, microphone ও Groq vision এই build-এ বাস্তব laptop-এ পরীক্ষা করা হয়নি। Browser/OS permission প্রয়োজন।
+
+---
+
 ## World monitor ও voice conversation
 
 - Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World RSS থেকে আসে। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; কোনো feed বন্ধ থাকলে error দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)।
@@ -165,7 +175,7 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 - Desktop bridge-কে polling-এর সময় নিজের system info server-এ পাঠাতে হয়; সেটা শুধু সেই workspace-এ দেখা যায়।
 - এটি single-user companion MVP, enterprise multi-tenant product নয়। নিজের server HTTPS, backup ও access control দিয়ে চালাও।
 - Globe-এর hotspot কেবল USGS earthquake; এটি সব global event cover করে না। BBC বা USGS offline/blocked থাকলে পুরনো বা fake headline দেখায় না।
-- Screen understanding, file search, calendar/email data integration ও wake word এই version-এর বাইরে।
+- Screen viewer-এ নিজে বাছাই করা একটি frame compatible cloud vision model-এ পাঠিয়ে বিবরণ নেওয়া যায়, কিন্তু তার ভিত্তিতে NOVA নিজে mouse/keyboard চালায় না। File search, calendar/email data integration ও wake word এই version-এর বাইরে।
 
 ---
 

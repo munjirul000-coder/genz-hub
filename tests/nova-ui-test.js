@@ -183,6 +183,70 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('continuous voice stops on request', await page.evaluate(() => window.__voiceStarts) === voiceCount && await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'false');
     await page.evaluate(() => { speechSynthesis.speak = window.__realSpeak; delete window.SpeechRecognition; });
 
+    // One voice approval starts exactly one isolated multi-file project build.
+    const builtId = '00000000-0000-4000-8000-000000000002';
+    const builtDir = path.join(dir, 'nova', 'built-projects', workspaceId, builtId);
+    fs.mkdirSync(builtDir, { recursive: true });
+    fs.writeFileSync(path.join(builtDir, 'index.html'), '<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body><h1>Before</h1><script src="app.js"></script></body></html>');
+    fs.writeFileSync(path.join(builtDir, 'styles.css'), 'h1 { color: purple }');
+    fs.writeFileSync(path.join(builtDir, 'app.js'), 'document.querySelector("h1").textContent="Built";');
+    fs.writeFileSync(path.join(builtDir, 'project.json'), JSON.stringify({ id: builtId, name: 'Bakery project', createdAt: Date.now() }));
+    await page.evaluate((builtId) => {
+      const realFetch = window.fetch; window.__buildRequests = [];
+      window.fetch = (url, options) => {
+        if (String(url).endsWith('/builder/generate')) {
+          window.__buildRequests.push(JSON.parse(options.body));
+          if (window.__holdBuild) return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => { window.__buildAborted = true; reject(new DOMException('Aborted', 'AbortError')); }, { once: true }));
+          return Promise.resolve(new Response(JSON.stringify({ ok: true, project: { id: builtId, name: 'Bakery project', createdAt: Date.now() } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        return realFetch(url, options);
+      };
+      window.SpeechRecognition = class {
+        constructor() { window.__projectRec = this; }
+        start() {} stop() { this.onend?.(); } abort() { this.onend?.(); }
+        say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); }
+      };
+    }, builtId);
+    await click(page, '[data-action="project-builder"]'); await page.type('#project-brief', 'Build a bakery');
+    await page.setViewport({ width: 390, height: 844 }); await noOverflow(page, 'mobile project approval'); await page.setViewport({ width: 1440, height: 1000 });
+    await click(page, '#project-voice-approve'); await page.evaluate(() => window.__projectRec.say('do not approve'));
+    ok('unrecognised project voice does not start work', await page.evaluate(() => window.__buildRequests.length) === 0);
+    await click(page, '#project-voice-approve'); await page.evaluate(() => window.__projectRec.say('অনুমতি দিচ্ছি'));
+    await page.waitForSelector('#project-preview');
+    const builtFrame = await (await page.$('#project-preview')).contentFrame();
+    await builtFrame.waitForFunction(() => document.querySelector('h1')?.textContent === 'Built');
+    ok('one spoken permission builds and previews a three-file project', await page.evaluate(() => window.__buildRequests.length === 1 && window.__buildRequests[0].confirm === true));
+    ok('multi-file preview runs inside opaque sandbox', await page.$eval('#project-preview', e => e.getAttribute('sandbox')) === 'allow-scripts');
+    await click(page, '.modal [data-close]');
+    await page.evaluate(() => window.__holdBuild = true);
+    await click(page, '[data-action="project-builder"]'); await page.type('#project-brief', 'Build a small site'); await click(page, '#project-approve');
+    await click(page, '#project-stop');
+    ok('project Stop aborts the in-flight request', await page.evaluate(() => window.__buildAborted === true));
+    await page.evaluate(() => { window.__holdBuild = false; document.querySelectorAll('.toast').forEach(el => el.remove()); });
+    // Spoken website request opens project authorization with the brief prefilled.
+    await click(page, '[data-action="voice"]'); await page.evaluate(() => window.__projectRec.say('build a flower website'));
+    await page.waitForSelector('#project-brief');
+    ok('spoken website request opens the project permission', await page.$eval('#project-brief', e => e.value) === 'build a flower website');
+    await click(page, '.modal [data-close]'); await page.evaluate(() => delete window.SpeechRecognition);
+
+    // Screen is shared only after browser selection; analysis sends one explicit frame.
+    await go(page, 'desktop');
+    await page.evaluate(() => {
+      const realFetch = window.fetch; window.__screenRequests = 0;
+      const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 250; canvas.getContext('2d').fillRect(0, 0, 400, 250);
+      const draw = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (source.id === 'screen-video') return this.fillRect(0, 0, 400, 250); return draw.call(this, source, ...args); };
+      navigator.mediaDevices.getDisplayMedia = async () => { window.__screenStream = canvas.captureStream(2); return window.__screenStream; };
+      window.fetch = (url, options) => { if (String(url).endsWith('/screen/analyze')) { window.__screenRequests++; return Promise.resolve(new Response(JSON.stringify({ ok: true, answer: 'A test screen.' }), { status: 200, headers: { 'Content-Type': 'application/json' } })); } return realFetch(url, options); };
+    });
+    await click(page, '[data-action="screen-viewer"]');
+    ok('screen viewer starts with sharing off', await page.$eval('#screen-analyze', e => e.disabled));
+    await click(page, '#screen-start'); await page.evaluate(() => { const v = document.querySelector('#screen-video'); Object.defineProperty(v, 'videoWidth', { value: 400 }); Object.defineProperty(v, 'videoHeight', { value: 250 }); });
+    ok('screen sharing does not send a frame automatically', await page.evaluate(() => window.__screenRequests === 0));
+    await click(page, '#screen-analyze'); await page.waitForFunction(() => document.querySelector('#screen-answer')?.textContent === 'A test screen.');
+    ok('screen analysis requires explicit click', await page.evaluate(() => window.__screenRequests === 1));
+    await click(page, '.modal [data-close]');
+    ok('closing screen viewer stops sharing', await page.evaluate(() => window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
+
     // World monitor uses sourced data and never invents events on failure.
     await page.evaluate(() => {
       const realFetch = window.fetch; window.__worldOffline = false;

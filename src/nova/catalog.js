@@ -19,7 +19,7 @@ const CATALOG = Object.freeze({
   open_explorer: { label: 'Open Downloads', detail: 'Opens your Windows Downloads folder. Read-only navigation.', icon: 'folder', group: 'Apps' },
   system_info: { label: 'System information', detail: 'Reads OS, CPU, memory and uptime from the connected agent.', icon: 'cpu', group: 'System' },
   keyboard_type: { label: 'Type in Notepad', detail: 'Types the approved text only when Notepad is the active window. Text is stored in action history.', icon: 'note', group: 'Keyboard' },
-  mouse_move: { label: 'Move mouse pointer', detail: 'Moves the pointer to the specified screen coordinates. NOVA cannot see the screen.', icon: 'monitor', group: 'Mouse' },
+  mouse_move: { label: 'Move mouse pointer', detail: 'Moves the pointer to the specified screen coordinates. This action does not use the screen viewer.', icon: 'monitor', group: 'Mouse' },
   mouse_click: { label: 'Left click mouse', detail: 'Moves and clicks the specified screen coordinates. A click may trigger a destructive action: check your screen first.', icon: 'monitor', group: 'Mouse' },
   whatsapp_draft: { label: 'Open WhatsApp draft', detail: 'Opens a draft in WhatsApp. You must press Send yourself.', icon: 'message', group: 'Web' },
 });
