@@ -4,12 +4,13 @@
  * NOVA Windows bridge — explicit, allowlisted, one action at a time.
  * Run: node nova-agent.js --server https://your-nova-host --token-file nova-bridge.token
  * --dry-run is for development/tests and NEVER executes desktop actions.
- * No shell interpolation, arbitrary commands, file deletion, or screen capture.
+ * No shell interpolation, arbitrary commands, direct delete command, or screen capture.
+ * Approved mouse clicks can trigger actions in other applications, including deletion.
  */
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 
 const ACTIONS = Object.freeze({
   open_youtube: { label: 'Open YouTube', url: 'https://www.youtube.com' },
@@ -20,8 +21,10 @@ const ACTIONS = Object.freeze({
   open_explorer: { label: 'Open Downloads' },
   system_info: { label: 'System information' },
   whatsapp_draft: { label: 'Open WhatsApp draft' },
+  mouse_move: { label: 'Move mouse pointer' },
+  mouse_click: { label: 'Left click mouse' },
 });
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 function argsOf(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
@@ -35,6 +38,10 @@ function argsOf(argv) {
 function validate(kind, params = {}) {
   if (!Object.prototype.hasOwnProperty.call(ACTIONS, kind)) throw new Error('Action is not allowlisted.');
   if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error('Invalid parameters.');
+  if (kind === 'mouse_move' || kind === 'mouse_click') {
+    if (Object.keys(params).sort().join(',') !== 'x,y' || !Number.isInteger(params.x) || !Number.isInteger(params.y) || params.x < -32768 || params.x > 32767 || params.y < -32768 || params.y > 32767) throw new Error('Invalid mouse coordinates.');
+    return { x: params.x, y: params.y };
+  }
   if (kind === 'whatsapp_draft') {
     const phone = String(params.phone || '').replace(/[\s()-]/g, '');
     const text = String(params.text || '').trim();
@@ -56,11 +63,48 @@ function launch(exe, args = []) {
     child.once('spawn', () => { clearTimeout(timer); child.unref(); resolve(); });
   });
 }
+// Fixed, locally defined PowerShell only. Coordinates are validated independently
+// above and passed in the environment, never interpolated into executable code.
+const MOUSE_SCRIPT = `
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class NovaMouse {
+    [DllImport("user32.dll", SetLastError=true)] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+}
+'@
+$x = [int]$env:NOVA_MOUSE_X; $y = [int]$env:NOVA_MOUSE_Y
+$left = [NovaMouse]::GetSystemMetrics(76); $top = [NovaMouse]::GetSystemMetrics(77)
+$width = [NovaMouse]::GetSystemMetrics(78); $height = [NovaMouse]::GetSystemMetrics(79)
+if ($width -le 0 -or $height -le 0 -or $x -lt $left -or $y -lt $top -or $x -ge ($left + $width) -or $y -ge ($top + $height)) { throw 'Coordinates are outside the virtual screen.' }
+if (-not [NovaMouse]::SetCursorPos($x, $y)) { throw 'Windows could not move the mouse pointer.' }
+if ($env:NOVA_MOUSE_CLICK -eq '1') {
+    [NovaMouse]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    [NovaMouse]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+}
+`;
+function sendMouse(kind, params) {
+  const encoded = Buffer.from(MOUSE_SCRIPT, 'utf16le').toString('base64');
+  const env = { ...process.env, NOVA_MOUSE_X: String(params.x), NOVA_MOUSE_Y: String(params.y), NOVA_MOUSE_CLICK: kind === 'mouse_click' ? '1' : '0' };
+  return new Promise((resolve, reject) => {
+    execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { shell: false, windowsHide: true, timeout: 15000, maxBuffer: 65536, env }, (err) => {
+      if (err) return reject(new Error('Windows mouse operation failed. Check the coordinates and that the desktop is unlocked.'));
+      resolve();
+    });
+  });
+}
 async function execute(action, dryRun = false) {
   const params = validate(action.kind, action.params);
   const item = ACTIONS[action.kind];
   if (dryRun) return `[DRY RUN] ${item.label}: no desktop operation was performed.`;
   if (process.platform !== 'win32') throw new Error('The NOVA bridge executes actions on Windows only. Use --dry-run for protocol tests.');
+  if (action.kind === 'mouse_move' || action.kind === 'mouse_click') {
+    await sendMouse(action.kind, params);
+    return `${item.label} sent at (${params.x}, ${params.y}). NOVA cannot see what was clicked.`;
+  }
   if (item.url) await launch('rundll32.exe', ['url.dll,FileProtocolHandler', item.url]);
   else if (action.kind === 'open_notepad') await launch('notepad.exe');
   else if (action.kind === 'open_calculator') await launch('calc.exe');
@@ -85,7 +129,7 @@ async function main() {
   if (args['self-test']) {
     const invalid = [{ kind: 'shell', params: {} }, { kind: 'open_youtube', params: { url: 'https://evil.example' } }, { kind: 'whatsapp_draft', params: { phone: '123', text: 'hi' } }, { kind: '__proto__', params: {} }];
     for (const a of invalid) { let rejected = false; try { validate(a.kind, a.params); } catch { rejected = true; } if (!rejected) throw new Error('Safety self-test failed: ' + a.kind); }
-    for (const kind of Object.keys(ACTIONS)) validate(kind, kind === 'whatsapp_draft' ? { phone: '+8801712345678', text: 'Hello' } : {});
+    for (const kind of Object.keys(ACTIONS)) validate(kind, kind === 'whatsapp_draft' ? { phone: '+8801712345678', text: 'Hello' } : kind.startsWith('mouse_') ? { x: 10, y: 10 } : {});
     console.log('PASS: allowlist, parameter validation and dangerous-action rejection.'); return;
   }
   const base = (args.server || process.env.NOVA_SERVER || 'http://localhost:3000').replace(/\/$/, '');

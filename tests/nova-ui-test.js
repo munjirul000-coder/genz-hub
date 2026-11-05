@@ -173,6 +173,11 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
     await go(page, 'activity'); ok('cancelled action appears in activity', (await text(page)).includes('Cancelled'));
     await go(page, 'desktop'); ok('desktop setup instructions render', (await text(page)).includes('Download nova-agent.js'));
+    await page.type('#mouse-x', '500'); await page.type('#mouse-y', '300');
+    await click(page, '#mouse-form button[value="mouse_click"]'); await page.waitForSelector('.approval-detail');
+    ok('mouse click review displays coordinates and deletion warning', (await text(page)).includes('Screen coordinates: X 500, Y 300') && (await text(page)).includes('A click may delete files'));
+    ok('mouse click cannot run while bridge offline', await page.$('#approve-action') === null);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
     await noOverflow(page, 'desktop control');
     await page.screenshot({ path: path.join(SHOTS, 'nova-desktop-control.png'), fullPage: true });
 

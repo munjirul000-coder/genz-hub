@@ -15,6 +15,15 @@ function actionIntent(text) {
   return null;
 }
 
+// Explicit coordinate commands only. NOVA does not infer targets from screen content.
+function mouseIntent(text) {
+  const match = String(text || '').trim().match(/^(?:mouse\s+)?(move|click)(?:\s+(?:mouse|to|at))*\s+(-?\d{1,5})\s*[, ]\s*(-?\d{1,5})[.!]?$/i);
+  if (!match) return null;
+  const kind = match[1].toLowerCase() === 'click' ? 'mouse_click' : 'mouse_move';
+  const valid = validateAction(kind, { x: Number(match[2]), y: Number(match[3]) });
+  return valid.error ? null : { kind, params: valid.params };
+}
+
 // Only an explicit request to create a website starts a build. Questions and
 // negations remain normal chat; never infer a request to edit/delete a project.
 function websiteIntent(text) {
@@ -65,6 +74,8 @@ function calculate(input) {
 function localReply(text, settings, memories, timezone) {
   const t = text.trim(); const lower = t.toLowerCase(); const bn = BN.test(t) || settings.language === 'bn';
   const say = (en, bangla) => bn ? bangla : en;
+  const mouse = mouseIntent(t);
+  if (mouse) return { content: say('I prepared a mouse action. Review the coordinates and approve it before anything happens. I cannot see your screen.', 'Mouse action প্রস্তুত করেছি। Coordinates দেখে অনুমতি দিলে চলবে। আমি তোমার screen দেখতে পারি না।'), action: mouse };
   const kind = actionIntent(t);
   if (kind) return { content: say(`I've prepared **${CATALOG[kind].label}**. Review the action below and approve it before anything happens on your PC.`, `আমি **${CATALOG[kind].label}** অ্যাকশনটি প্রস্তুত করেছি। নিচে দেখে অনুমোদন দিলে তবেই তোমার PC-তে চলবে।`), action: { kind, params: {} } };
   const math = calculate(t);
@@ -225,4 +236,4 @@ async function testAiConnection(savedConfig) {
       : 'This NOVA server could not reach the AI provider. Hosted previews often block outbound AI calls — run NOVA on your own laptop (START-NOVA.bat) and connect there. On your own server, check internet/firewall.' };
   }
 }
-module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent, websiteEditIntent };
+module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent, websiteEditIntent, mouseIntent };

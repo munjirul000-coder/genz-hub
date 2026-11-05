@@ -88,6 +88,11 @@ Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠ
 
 Bridge window open থাকলে desktop control কাজ করবে। বন্ধ করতে `Ctrl+C`।
 
+### পরীক্ষামূলক mouse control
+
+Updated NOVA এবং updated Windows bridge দুটোই দরকার। Desktop control-এ **Mouse control**-এ X/Y screen coordinate দিয়ে **Review move** বা **Review left click** চাপো, তারপর owner হিসেবে অনুমতি দাও। Chat-এ `mouse move 500 300` বা `mouse click 500 300`-ও বলা যায়। NOVA screen দেখতে পারে না, তাই নিজে লক্ষ্যবস্তু চিনতে পারে না। ভুল জায়গায় click করলে file delete-সহ যেকোনো action হতে পারে—screen দেখে অনুমতি দেবে। প্রতিটি move/click-এ আলাদা অনুমতি লাগে; voice-only অনুমতি বা keyboard automation এখনো নেই। Windows-এর virtual screen-এর বাইরে coordinate হলে তা প্রত্যাখ্যাত হবে। এই নতুন mouse feature বাস্তব Windows laptop-এ এখনো পরীক্ষা করা হয়নি।
+
+
 ## 6) ফোনকে remote বানাও (একই Wi‑Fi)
 
 1. Laptop-এ PowerShell-এ `ipconfig` চালিয়ে IPv4 address দেখো, যেমন `192.168.0.105`।

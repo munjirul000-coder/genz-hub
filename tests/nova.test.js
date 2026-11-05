@@ -346,3 +346,33 @@ test('website edit intent requires an explicit edit and a website', () => {
   for (const text of ['website change the title', 'edit website', 'ওয়েবসাইট বদলাও']) assert.equal(websiteEditIntent(text), true, text);
   for (const text of ['how to edit website', 'do not edit the website', 'change my password', 'make a website']) assert.equal(websiteEditIntent(text), false, text);
 });
+
+test('mouse commands require valid coordinates, owner consent and a connected bridge', async () => {
+  const { mouseIntent } = require('../src/nova/assistant');
+  const { validateAction } = require('../src/nova/catalog');
+  assert.deepEqual(mouseIntent('mouse move 500 300'), { kind: 'mouse_move', params: { x: 500, y: 300 } });
+  assert.deepEqual(mouseIntent('click mouse at -120, 50'), { kind: 'mouse_click', params: { x: -120, y: 50 } });
+  assert.equal(mouseIntent('click delete'), null);
+  assert.equal(mouseIntent('mouse click 99999 3'), null);
+  for (const params of [{ x: 1.2, y: 3 }, { x: '1', y: 2 }, { x: 1, y: 2, command: 'x' }, { x: 99999, y: 1 }, { x: 1 }]) {
+    assert.ok(validateAction('mouse_click', params).error);
+    assert.throws(() => agent.validate('mouse_click', params));
+  }
+  assert.match(await agent.execute({ kind: 'mouse_click', params: { x: 10, y: 20 } }, true), /DRY RUN/);
+  const owner = await workspace();
+  const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });
+  const remote = (await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } })).data.token;
+  assert.equal((await req('/actions', { method: 'POST', token: remote, body: { kind: 'mouse_click', params: { x: 10, y: 20 } } })).status, 403);
+  assert.equal((await req('/chat', { method: 'POST', token: remote, body: { message: 'mouse click 10 20' } })).status, 403);
+  const bridge = await req('/bridge/token', { method: 'POST', token: owner, body: {} });
+  const proposed = await req('/chat', { method: 'POST', token: owner, body: { message: 'mouse click 10 20' } });
+  assert.equal(proposed.data.action.kind, 'mouse_click'); assert.equal(proposed.data.action.status, 'pending');
+  const id = proposed.data.action.id;
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: remote, body: {} })).status, 403);
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: owner, body: {} })).status, 409);
+  const headers = { Authorization: 'Bearer ' + bridge.data.token };
+  await req('/bridge/poll', { method: 'POST', headers, body: {} });
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: owner, body: {} })).status, 200);
+  const claimed = await req('/bridge/poll', { method: 'POST', headers, body: {} });
+  assert.equal(claimed.data.action.kind, 'mouse_click'); assert.deepEqual(claimed.data.action.params, { x: 10, y: 20 });
+});
