@@ -158,6 +158,15 @@ function createNovaRouter({ dataDir, agentFile }) {
   router.get('/website/projects', auth, owner, U.wrap(async (req, res) => {
     res.json({ projects: await listWebsites(dataDir, req.nova.workspace_id) });
   }));
+  // Serve untrusted AI output with an opaque origin, scripts confined to the
+  // preview, and no fetches/forms/external resources. Never weaken NOVA's CSP.
+  router.get('/website/projects/:id/preview', auth, owner, U.wrap(async (req, res) => {
+    const result = await readWebsite(dataDir, req.nova.workspace_id, req.params.id);
+    if (!result) return res.status(404).type('text').send('Website not found.');
+    res.setHeader('Content-Security-Policy', "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'");
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.type('html').send(result.html);
+  }));
   router.get('/website/projects/:id', auth, owner, U.wrap(async (req, res) => {
     const result = await readWebsite(dataDir, req.nova.workspace_id, req.params.id);
     if (!result) return res.status(404).json({ error: 'Website not found.' });

@@ -298,6 +298,13 @@ test('website projects are saved separately and only accessible to their owner',
     const list = await req('/website/projects', { token: owner });
     assert.equal(list.data.projects.length, 1); assert.equal(list.data.projects[0].id, id);
     assert.match((await req('/website/projects/' + id, { token: owner })).data.html, /Test bakery/);
+    const preview = await realFetch(base + '/website/projects/' + id + '/preview', { headers: { 'X-Nova-Session': owner } });
+    assert.equal(preview.status, 200);
+    assert.match(preview.headers.get('content-security-policy'), /sandbox allow-scripts/);
+    assert.match(preview.headers.get('content-security-policy'), /connect-src 'none'/);
+    assert.match(await preview.text(), /Test bakery/);
+    assert.equal((await realFetch(base + '/website/projects/' + id + '/preview', { headers: { 'X-Nova-Session': other } })).status, 404);
+    assert.equal((await realFetch(base + '/website/projects/' + id + '/preview')).status, 401);
     assert.equal((await req('/website/projects/' + id, { token: other })).status, 404);
     assert.equal((await req('/website/projects/not-a-uuid', { token: owner })).status, 404);
     const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });

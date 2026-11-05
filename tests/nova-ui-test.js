@@ -58,24 +58,30 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
 
     // Website generation is explicit; AI output is previewed in an isolated frame.
     await go(page, 'conversation');
-    await page.evaluate(() => {
+    const workspaceId = await page.evaluate(async () => (await (await fetch('/api/nova/state', { headers: { 'X-Nova-Session': sessionStorage.getItem('nova.token') } })).json()).workspace.id);
+    const projectId = '00000000-0000-4000-8000-000000000001';
+    const projectDir = path.join(dir, 'nova', 'projects', workspaceId, projectId);
+    const fixtureHtml = '<!doctype html><html><body><h1>Bakery preview</h1><script>document.querySelector("h1").textContent = "Interactive bakery"</script></body></html>';
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.writeFileSync(path.join(projectDir, 'index.html'), fixtureHtml);
+    fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify({ id: projectId, name: 'A bakery', createdAt: Date.now() }));
+    await page.evaluate((projectId, html) => {
       const realFetch = window.fetch;
-      const project = { id: 'a1', name: 'A bakery', createdAt: Date.now() };
-      const html = '<!doctype html><html><body><h1>Bakery preview</h1></body></html>';
+      const project = { id: projectId, name: 'A bakery', createdAt: Date.now() };
       window.fetch = (url, options) => {
         if (String(url).endsWith('/website/generate')) return Promise.resolve(new Response(JSON.stringify({ ok: true, html, project }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         if (String(url).endsWith('/website/projects')) return Promise.resolve(new Response(JSON.stringify({ projects: [project] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
-        if (String(url).endsWith('/website/projects/a1')) return Promise.resolve(new Response(JSON.stringify({ project, html }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        if (String(url).endsWith('/website/projects/' + projectId)) return Promise.resolve(new Response(JSON.stringify({ project, html }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         return realFetch(url, options);
       };
-    });
+    }, projectId, fixtureHtml);
     await click(page, '[data-action="build-website"]');
     await page.type('#website-brief', 'A bakery'); await click(page, '#website-submit');
     await page.waitForSelector('#website-preview');
     const preview = await page.$('#website-preview'); const previewFrame = await preview.contentFrame();
-    await previewFrame.waitForSelector('h1');
-    ok('website builder previews returned HTML', await previewFrame.$eval('h1', el => el.textContent) === 'Bakery preview');
-    ok('website preview disables scripts and same-origin access', await page.$eval('#website-preview', el => el.getAttribute('sandbox')) === '');
+    await previewFrame.waitForFunction(() => document.querySelector('h1')?.textContent === 'Interactive bakery');
+    ok('website preview runs interactive scripts', await previewFrame.$eval('h1', el => el.textContent) === 'Interactive bakery');
+    ok('website preview denies same-origin access', await page.$eval('#website-preview', el => el.getAttribute('sandbox')) === 'allow-scripts');
     ok('website download requires explicit click', await page.$('#website-download') !== null);
     await click(page, '#website-saved'); await click(page, '.website-project');
     await page.waitForSelector('#website-preview');
@@ -86,7 +92,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       window.fetch = (url, options) => {
         if (String(url).endsWith('/chat') && options?.body && JSON.parse(options.body).message === 'ekta bakery website banao') {
           const now = Date.now();
-          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'web-user', role: 'user', content: 'ekta bakery website banao', created_at: now }, message: { id: 'web-ai', role: 'assistant', content: 'Website saved', created_at: now }, website: { html: '<!doctype html><html><body><h1>Chat website</h1></body></html>', project: { id: 'a1' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'web-user', role: 'user', content: 'ekta bakery website banao', created_at: now }, message: { id: 'web-ai', role: 'assistant', content: 'Website saved', created_at: now }, website: { html: '<!doctype html><html><body><h1>Chat website</h1></body></html>', project: { id: '00000000-0000-4000-8000-000000000001' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         }
         return realFetch(url, options);
       };
@@ -94,7 +100,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.type('#chat-input', 'ekta bakery website banao'); await page.keyboard.press('Enter');
     await page.waitForSelector('#website-preview');
     const chatFrame = await (await page.$('#website-preview')).contentFrame(); await chatFrame.waitForSelector('h1');
-    ok('website requested in chat opens its preview', await chatFrame.$eval('h1', el => el.textContent) === 'Chat website');
+    ok('website requested in chat opens its preview', await chatFrame.$eval('h1', el => el.textContent) === 'Interactive bakery');
     await click(page, '.modal [data-close]');
 
     // Memory CRUD through the UI.
