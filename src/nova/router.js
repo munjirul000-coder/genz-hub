@@ -5,6 +5,7 @@ const { NovaStore } = require('./store');
 const { CATALOG, validateAction } = require('./catalog');
 const { respond, aiConfig, testAiConnection, generateWebsite } = require('./assistant');
 const { Vault } = require('./vault');
+const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
@@ -128,7 +129,7 @@ function createNovaRouter({ dataDir, agentFile }) {
   router.delete('/messages', auth, owner, (req, res) => { store.clearMessages(req.nova.workspace_id); res.json({ ok: true }); });
   // Provider test failures return 200 {ok:false,error}: some hosting proxies replace
   // 5xx bodies with their own error page, hiding the real reason from the UI.
-  // Owner explicitly requests a disposable static prototype; never write or run code.
+  // Owner explicitly requests a static prototype. Save a new project, never run commands.
   router.post('/website/generate', auth, owner, U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-website' }), U.wrap(async (req, res) => {
     const brief = clean(req.body?.brief, 3000);
     if (!brief) return res.status(400).json({ error: 'Describe the website first.' });
@@ -136,6 +137,16 @@ function createNovaRouter({ dataDir, agentFile }) {
     const workspaceId = req.nova.workspace_id;
     const result = await generateWebsite(workspaceAi(workspaceId), brief);
     if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
+    if (!result.ok) return res.json(result);
+    const project = await saveWebsite(dataDir, workspaceId, brief, result.html);
+    res.json({ ...result, project });
+  }));
+  router.get('/website/projects', auth, owner, U.wrap(async (req, res) => {
+    res.json({ projects: await listWebsites(dataDir, req.nova.workspace_id) });
+  }));
+  router.get('/website/projects/:id', auth, owner, U.wrap(async (req, res) => {
+    const result = await readWebsite(dataDir, req.nova.workspace_id, req.params.id);
+    if (!result) return res.status(404).json({ error: 'Website not found.' });
     res.json(result);
   }));
   router.post('/ai/test', auth, owner, U.rateLimit({ max: 6, windowMs: 60000, key: 'nova-ai-test' }), U.wrap(async (req, res) => {

@@ -68,8 +68,9 @@ npm run nova
 
 1. Groq connect করে Conversation page-এ **Build website** চাপো।
 2. কী ধরনের website চাও লিখে **Generate website** চাপো। তোমার description সংযুক্ত AI provider-এ পাঠানো হবে; গোপন তথ্য লিখবে না।
-3. Preview দেখে **Download index.html** চাপলে file download হবে। Preview-তে নিরাপত্তার জন্য JavaScript ও network বন্ধ থাকে; কিছু interactive অংশ সেখানে কাজ করবে না।
-4. এটি একটি এক-file static prototype; বাস্তব login, payment, database, hosting বা autonomous project editing করে না। AI-generated code ভুল বা অনিরাপদ হতে পারে—বিশ্বাসের আগে review করো।
+3. NOVA নতুন project হিসেবে file নিজে save করবে। Preview দেখে চাইলে **Download index.html** চাপলে আলাদা copy download হবে। Preview-তে নিরাপত্তার জন্য JavaScript ও network বন্ধ থাকে; কিছু interactive অংশ সেখানে কাজ করবে না।
+4. পরে আবার দেখতে **Build website → Saved websites** চাপো। Project-গুলো `data/nova/projects/`-এ থাকে; workspace delete করলেও এগুলো নিজে থেকে delete করা হয় না।
+5. এটি একটি এক-file static prototype; বাস্তব login, payment, database, hosting বা autonomous project editing করে না। AI-generated code ভুল বা অনিরাপদ হতে পারে—বিশ্বাসের আগে review করো।
 
 নতুন ZIP আলাদা folder-এ খুললে পুরনো workspace স্বয়ংক্রিয়ভাবে আসে না। পুরনো NOVA বন্ধ করে `data/nova` folder-টির backup রাখো; workspace ও encrypted key ফেরত পেতে database এবং vault key একসাথে রাখতে হবে।
 

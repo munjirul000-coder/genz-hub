@@ -276,3 +276,35 @@ test('repeated invalid bridge credentials are limited without blocking valid age
   const valid = await req('/bridge/poll', { method: 'POST', body: {}, headers: { Authorization: `Bearer ${issued.data.token}` } });
   assert.equal(valid.status, 200);
 });
+
+test('website projects are saved separately and only accessible to their owner', async () => {
+  const owner = await workspace(), other = await workspace();
+  const workspaceId = (await req('/state', { token: owner })).data.workspace.id;
+  const realFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    if (String(url).startsWith('https://api.groq.com/')) {
+      const sent = JSON.parse(options.body);
+      const content = sent.messages[0].role === 'system' ? '<!doctype html><html><body><h1>Test bakery</h1></body></html>' : 'OK';
+      return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return realFetch(url, options);
+  };
+  try {
+    const connected = await req('/ai/connect', { method: 'POST', token: owner, body: { apiKey: 'gsk_test_key_abcdefghijklmnopqrstuvwxyz' } });
+    assert.equal(connected.data.ok, true);
+    const generated = await req('/website/generate', { method: 'POST', token: owner, body: { brief: 'A bakery site' } });
+    assert.equal(generated.data.ok, true); const id = generated.data.project.id;
+    assert.match(await fs.promises.readFile(path.join(dir, 'projects', workspaceId, id, 'index.html'), 'utf8'), /Test bakery/);
+    const list = await req('/website/projects', { token: owner });
+    assert.equal(list.data.projects.length, 1); assert.equal(list.data.projects[0].id, id);
+    assert.match((await req('/website/projects/' + id, { token: owner })).data.html, /Test bakery/);
+    assert.equal((await req('/website/projects/' + id, { token: other })).status, 404);
+    assert.equal((await req('/website/projects/not-a-uuid', { token: owner })).status, 404);
+    const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });
+    const remote = await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } });
+    assert.equal((await req('/website/projects', { token: remote.data.token })).status, 403);
+    assert.equal((await req('/website/projects/' + id, { token: remote.data.token })).status, 403);
+    const second = await req('/website/generate', { method: 'POST', token: owner, body: { brief: 'A bakery site' } });
+    assert.notEqual(second.data.project.id, id); // Never overwrite an existing project.
+  } finally { global.fetch = realFetch; }
+});

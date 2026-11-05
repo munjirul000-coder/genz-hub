@@ -60,9 +60,14 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await go(page, 'conversation');
     await page.evaluate(() => {
       const realFetch = window.fetch;
-      window.fetch = (url, options) => String(url).endsWith('/website/generate')
-        ? Promise.resolve(new Response(JSON.stringify({ ok: true, html: '<!doctype html><html><body><h1>Bakery preview</h1></body></html>' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-        : realFetch(url, options);
+      const project = { id: 'a1', name: 'A bakery', createdAt: Date.now() };
+      const html = '<!doctype html><html><body><h1>Bakery preview</h1></body></html>';
+      window.fetch = (url, options) => {
+        if (String(url).endsWith('/website/generate')) return Promise.resolve(new Response(JSON.stringify({ ok: true, html, project }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        if (String(url).endsWith('/website/projects')) return Promise.resolve(new Response(JSON.stringify({ projects: [project] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        if (String(url).endsWith('/website/projects/a1')) return Promise.resolve(new Response(JSON.stringify({ project, html }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        return realFetch(url, options);
+      };
     });
     await click(page, '[data-action="build-website"]');
     await page.type('#website-brief', 'A bakery'); await click(page, '#website-submit');
@@ -72,6 +77,9 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('website builder previews returned HTML', await previewFrame.$eval('h1', el => el.textContent) === 'Bakery preview');
     ok('website preview disables scripts and same-origin access', await page.$eval('#website-preview', el => el.getAttribute('sandbox')) === '');
     ok('website download requires explicit click', await page.$('#website-download') !== null);
+    await click(page, '#website-saved'); await click(page, '.website-project');
+    await page.waitForSelector('#website-preview');
+    ok('saved website reopens in preview', await page.$('#website-preview') !== null);
     await click(page, '.modal [data-close]');
 
     // Memory CRUD through the UI.

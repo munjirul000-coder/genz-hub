@@ -205,9 +205,10 @@
     renderMessages(); bindComposer();
   }
   // Generated code is untrusted. Preview it in an opaque, script-disabled iframe;
-  // downloading is explicit and no project files or commands are run by NOVA.
+  // server saves a new project, but does not install packages or run commands.
   function websiteBuilder() {
-    modal('Build a website', `<p>Describe a simple website in Bangla or English. Your description is sent to your connected AI provider. This creates one static HTML file, not a backend or a deployed site.</p><form id="website-form"><div class="field"><label for="website-brief">What should the website look like?</label><textarea id="website-brief" required maxlength="3000" rows="5" placeholder="Example: a colourful bakery website with a menu and contact section"></textarea></div><p class="form-error" id="website-error" role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="website-submit" type="submit">Generate website</button></div></form>`, { className: 'website-modal' });
+    modal('Build a website', `<p>Describe a simple website in Bangla or English. Your description is sent to your connected AI provider. NOVA saves a new static HTML project on this computer; it does not create a backend or deploy the site.</p><form id="website-form"><div class="field"><label for="website-brief">What should the website look like?</label><textarea id="website-brief" required maxlength="3000" rows="5" placeholder="Example: a colourful bakery website with a menu and contact section"></textarea></div><p class="form-error" id="website-error" role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-ghost" id="website-saved">Saved websites</button><button class="btn btn-primary" id="website-submit" type="submit">Generate website</button></div></form>`, { className: 'website-modal' });
+    $('#website-saved').onclick = savedWebsites;
     $('#website-form').onsubmit = async e => {
       e.preventDefault();
       const brief = $('#website-brief').value.trim();
@@ -218,14 +219,28 @@
         const data = await api('/website/generate', { method: 'POST', body: { brief } });
         if (!data.ok) throw new Error(data.error || 'Could not generate website.');
         if (!form.isConnected) return;
-        modal('Your website preview', `<p>Preview only: scripts and network access are disabled here. Review the generated code before opening it outside NOVA. This is a static prototype, not a deployed website.</p><iframe id="website-preview" sandbox="" title="Generated website preview"></iframe><div class="modal-footer"><button class="btn btn-ghost" data-action="build-website">Start over</button><button class="btn btn-primary" id="website-download">Download index.html</button></div>`, { className: 'website-modal' });
-        const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`;
-        $('#website-preview').srcdoc = policy + data.html;
-        $('#website-download').onclick = () => downloadBlob(new Blob([data.html], { type: 'text/html;charset=utf-8' }), 'index.html');
+        showWebsite(data);
       } catch (err) {
         if (form.isConnected) { $('#website-error').textContent = err.message; btn.disabled = false; btn.textContent = 'Generate website'; }
       }
     };
+  }
+  function showWebsite(data) {
+    modal('Your website preview', `<p>Saved as a new project in NOVA. Preview disables scripts and network access. Review AI-generated code before opening it elsewhere. This is a static prototype, not a deployed website.</p><iframe id="website-preview" sandbox="" title="Generated website preview"></iframe><div class="modal-footer"><button class="btn btn-ghost" id="website-saved">Saved websites</button><button class="btn btn-primary" id="website-download">Download index.html</button></div>`, { className: 'website-modal' });
+    const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`;
+    $('#website-preview').srcdoc = policy + data.html;
+    $('#website-saved').onclick = savedWebsites;
+    $('#website-download').onclick = () => downloadBlob(new Blob([data.html], { type: 'text/html;charset=utf-8' }), 'index.html');
+  }
+  async function savedWebsites() {
+    modal('Saved websites', '<p>Loading your websites…</p>', { className: 'website-modal' });
+    const currentModal = $('.modal');
+    try {
+      const data = await api('/website/projects');
+      if (!currentModal.isConnected) return;
+      modal('Saved websites', `<p>These projects are saved on the NOVA server. They are not published online.</p><div class="website-list">${data.projects.length ? data.projects.map(p => `<button class="btn btn-ghost website-project" data-project-id="${esc(p.id)}"><span>${esc(p.name)}</span><small>${esc(fmtDate(p.createdAt))}</small></button>`).join('') : '<p>No saved websites yet.</p>'}</div><div class="modal-footer"><button class="btn btn-primary" data-action="build-website">Build a website</button></div>`, { className: 'website-modal' });
+      $$('.website-project').forEach(btn => { btn.onclick = async () => { btn.disabled = true; try { const result = await api('/website/projects/' + encodeURIComponent(btn.dataset.projectId)); if (btn.isConnected) showWebsite(result); } catch (err) { toast(err.message, 'error'); if (btn.isConnected) btn.disabled = false; } }; });
+    } catch (err) { if (currentModal.isConnected) modal('Saved websites', `<p>${esc(err.message)}</p><div class="modal-footer"><button class="btn btn-ghost" data-action="build-website">Back</button></div>`); }
   }
   function renderMessages() {
     const box = $('#messages'); if (!box) return;
