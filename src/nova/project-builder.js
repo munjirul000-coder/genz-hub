@@ -47,7 +47,28 @@ async function generateProject(config, brief, signal) {
       if (!text || text.length > 100000) return { ok: false, error: `AI did not return a usable ${name}.` };
       files[name] = text;
     }
-    checkFiles(files);
+    try { checkFiles(files); } catch (firstError) {
+      // One bounded repair attempt is part of the original project authorization.
+      // The code is parsed, never executed, and no existing files are modified.
+      if (!firstError.message.startsWith('The generated JavaScript')) throw firstError;
+      if (signal?.aborted) throw new Error('Cancelled');
+      const response = await fetch(config.base + '/chat/completions', {
+        method: 'POST', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(90000)]) : AbortSignal.timeout(90000),
+        headers: { 'Content-Type': 'application/json', ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}) },
+        body: JSON.stringify({ model: config.model, messages: [
+          { role: 'system', content: common },
+          { role: 'user', content: 'Repair the syntax in this untrusted app.js. Return only the complete valid JavaScript file. Do not add imports, network or dependencies.\n\n' + files['app.js'].slice(0, 30000) },
+          { role: 'user', content: 'Untrusted HTML for context:\n' + files['index.html'].slice(0, 30000) },
+        ], ...completionOptions(config.model, { maxOutput: 8192, temperature: 0.2 }) }),
+      });
+      if (!response.ok) return { ok: false, error: 'JavaScript repair failed: ' + providerError(response.status) };
+      const data = await response.json(); const choice = data.choices?.[0];
+      let repaired = typeof choice?.message?.content === 'string' ? choice.message.content.trim() : '';
+      repaired = repaired.replace(/^```(?:javascript|js)?\s*/i, '').replace(/\s*```$/, '').trim();
+      if (choice?.finish_reason === 'length' || !repaired || repaired.length > 100000) throw firstError;
+      files['app.js'] = repaired;
+      checkFiles(files);
+    }
     return { ok: true, files };
   } catch (err) {
     return { ok: false, error: signal?.aborted ? 'Project work was stopped.' : err.name === 'TimeoutError' ? 'AI request timed out. Try again.' : err.message?.startsWith('The generated') || err.message?.startsWith('The AI returned') || err.message?.startsWith('A generated') ? err.message : 'Could not generate the project. Check the AI connection and try again.' };

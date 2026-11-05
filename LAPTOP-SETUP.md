@@ -74,7 +74,7 @@ npm run nova
 
 Conversation → **Project builder**-এ কী ধরনের website চাও লেখো। **Approve by voice** চেপে `অনুমতি দিচ্ছি` বললে NOVA একটি নতুন static website-এর তিনটি file বানানোর চেষ্টা করবে। এটি এক project-এর অনুমতি, পুরো PC চালানোর অনুমতি নয়। Preview দেখে project ZIP download করা যায়। Internet ও Groq connection দরকার। Generated code verify করে ব্যবহার করবে।
 
-Desktop control → **Share screen** চাপলে browser-এ screen বেছে নিতে হবে। **Analyze screen** চাপলে নির্বাচিত screen-এর একটি ছবি এবং প্রশ্ন তোমার AI provider-এ যাবে—private তথ্য আগে বন্ধ করো। Vision model support না থাকলে error দেখাবে। Screen দেখে নিজে click বা type করা এখনো হয় না। বাস্তব Windows microphone ও screen sharing পরীক্ষা করা হয়নি।
+Desktop control → **Share screen** চাপলে browser-এ screen বেছে নিতে হবে। **Analyze screen** চাপলে নির্বাচিত screen-এর একটি ছবি এবং প্রশ্ন তোমার AI provider-এ যাবে—private তথ্য আগে বন্ধ করো। Vision model support না থাকলে error দেখাবে। AI চাইলে পুরো primary monitor-এর জন্য click point প্রস্তাব করে; point দেখে প্রতিবার নিজে অনুমতি দিতে হবে। ভুল point বা বদলে যাওয়া screen-এ click করলে delete-সহ ক্ষতি হতে পারে। নিজে নিজে একাধিক click/type করে না। বাস্তব Windows microphone, screen sharing, mouse ও keyboard পরীক্ষা করা হয়নি।
 
 ## Website বানানো (প্রথম version)
 
@@ -106,7 +106,7 @@ Updated NOVA এবং updated Windows bridge দুটোই দরকার।
 
 ### পরীক্ষামূলক Notepad typing এবং voice approval
 
-Desktop control-এ **Keyboard: type in Notepad**-এ এক লাইনের লেখা দিয়ে **Review typing** চাপো। অনুমতির পরে সঙ্গে সঙ্গে Notepad সামনে আনো; bridge action পাওয়ার প্রায় পাঁচ সেকেন্ড পর শুধু foreground Notepad-এ লিখবে। Focus অন্যত্র চলে গেলে থামার চেষ্টা করবে; কিছু লেখা ইতোমধ্যে লেখা হয়ে থাকতে পারে। অন্য app, shortcuts, Enter বা arbitrary commands সমর্থিত নয়। লেখাটি action history-তে সংরক্ষিত হয় এবং paired device দেখতে পারে—কখনো password বা secret দেবে না।
+Desktop control-এ **Keyboard: type in a supported app**-এ Notepad বেছে এক লাইনের লেখা দিয়ে **Review typing** চাপো। অনুমতির পরে সঙ্গে সঙ্গে Notepad সামনে আনো; bridge action পাওয়ার প্রায় পাঁচ সেকেন্ড পর শুধু foreground Notepad-এ লিখবে। Focus অন্যত্র চলে গেলে থামার চেষ্টা করবে; কিছু লেখা ইতোমধ্যে লেখা হয়ে থাকতে পারে। এছাড়া keyboard target list থেকে Chrome, Edge, Firefox, VS Code, Word, Excel বা PowerPoint বেছে এক লাইন লেখা যায়; নির্দিষ্ট app ও সঠিক text field সামনে আনতে হবে। Shortcuts, Enter বা arbitrary commands সমর্থিত নয়। লেখাটি action history-তে সংরক্ষিত হয় এবং paired device দেখতে পারে—কখনো password বা secret দেবে না।
 
 Connected bridge থাকলে action review-এ **Approve by voice** চেপে `অনুমতি দিচ্ছি` বলেও ওই একটি action অনুমোদন করা যায়। Browser-এর speech recognition প্রয়োজন এবং browser vendor-এর service ব্যবহৃত হতে পারে। **Voice দিয়ে বক্তার পরিচয় যাচাই হয় না**—কাছে থাকা অন্য কেউ বা recording-ও একই কথা বলতে পারে। একবারে সব কাজের অনুমতি দেওয়া হয় না; প্রতিটি action আলাদা অনুমোদন লাগে। আসল Windows keyboard input ও microphone recognition এখনো বাস্তব laptop-এ পরীক্ষা করা হয়নি।
 

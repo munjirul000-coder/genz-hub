@@ -137,11 +137,11 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#setting-name');
     ok('settings survive reload', await page.$eval('#setting-name', el => el.value) === 'Rafi');
     ok('ATLAS persona survives reload', await page.$('[data-persona="atlas"].selected') !== null);
-    await click(page, '[data-persona="jarvis"]'); await sleep(250);
+    await click(page, '[data-persona="jarvis"]'); await page.waitForSelector('[data-persona="jarvis"].selected');
     ok('JARVIS personality is selectable', await page.$('[data-persona="jarvis"].selected') !== null);
-    await click(page, '[data-persona="mentor"]'); await sleep(250);
+    await click(page, '[data-persona="mentor"]'); await page.waitForSelector('[data-persona="mentor"].selected');
     ok('mentor personality is selectable', await page.$('[data-persona="mentor"].selected') !== null);
-    await click(page, '[data-persona="custom"]'); await sleep(250);
+    await click(page, '[data-persona="custom"]'); await page.waitForSelector('[data-persona="custom"].selected');
     await page.$eval('#character-name', el => el.value = ''); await page.type('#character-name', 'Luna');
     await page.type('#character-style', 'Patient and concise'); await click(page, '#settings-form button[type="submit"]'); await sleep(350);
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#character-name');
@@ -235,8 +235,8 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       const realFetch = window.fetch; window.__screenRequests = 0;
       const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 250; canvas.getContext('2d').fillRect(0, 0, 400, 250);
       const draw = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (source.id === 'screen-video') return this.fillRect(0, 0, 400, 250); return draw.call(this, source, ...args); };
-      navigator.mediaDevices.getDisplayMedia = async () => { window.__screenStream = canvas.captureStream(2); return window.__screenStream; };
-      window.fetch = (url, options) => { if (String(url).endsWith('/screen/analyze')) { window.__screenRequests++; return Promise.resolve(new Response(JSON.stringify({ ok: true, answer: 'A test screen.' }), { status: 200, headers: { 'Content-Type': 'application/json' } })); } return realFetch(url, options); };
+      navigator.mediaDevices.getDisplayMedia = async () => { window.__screenStream = canvas.captureStream(2); window.__screenStream.getVideoTracks()[0].getSettings = () => ({ displaySurface: 'monitor' }); return window.__screenStream; };
+      window.fetch = (url, options) => { if (String(url).endsWith('/screen/analyze')) { window.__screenRequests++; const payload = JSON.parse(options.body); const result = payload.mode === 'suggest-click' ? { ok: true, proposal: { x: 2500, y: 7500, reason: 'The button' } } : { ok: true, answer: 'A test screen.' }; return Promise.resolve(new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })); } return realFetch(url, options); };
     });
     await click(page, '[data-action="screen-viewer"]');
     ok('screen viewer starts with sharing off', await page.$eval('#screen-analyze', e => e.disabled));
@@ -244,8 +244,14 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('screen sharing does not send a frame automatically', await page.evaluate(() => window.__screenRequests === 0));
     await click(page, '#screen-analyze'); await page.waitForFunction(() => document.querySelector('#screen-answer')?.textContent === 'A test screen.');
     ok('screen analysis requires explicit click', await page.evaluate(() => window.__screenRequests === 1));
-    await click(page, '.modal [data-close]');
+    await click(page, '#screen-suggest');
+    ok('screen click suggestion requires primary monitor confirmation', await page.evaluate(() => window.__screenRequests === 1));
+    await click(page, '#screen-primary'); await click(page, '#screen-suggest'); await page.waitForSelector('#screen-review-click');
+    ok('AI click proposal marks an explicit captured frame', await page.evaluate(() => window.__screenRequests === 2) && await page.$eval('#screen-marker', e => e.style.left === '25%' && e.style.top === '75%'));
+    await click(page, '#screen-review-click'); await page.waitForSelector('.approval-detail');
+    ok('screen click requires separate approval and displays the target', (await text(page)).includes('Primary screen point: 25%, 75%') && await page.$('#approve-action') === null);
     ok('closing screen viewer stops sharing', await page.evaluate(() => window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action');
 
     // World monitor uses sourced data and never invents events on failure.
     await page.evaluate(() => {
@@ -299,6 +305,11 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('keyboard action review shows text and requires Notepad', (await text(page)).includes('Hello NOVA') && (await text(page)).includes('focus Notepad within 5 seconds'));
     ok('keyboard action cannot run while bridge offline', await page.$('#approve-action') === null);
     await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await page.select('#keyboard-target', 'code');
+    await click(page, '#keyboard-form button[type="submit"]'); await page.waitForSelector('.approval-detail');
+    ok('keyboard review targets the selected supported app', (await text(page)).includes('focus code and the intended text field within 5 seconds'));
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await page.select('#keyboard-target', 'notepad');
     // Simulate a connected bridge and browser speech recognition; no OS inputs are executed.
     const onlineResult = await page.evaluate(async () => {
       const token = sessionStorage.getItem('nova.token');

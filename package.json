@@ -31,14 +31,14 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.9",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "fflate": "^0.8.3",
     "ffmpeg-static": "^5.2.0",
     "ffprobe-static": "^3.1.0",
-    "multer": "^2.2.0"
+    "multer": "^2.5.0"
   },
   "engines": {
     "node": ">=18"

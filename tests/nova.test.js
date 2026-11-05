@@ -554,3 +554,62 @@ test('stopping a project aborts its in-flight AI request', async () => {
     assert.match((await pending).error, /stopped/i);
   } finally { global.fetch = original; }
 });
+
+test('vision can suggest a click but only owner can separately approve a short-lived action', async () => {
+  const ownerSession = store.createWorkspace(); const owner = ownerSession.token;
+  const pair = store.createPairing(ownerSession.workspaceId); const remote = store.redeemPairing(pair.code).token;
+  store.saveAiProvider(ownerSession.workspaceId, { provider: 'groq', model: 'llama-3.3-70b-versatile', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', ownerSession.workspaceId) });
+  const realFetch = global.fetch; let aiOutput = JSON.stringify({ action: 'click', x: 2500, y: 7500, reason: 'Open button' });
+  global.fetch = async (url, options = {}) => String(url).startsWith('https://api.groq.com/') ? new Response(JSON.stringify({ choices: [{ message: { content: aiOutput } }] }), { status: 200 }) : realFetch(url, options);
+  try {
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2, 3]).toString('base64');
+    const body = { image, model: 'vision-model', question: 'Open the button', mode: 'suggest-click' };
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: remote, body })).status, 403);
+    const suggestion = await req('/screen/analyze', { method: 'POST', token: owner, body });
+    assert.deepEqual(suggestion.data.proposal, { x: 2500, y: 7500, reason: 'Open button' });
+    assert.equal((await req('/state', { token: owner })).data.actions.length, 0, 'analysis never creates or runs an action');
+    aiOutput = JSON.stringify({ action: 'click', x: 10001, y: 0 });
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: owner, body })).data.ok, false);
+    aiOutput = '{"action":"none","reason":"unclear"}';
+    assert.equal((await req('/screen/analyze', { method: 'POST', token: owner, body })).data.proposal, null);
+    const payload = { kind: 'mouse_click_primary', params: { x: 2500, y: 7500 } };
+    assert.equal((await req('/actions', { method: 'POST', token: remote, body: payload })).status, 403);
+    const created = (await req('/actions', { method: 'POST', token: owner, body: payload })).data.action;
+    assert.equal(created.status, 'pending'); assert.ok(created.expires_at - created.created_at <= 30000);
+    assert.equal((await req('/actions/' + created.id + '/approve', { method: 'POST', token: owner, body: {} })).status, 409, 'offline agent cannot run');
+    assert.deepEqual(agent.validate('mouse_click_primary', payload.params), payload.params);
+    for (const p of [{ x: -1, y: 1 }, { x: 1, y: 10001 }, { x: 2.5, y: 1 }, { x: 1, y: 2, extra: 3 }]) {
+      assert.throws(() => agent.validate('mouse_click_primary', p));
+      assert.equal((await req('/actions', { method: 'POST', token: owner, body: { kind: 'mouse_click_primary', params: p } })).status, 400);
+    }
+    assert.match(await agent.execute(payload, true), /DRY RUN/);
+  } finally { global.fetch = realFetch; }
+});
+
+test('keyboard can target fixed supported apps only with owner approval', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  const pair = store.createPairing(w.workspaceId), remote = store.redeemPairing(pair.code).token;
+  const payload = { kind: 'keyboard_type_app', params: { target: 'code', text: 'hello' } };
+  assert.deepEqual(agent.validate(payload.kind, payload.params), payload.params);
+  assert.match(await agent.execute(payload, true), /DRY RUN/);
+  for (const params of [{ target: 'cmd', text: 'hello' }, { target: 'powershell', text: 'x' }, { target: 'code', text: 'x\ny' }, { target: 'code', text: 'gsk_abcdefghijklmnopqrstuvwxyz123456' }, { target: 'code', text: 'x', extra: true }]) {
+    assert.throws(() => agent.validate('keyboard_type_app', params));
+    assert.equal((await req('/actions', { method: 'POST', token: owner, body: { kind: 'keyboard_type_app', params } })).status, 400);
+  }
+  assert.equal((await req('/actions', { method: 'POST', token: remote, body: payload })).status, 403);
+  const result = await req('/actions', { method: 'POST', token: owner, body: payload });
+  assert.equal(result.data.action.status, 'pending');
+  assert.equal((await req('/actions/' + result.data.action.id + '/approve', { method: 'POST', token: remote, body: {} })).status, 403);
+  assert.equal((await req('/actions/' + result.data.action.id + '/approve', { method: 'POST', token: owner, body: {} })).status, 409);
+});
+
+test('project builder repairs invalid JavaScript once without another approval', async () => {
+  const { generateProject } = require('../src/nova/project-builder');
+  const original = global.fetch; let calls = 0;
+  const files = ['<!doctype html><html><head><link href="styles.css"></head><body><script src="app.js"></script></body></html>', 'body{}', 'function {', 'document.body.textContent = "Ready";'];
+  global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: files[calls++] } }] }) });
+  try {
+    const result = await generateProject({ configured: true, base: 'https://example.test', model: 'test' }, 'Build a site');
+    assert.equal(result.ok, true); assert.equal(calls, 4); assert.match(result.files['app.js'], /Ready/);
+  } finally { global.fetch = original; }
+});

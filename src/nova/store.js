@@ -117,10 +117,10 @@ class NovaStore {
     return this.memory(memoryId);
   }
   deleteMemory(memoryId) { this.db.prepare('DELETE FROM memories WHERE id=?').run(memoryId); }
-  createAction(workspaceId, kind, params, label) {
+  createAction(workspaceId, kind, params, label, ttl = 120000) {
     const actionId = id(); const now = Date.now();
     this.db.prepare('INSERT INTO actions (id,workspace_id,kind,params,label,status,created_at,expires_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)')
-      .run(actionId, workspaceId, kind, JSON.stringify(params), label, 'pending', now, now + 120000, now);
+      .run(actionId, workspaceId, kind, JSON.stringify(params), label, 'pending', now, now + ttl, now);
     return this.action(actionId);
   }
   action(actionId) {
