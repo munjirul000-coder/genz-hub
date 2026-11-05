@@ -284,7 +284,7 @@ test('website projects are saved separately and only accessible to their owner',
   global.fetch = async (url, options) => {
     if (String(url).startsWith('https://api.groq.com/')) {
       const sent = JSON.parse(options.body);
-      const content = sent.messages[0].role === 'system' ? '<!doctype html><html><body><h1>Test bakery</h1></body></html>' : 'OK';
+      const content = sent.messages[0].role === 'system' ? (sent.messages.length > 2 ? '<!doctype html><html><body><h1>Updated bakery</h1></body></html>' : '<!doctype html><html><body><h1>Test bakery</h1></body></html>') : 'OK';
       return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     return realFetch(url, options);
@@ -318,10 +318,18 @@ test('website projects are saved separately and only accessible to their owner',
     assert.match(viaChat.data.website.html, /Test bakery/);
     assert.match(viaChat.data.message.content, /static website/);
     assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 3);
+    const revised = await req('/chat', { method: 'POST', token: owner, body: { message: 'website change the title', websiteProjectId: id } });
+    assert.match(revised.data.website.html, /Updated bakery/);
+    assert.notEqual(revised.data.website.project.id, id);
+    assert.match((await req('/website/projects/' + id, { token: owner })).data.html, /Test bakery/);
+    assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 4);
+    const badTarget = await req('/chat', { method: 'POST', token: owner, body: { message: 'edit website', websiteProjectId: 'bad-id' } });
+    assert.equal(badTarget.data.website, null); assert.match(badTarget.data.message.content, /No selected website/);
     assert.equal((await req('/chat', { method: 'POST', token: remote.data.token, body: { message: 'make a website' } })).status, 403);
+    assert.equal((await req('/chat', { method: 'POST', token: remote.data.token, body: { message: 'edit website' } })).status, 403);
     const advice = await req('/chat', { method: 'POST', token: owner, body: { message: 'How do I make a website?' } });
     assert.equal(advice.data.website, null);
-    assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 3);
+    assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 4);
   } finally { global.fetch = realFetch; }
 });
 
@@ -330,4 +338,11 @@ test('website build intent requires explicit creation and respects negation', ()
   const { websiteIntent } = require('../src/nova/assistant');
   for (const text of ['make a bakery website', 'ekta website banao', 'একটা ওয়েবসাইট বানাও']) assert.equal(websiteIntent(text), true, text);
   for (const text of ['how to make a website', 'do not make a website', 'website ideas', 'website বানিও না']) assert.equal(websiteIntent(text), false, text);
+});
+
+
+test('website edit intent requires an explicit edit and a website', () => {
+  const { websiteEditIntent } = require('../src/nova/assistant');
+  for (const text of ['website change the title', 'edit website', 'ওয়েবসাইট বদলাও']) assert.equal(websiteEditIntent(text), true, text);
+  for (const text of ['how to edit website', 'do not edit the website', 'change my password', 'make a website']) assert.equal(websiteEditIntent(text), false, text);
 });

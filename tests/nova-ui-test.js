@@ -90,9 +90,10 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.evaluate(() => {
       const realFetch = window.fetch;
       window.fetch = (url, options) => {
-        if (String(url).endsWith('/chat') && options?.body && JSON.parse(options.body).message === 'ekta bakery website banao') {
-          const now = Date.now();
-          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'web-user', role: 'user', content: 'ekta bakery website banao', created_at: now }, message: { id: 'web-ai', role: 'assistant', content: 'Website saved', created_at: now }, website: { html: '<!doctype html><html><body><h1>Chat website</h1></body></html>', project: { id: '00000000-0000-4000-8000-000000000001' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        if (String(url).endsWith('/chat') && options?.body && ['ekta bakery website banao', 'website change the title'].includes(JSON.parse(options.body).message)) {
+          const now = Date.now(), body = JSON.parse(options.body);
+          if (body.message === 'website change the title') window.__websiteEditTarget = body.websiteProjectId;
+          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'web-user', role: 'user', content: body.message, created_at: now }, message: { id: 'web-ai', role: 'assistant', content: 'Website saved', created_at: now }, website: { html: '<!doctype html><html><body><h1>Chat website</h1></body></html>', project: { id: '00000000-0000-4000-8000-000000000001' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         }
         return realFetch(url, options);
       };
@@ -101,6 +102,10 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.waitForSelector('#website-preview');
     const chatFrame = await (await page.$('#website-preview')).contentFrame(); await chatFrame.waitForSelector('h1');
     ok('website requested in chat opens its preview', await chatFrame.$eval('h1', el => el.textContent) === 'Interactive bakery');
+    await click(page, '.modal [data-close]');
+    await page.type('#chat-input', 'website change the title'); await page.keyboard.press('Enter');
+    await page.waitForSelector('#website-preview');
+    ok('website edit targets the website last opened', await page.evaluate(() => window.__websiteEditTarget) === projectId);
     await click(page, '.modal [data-close]');
 
     // Memory CRUD through the UI.

@@ -44,7 +44,7 @@
   };
   const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.sparkle}</svg>`;
   function hydrateIcons(root = document) { $$('[data-icon]', root).forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
-  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
+  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const fmtDate = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const name = () => S.state?.settings.assistantName || 'NOVA';
@@ -226,6 +226,7 @@
     };
   }
   function showWebsite(data) {
+    S.websiteProjectId = data.project.id;
     modal('Your website preview', `<p>Saved as a new project in NOVA. Interactive preview runs in isolation with network and forms blocked. Do not enter private information. Review AI-generated code before opening it elsewhere. This is a static prototype, not a deployed website.</p><iframe id="website-preview" sandbox="allow-scripts" title="Generated website preview"></iframe><div class="modal-footer"><button class="btn btn-ghost" id="website-saved">Saved websites</button><button class="btn btn-primary" id="website-download">Download index.html</button></div>`, { className: 'website-modal' });
     $('#website-preview').src = '/api/nova/website/projects/' + encodeURIComponent(data.project.id) + '/preview';
     $('#website-saved').onclick = savedWebsites;
@@ -279,7 +280,7 @@
     S.state.messages.push({ id: 'temp-user', role: 'user', content: text, created_at: Date.now() }); renderMessages();
     if ($('#core-state-text')) $('#core-state-text').textContent = 'THINKING WITH YOU';
     try {
-      const data = await api('/chat', { method: 'POST', body: { message: text } });
+      const data = await api('/chat', { method: 'POST', body: { message: text, ...(S.websiteProjectId ? { websiteProjectId: S.websiteProjectId } : {}) } });
       S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); S.state.messages.push(data.userMessage, data.message);
       if (data.memory) S.state.memories.unshift(data.memory);
       if (data.action) S.state.actions.unshift(data.action);

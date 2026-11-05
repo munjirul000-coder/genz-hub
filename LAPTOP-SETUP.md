@@ -71,7 +71,7 @@ Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠ
 1. Groq connect করে Conversation page-এ **Build website** চাপো।
 2. কী ধরনের website চাও লিখে **Generate website** চাপো। তোমার description সংযুক্ত AI provider-এ পাঠানো হবে; গোপন তথ্য লিখবে না।
 3. NOVA নতুন project হিসেবে file নিজে save করবে। Preview দেখে চাইলে **Download index.html** চাপলে আলাদা copy download হবে। Preview একটি আলাদা sandbox-এ JavaScript চালায়; network ও form বন্ধ থাকে। Preview-তে গোপন তথ্য লিখবে না।
-4. পরে আবার দেখতে **Build website → Saved websites** চাপো। Project-গুলো `data/nova/projects/`-এ থাকে; workspace delete করলেও এগুলো নিজে থেকে delete করা হয় না।
+4. পরে আবার দেখতে **Build website → Saved websites** চাপো। Project-গুলো `data/nova/projects/`-এ থাকে; workspace delete করলেও এগুলো নিজে থেকে delete করা হয় না। কোনো website open করে preview বন্ধ করার পরে chat-এ যেমন `website change the title` লিখলে NOVA আগের code AI provider-এ পাঠিয়ে নতুন version তৈরি করার চেষ্টা করবে। আগের version বদলানো বা delete করা হবে না। Preview-তে সর্বশেষ খোলা site-এ পরিবর্তন প্রযোজ্য; না খুলে থাকলে সর্বশেষ তৈরি site ব্যবহার হবে।
 5. এটি একটি এক-file static prototype; বাস্তব login, payment, database, hosting বা autonomous project editing করে না। AI-generated code ভুল বা অনিরাপদ হতে পারে—বিশ্বাসের আগে review করো।
 
 নতুন ZIP আলাদা folder-এ খুললে পুরনো workspace স্বয়ংক্রিয়ভাবে আসে না। পুরনো NOVA বন্ধ করে `data/nova` folder-টির backup রাখো; workspace ও encrypted key ফেরত পেতে database এবং vault key একসাথে রাখতে হবে।

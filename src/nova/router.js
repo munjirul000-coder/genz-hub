@@ -3,7 +3,7 @@ const express = require('express');
 const U = require('../util');
 const { NovaStore } = require('./store');
 const { CATALOG, validateAction } = require('./catalog');
-const { respond, aiConfig, testAiConnection, generateWebsite, websiteIntent } = require('./assistant');
+const { respond, aiConfig, testAiConnection, generateWebsite, websiteIntent, websiteEditIntent } = require('./assistant');
 const { Vault } = require('./vault');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 
@@ -111,7 +111,7 @@ function createNovaRouter({ dataDir, agentFile }) {
 
   const websiteChatLimit = U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-website-chat' });
   router.post('/chat', auth, U.rateLimit({ max: 30, windowMs: 60000, key: 'nova-chat' }), (req, res, next) => {
-    if (!websiteIntent(clean(req.body?.message, 4000))) return next();
+    if (!websiteIntent(clean(req.body?.message, 4000)) && !websiteEditIntent(clean(req.body?.message, 4000))) return next();
     if (req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can create website projects.' });
     return websiteChatLimit(req, res, next);
   }, U.wrap(async (req, res) => {
@@ -121,14 +121,25 @@ function createNovaRouter({ dataDir, agentFile }) {
     const workspaceId = req.nova.workspace_id; const settings = settingsOf(workspaceId);
     const history = store.messages(workspaceId, 14); const memories = store.memories(workspaceId);
     let website = null, result;
-    if (websiteIntent(text)) {
-      const generated = await generateWebsite(workspaceAi(workspaceId), text.slice(0, 3000));
+    const isEdit = websiteEditIntent(text);
+    if (isEdit || websiteIntent(text)) {
+      let previous = null, generated;
+      if (isEdit) {
+        const requestedId = clean(req.body?.websiteProjectId, 50);
+        const existing = requestedId ? { id: requestedId } : (await listWebsites(dataDir, workspaceId))[0];
+        previous = existing ? await readWebsite(dataDir, workspaceId, existing.id) : null;
+        generated = previous ? await generateWebsite(workspaceAi(workspaceId), text.slice(0, 3000), previous.html)
+          : { ok: false, error: 'No selected website was found. Create or open one first.' };
+      } else generated = await generateWebsite(workspaceAi(workspaceId), text.slice(0, 3000));
       if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
       if (generated.ok) {
-        const project = await saveWebsite(dataDir, workspaceId, text.slice(0, 3000), generated.html);
+        const projectName = isEdit ? `Updated: ${previous.project.name} — ${text}` : text;
+        const project = await saveWebsite(dataDir, workspaceId, projectName.slice(0, 3000), generated.html);
         website = { project, html: generated.html };
-        result = { engine: 'cloud', content: 'আমি একটি static website তৈরি করে save করেছি। Preview খুলেছি; পরে Build website → Saved websites থেকেও পাবে। এটি live website বা backend নয়।' };
-      } else result = { engine: 'local', content: `Website তৈরি করা যায়নি: ${generated.error} কোনো project তৈরি হয়নি।` };
+        result = { engine: 'cloud', content: isEdit
+          ? `আমি “${previous.project.name}” website-এর নতুন version তৈরি করেছি। আগের version অপরিবর্তিত আছে। Preview খুলেছি।`
+          : 'আমি একটি static website তৈরি করে save করেছি। Preview খুলেছি; পরে Build website → Saved websites থেকেও পাবে। এটি live website বা backend নয়।' };
+      } else result = { engine: 'local', content: `Website তৈরি বা পরিবর্তন করা যায়নি: ${generated.error} কোনো নতুন project তৈরি হয়নি।` };
     } else result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId) });
     // A workspace may be deleted while a cloud request is in flight.
     if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
