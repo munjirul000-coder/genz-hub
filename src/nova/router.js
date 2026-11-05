@@ -3,7 +3,7 @@ const express = require('express');
 const U = require('../util');
 const { NovaStore } = require('./store');
 const { CATALOG, validateAction } = require('./catalog');
-const { respond, aiConfig, testAiConnection, generateWebsite } = require('./assistant');
+const { respond, aiConfig, testAiConnection, generateWebsite, websiteIntent } = require('./assistant');
 const { Vault } = require('./vault');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 
@@ -109,13 +109,27 @@ function createNovaRouter({ dataDir, agentFile }) {
     res.json({ settings: next });
   });
 
-  router.post('/chat', auth, U.rateLimit({ max: 30, windowMs: 60000, key: 'nova-chat' }), U.wrap(async (req, res) => {
+  const websiteChatLimit = U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-website-chat' });
+  router.post('/chat', auth, U.rateLimit({ max: 30, windowMs: 60000, key: 'nova-chat' }), (req, res, next) => {
+    if (!websiteIntent(clean(req.body?.message, 4000))) return next();
+    if (req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can create website projects.' });
+    return websiteChatLimit(req, res, next);
+  }, U.wrap(async (req, res) => {
     const text = clean(req.body?.message, 4000);
     if (!text) return res.status(400).json({ error: 'Write a message first.' });
     if (SECRET_IN_CHAT.test(text)) return res.status(400).json({ error: 'Don’t paste API keys into chat. Use Settings → Intelligence → Connect Groq. This message was not saved or sent.' });
     const workspaceId = req.nova.workspace_id; const settings = settingsOf(workspaceId);
     const history = store.messages(workspaceId, 14); const memories = store.memories(workspaceId);
-    const result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId) });
+    let website = null, result;
+    if (websiteIntent(text)) {
+      const generated = await generateWebsite(workspaceAi(workspaceId), text.slice(0, 3000));
+      if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
+      if (generated.ok) {
+        const project = await saveWebsite(dataDir, workspaceId, text.slice(0, 3000), generated.html);
+        website = { project, html: generated.html };
+        result = { engine: 'cloud', content: 'আমি একটি static website তৈরি করে save করেছি। Preview খুলেছি; পরে Build website → Saved websites থেকেও পাবে। এটি live website বা backend নয়।' };
+      } else result = { engine: 'local', content: `Website তৈরি করা যায়নি: ${generated.error} কোনো project তৈরি হয়নি।` };
+    } else result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId) });
     // A workspace may be deleted while a cloud request is in flight.
     if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
     if (result.memory && memories.length >= 200) return res.status(400).json({ error: 'Memory vault is full (200 items). Delete an old memory first.' });
@@ -124,7 +138,7 @@ function createNovaRouter({ dataDir, agentFile }) {
     if (result.memory) memory = store.addMemory(workspaceId, result.memory.content, result.memory.category);
     if (result.action) action = store.createAction(workspaceId, result.action.kind, result.action.params, CATALOG[result.action.kind].label);
     const assistant = store.addMessage(workspaceId, 'assistant', result.content, result.engine, action?.id || null);
-    res.json({ message: assistant, userMessage, memory, action, uiAction: result.uiAction || null, engine: result.engine });
+    res.json({ message: assistant, userMessage, memory, action, website, uiAction: result.uiAction || null, engine: result.engine });
   }));
   router.delete('/messages', auth, owner, (req, res) => { store.clearMessages(req.nova.workspace_id); res.json({ ok: true }); });
   // Provider test failures return 200 {ok:false,error}: some hosting proxies replace

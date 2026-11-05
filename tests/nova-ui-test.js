@@ -81,6 +81,21 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.waitForSelector('#website-preview');
     ok('saved website reopens in preview', await page.$('#website-preview') !== null);
     await click(page, '.modal [data-close]');
+    await page.evaluate(() => {
+      const realFetch = window.fetch;
+      window.fetch = (url, options) => {
+        if (String(url).endsWith('/chat') && options?.body && JSON.parse(options.body).message === 'ekta bakery website banao') {
+          const now = Date.now();
+          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'web-user', role: 'user', content: 'ekta bakery website banao', created_at: now }, message: { id: 'web-ai', role: 'assistant', content: 'Website saved', created_at: now }, website: { html: '<!doctype html><html><body><h1>Chat website</h1></body></html>', project: { id: 'a1' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        return realFetch(url, options);
+      };
+    });
+    await page.type('#chat-input', 'ekta bakery website banao'); await page.keyboard.press('Enter');
+    await page.waitForSelector('#website-preview');
+    const chatFrame = await (await page.$('#website-preview')).contentFrame(); await chatFrame.waitForSelector('h1');
+    ok('website requested in chat opens its preview', await chatFrame.$eval('h1', el => el.textContent) === 'Chat website');
+    await click(page, '.modal [data-close]');
 
     // Memory CRUD through the UI.
     await go(page, 'memory'); await click(page, '.page-heading [data-action="add-memory"]');

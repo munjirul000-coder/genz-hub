@@ -66,6 +66,8 @@ npm run nova
 
 ## Website বানানো (প্রথম version)
 
+Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠালেও NOVA একটি নতুন static website তৈরি করার চেষ্টা করে। Voice input থাকলে microphone button চেপে বলাও যায়; এটি সব ধরনের project বা desktop control নয়। Speech recognition browser-এর ওপর নির্ভর করে, আর তোমার অনুরোধ সংযুক্ত AI provider-এ পাঠানো হয়।
+
 1. Groq connect করে Conversation page-এ **Build website** চাপো।
 2. কী ধরনের website চাও লিখে **Generate website** চাপো। তোমার description সংযুক্ত AI provider-এ পাঠানো হবে; গোপন তথ্য লিখবে না।
 3. NOVA নতুন project হিসেবে file নিজে save করবে। Preview দেখে চাইলে **Download index.html** চাপলে আলাদা copy download হবে। Preview-তে নিরাপত্তার জন্য JavaScript ও network বন্ধ থাকে; কিছু interactive অংশ সেখানে কাজ করবে না।

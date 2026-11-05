@@ -15,6 +15,16 @@ function actionIntent(text) {
   return null;
 }
 
+// Only an explicit request to create a website starts a build. Questions and
+// negations remain normal chat; never infer a request to edit/delete a project.
+function websiteIntent(text) {
+  const t = String(text || '').toLowerCase();
+  const site = /\b(?:website|web\s*site|webpage|web\s*page)\b|ওয়েবসাইট|ওয়েবসাইট|ওয়েবপেজ|ওয়েবপেজ/.test(t);
+  const create = /\b(?:build|create|make|generate|design|banao|banaow|banaw|banai|banaye|baniye)\b|বানাও|বানাও|বানিয়ে|বানিয়ে|তৈরি কর|তৈরি করে|তৈরি দাও/.test(t);
+  const advice = /\b(?:how|tutorial|explain|example|don't|do not|never|without|not)\b|কিভাবে|কীভাবে|কিভাবে|বুঝিয়ে|করো না|বানিও না/.test(t);
+  return site && create && !advice;
+}
+
 // A tiny arithmetic parser: no eval, Function, property access, or identifiers.
 function calculate(input) {
   const s = input.replace(/^(calculate|calc|what is|হিসাব করো|কত হয়)\s*/i, '').replace(/[?=]\s*$/, '').replace(/×/g, '*').replace(/÷/g, '/').trim();
@@ -204,4 +214,4 @@ async function testAiConnection(savedConfig) {
       : 'This NOVA server could not reach the AI provider. Hosted previews often block outbound AI calls — run NOVA on your own laptop (START-NOVA.bat) and connect there. On your own server, check internet/firewall.' };
   }
 }
-module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite };
+module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent };

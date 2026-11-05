@@ -306,5 +306,21 @@ test('website projects are saved separately and only accessible to their owner',
     assert.equal((await req('/website/projects/' + id, { token: remote.data.token })).status, 403);
     const second = await req('/website/generate', { method: 'POST', token: owner, body: { brief: 'A bakery site' } });
     assert.notEqual(second.data.project.id, id); // Never overwrite an existing project.
+    const viaChat = await req('/chat', { method: 'POST', token: owner, body: { message: 'ekta bakery website banao' } });
+    assert.equal(viaChat.status, 200); assert.ok(viaChat.data.website.project.id);
+    assert.match(viaChat.data.website.html, /Test bakery/);
+    assert.match(viaChat.data.message.content, /static website/);
+    assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 3);
+    assert.equal((await req('/chat', { method: 'POST', token: remote.data.token, body: { message: 'make a website' } })).status, 403);
+    const advice = await req('/chat', { method: 'POST', token: owner, body: { message: 'How do I make a website?' } });
+    assert.equal(advice.data.website, null);
+    assert.equal((await req('/website/projects', { token: owner })).data.projects.length, 3);
   } finally { global.fetch = realFetch; }
+});
+
+
+test('website build intent requires explicit creation and respects negation', () => {
+  const { websiteIntent } = require('../src/nova/assistant');
+  for (const text of ['make a bakery website', 'ekta website banao', 'একটা ওয়েবসাইট বানাও']) assert.equal(websiteIntent(text), true, text);
+  for (const text of ['how to make a website', 'do not make a website', 'website ideas', 'website বানিও না']) assert.equal(websiteIntent(text), false, text);
 });

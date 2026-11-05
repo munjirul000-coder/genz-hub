@@ -284,6 +284,7 @@
       S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); S.state.messages.push(data.userMessage, data.message);
       if (data.memory) S.state.memories.unshift(data.memory);
       if (data.action) S.state.actions.unshift(data.action);
+      if (data.website) showWebsite(data.website);
       if (data.uiAction?.type === 'focus') startFocus(data.uiAction.minutes);
       speak(data.message.content);
     } catch (err) { S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); toast(err.message, 'error'); if (input) input.value = text; }
