@@ -201,8 +201,31 @@
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
   function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div></div>`; }
   function renderConversation() {
-    $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `<button class="btn btn-ghost" data-action="voice">${icon('mic')}Voice input</button>`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
+    $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
+  }
+  // Generated code is untrusted. Preview it in an opaque, script-disabled iframe;
+  // downloading is explicit and no project files or commands are run by NOVA.
+  function websiteBuilder() {
+    modal('Build a website', `<p>Describe a simple website in Bangla or English. Your description is sent to your connected AI provider. This creates one static HTML file, not a backend or a deployed site.</p><form id="website-form"><div class="field"><label for="website-brief">What should the website look like?</label><textarea id="website-brief" required maxlength="3000" rows="5" placeholder="Example: a colourful bakery website with a menu and contact section"></textarea></div><p class="form-error" id="website-error" role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="website-submit" type="submit">Generate website</button></div></form>`, { className: 'website-modal' });
+    $('#website-form').onsubmit = async e => {
+      e.preventDefault();
+      const brief = $('#website-brief').value.trim();
+      if (!brief) return;
+      const form = e.currentTarget, btn = $('#website-submit');
+      btn.disabled = true; btn.textContent = 'Generating…'; $('#website-error').textContent = '';
+      try {
+        const data = await api('/website/generate', { method: 'POST', body: { brief } });
+        if (!data.ok) throw new Error(data.error || 'Could not generate website.');
+        if (!form.isConnected) return;
+        modal('Your website preview', `<p>Preview only: scripts and network access are disabled here. Review the generated code before opening it outside NOVA. This is a static prototype, not a deployed website.</p><iframe id="website-preview" sandbox="" title="Generated website preview"></iframe><div class="modal-footer"><button class="btn btn-ghost" data-action="build-website">Start over</button><button class="btn btn-primary" id="website-download">Download index.html</button></div>`, { className: 'website-modal' });
+        const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`;
+        $('#website-preview').srcdoc = policy + data.html;
+        $('#website-download').onclick = () => downloadBlob(new Blob([data.html], { type: 'text/html;charset=utf-8' }), 'index.html');
+      } catch (err) {
+        if (form.isConnected) { $('#website-error').textContent = err.message; btn.disabled = false; btn.textContent = 'Generate website'; }
+      }
+    };
   }
   function renderMessages() {
     const box = $('#messages'); if (!box) return;
@@ -496,7 +519,7 @@
     const handlers = {
       workspace: () => navigate('settings'), palette: openPalette, help: helpModal, remote: remoteModal,
       'connect-desktop': () => navigate('desktop'), 'start-chat': () => { navigate('conversation'); $('#chat-input')?.focus(); },
-      voice: startVoice, 'connect-ai': () => connectAiModal(),
+      voice: startVoice, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder,
       'disconnect-ai': () => confirmDialog('Disconnect Groq?', 'NOVA will remove the encrypted key from this workspace and return to local command mode (unless a server environment key is configured).', 'Disconnect', async () => {
         const data = await api('/ai/disconnect', { method: 'POST', body: {} });
         S.state.ai = data.ai; renderShell(); if (S.view === 'settings') renderSettings();

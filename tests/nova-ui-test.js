@@ -56,6 +56,24 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#messages');
     ok('conversation survives reload', (await text(page)).includes('512'));
 
+    // Website generation is explicit; AI output is previewed in an isolated frame.
+    await go(page, 'conversation');
+    await page.evaluate(() => {
+      const realFetch = window.fetch;
+      window.fetch = (url, options) => String(url).endsWith('/website/generate')
+        ? Promise.resolve(new Response(JSON.stringify({ ok: true, html: '<!doctype html><html><body><h1>Bakery preview</h1></body></html>' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : realFetch(url, options);
+    });
+    await click(page, '[data-action="build-website"]');
+    await page.type('#website-brief', 'A bakery'); await click(page, '#website-submit');
+    await page.waitForSelector('#website-preview');
+    const preview = await page.$('#website-preview'); const previewFrame = await preview.contentFrame();
+    await previewFrame.waitForSelector('h1');
+    ok('website builder previews returned HTML', await previewFrame.$eval('h1', el => el.textContent) === 'Bakery preview');
+    ok('website preview disables scripts and same-origin access', await page.$eval('#website-preview', el => el.getAttribute('sandbox')) === '');
+    ok('website download requires explicit click', await page.$('#website-download') !== null);
+    await click(page, '.modal [data-close]');
+
     // Memory CRUD through the UI.
     await go(page, 'memory'); await click(page, '.page-heading [data-action="add-memory"]');
     await page.type('#memory-content', 'I prefer concise Bengali answers'); await page.select('#memory-category', 'preference');

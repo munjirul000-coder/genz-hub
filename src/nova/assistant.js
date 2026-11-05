@@ -153,6 +153,34 @@ async function respond({ text, settings, memories, history, timezone, config: sa
   }
   return { ...local, engine: 'local' };
 }
+// Generates a small standalone site. This is not an autonomous coding agent:
+// no files, commands or desktop operations are performed on the server.
+async function generateWebsite(config, brief) {
+  if (!config.configured) return { ok: false, error: 'Connect Groq in Settings → Intelligence first.' };
+  try {
+    const response = await fetch(config.base + '/chat/completions', {
+      method: 'POST', signal: AbortSignal.timeout(90000),
+      headers: { 'Content-Type': 'application/json', ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}) },
+      body: JSON.stringify({ model: config.model, messages: [
+        { role: 'system', content: 'Create a complete, attractive, responsive, self-contained single-page website from the user brief. Return ONLY the complete HTML document, starting with <!doctype html> and ending with </html>. Put CSS and any JavaScript inline. No external libraries, images, network requests, forms that send data, or dependencies. This is a static prototype: do not claim real payment, login, databases or backend functionality.' },
+        { role: 'user', content: brief },
+      ], ...completionOptions(config.model, { maxOutput: 8192, temperature: 0.6 }) }),
+    });
+    if (!response.ok) return { ok: false, error: providerError(response.status) };
+    const data = await response.json();
+    if (data.error) return { ok: false, error: 'The AI provider could not generate this website.' };
+    const choice = data.choices?.[0];
+    let html = typeof choice?.message?.content === 'string' ? choice.message.content.trim() : '';
+    html = html.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/, '').trim();
+    if (choice?.finish_reason === 'length' || !/^<!doctype\s+html/i.test(html) || !/<\/html>\s*$/i.test(html) || html.length > 200000) {
+      return { ok: false, error: 'The AI did not return a complete website. Try a simpler description or another model.' };
+    }
+    return { ok: true, html };
+  } catch (err) {
+    return { ok: false, error: err.name === 'TimeoutError' ? 'Website generation timed out. Try a shorter description.' : 'Could not reach the AI provider. Check your connection and try again.' };
+  }
+}
+
 async function testAiConnection(savedConfig) {
   const config = savedConfig || aiConfig();
   if (!config.configured) return { ok: false, error: 'No AI provider is connected yet. Add a Groq API key in Settings → Intelligence.' };
@@ -176,4 +204,4 @@ async function testAiConnection(savedConfig) {
       : 'This NOVA server could not reach the AI provider. Hosted previews often block outbound AI calls — run NOVA on your own laptop (START-NOVA.bat) and connect there. On your own server, check internet/firewall.' };
   }
 }
-module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError };
+module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite };

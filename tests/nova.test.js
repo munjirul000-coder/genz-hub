@@ -233,3 +233,32 @@ test('export and destructive deletion require owner confirmation', async () => {
   assert.equal((await req('/workspace', { method: 'DELETE', token, body: { confirmation: 'DELETE' } })).status, 200);
   assert.equal((await req('/state', { token })).status, 401);
 });
+
+test('website generator uses connected AI, rejects incomplete output and never runs it', async () => {
+  const { generateWebsite } = require('../src/nova/assistant');
+  assert.equal((await generateWebsite({ configured: false }, 'site')).ok, false);
+  const originalFetch = global.fetch;
+  const config = { configured: true, base: 'https://example.invalid', model: 'llama-3.3-70b-versatile', key: 'test' };
+  try {
+    let sent;
+    global.fetch = async (url, options) => { sent = JSON.parse(options.body); return { ok: true, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '```html\n<!doctype html><html><body>Hello</body></html>\n```' } }] }) }; };
+    const result = await generateWebsite(config, 'A bakery website');
+    assert.equal(result.ok, true); assert.match(result.html, /Hello/); assert.equal(sent.messages[1].content, 'A bakery website');
+    global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'length', message: { content: '<!doctype html><html></html>' } }] }) });
+    assert.equal((await generateWebsite(config, 'site')).ok, false);
+    global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '<!doctype html><html>unfinished' } }] }) });
+    assert.equal((await generateWebsite(config, 'site')).ok, false);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('website generation requires an owner, a safe brief and configured AI', async () => {
+  const owner = await workspace();
+  assert.equal((await req('/website/generate', { method: 'POST', body: { brief: 'site' } })).status, 401);
+  assert.equal((await req('/website/generate', { method: 'POST', token: owner, body: { brief: '' } })).status, 400);
+  assert.equal((await req('/website/generate', { method: 'POST', token: owner, body: { brief: 'gsk_test_key_abcdefghijklmnopqrstuvwxyz' } })).status, 400);
+  const result = await req('/website/generate', { method: 'POST', token: owner, body: { brief: 'site' } });
+  assert.equal(result.status, 200); assert.equal(result.data.ok, false);
+  const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });
+  const remote = await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } });
+  assert.equal((await req('/website/generate', { method: 'POST', token: remote.data.token, body: { brief: 'site' } })).status, 403);
+});

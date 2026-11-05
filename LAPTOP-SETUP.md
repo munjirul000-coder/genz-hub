@@ -64,6 +64,15 @@ npm run nova
 
 **সাবধান:** API key কখনো chat box-এ paste করবে না। ভুলে chat-এ দিলে NOVA সেটা save/send না করে secure connect field খুলে দেবে। Key শুধু তোমার NOVA server-এ encrypted অবস্থায় থাকে।
 
+## Website বানানো (প্রথম version)
+
+1. Groq connect করে Conversation page-এ **Build website** চাপো।
+2. কী ধরনের website চাও লিখে **Generate website** চাপো। তোমার description সংযুক্ত AI provider-এ পাঠানো হবে; গোপন তথ্য লিখবে না।
+3. Preview দেখে **Download index.html** চাপলে file download হবে। Preview-তে নিরাপত্তার জন্য JavaScript ও network বন্ধ থাকে; কিছু interactive অংশ সেখানে কাজ করবে না।
+4. এটি একটি এক-file static prototype; বাস্তব login, payment, database, hosting বা autonomous project editing করে না। AI-generated code ভুল বা অনিরাপদ হতে পারে—বিশ্বাসের আগে review করো।
+
+নতুন ZIP আলাদা folder-এ খুললে পুরনো workspace স্বয়ংক্রিয়ভাবে আসে না। পুরনো NOVA বন্ধ করে `data/nova` folder-টির backup রাখো; workspace ও encrypted key ফেরত পেতে database এবং vault key একসাথে রাখতে হবে।
+
 ## 5) Windows desktop control চালাও
 
 1. NOVA → **Desktop control** → **Generate token**।
@@ -97,6 +106,6 @@ Bridge window open থাকলে desktop control কাজ করবে। ব
 - **Port 3000 busy:** অন্য app বন্ধ করো, অথবা PowerShell-এ `$env:PORT=3001; npm run nova` দিয়ে `http://localhost:3001/nova` খোলো।
 - **Groq 401/403:** key ভুল/expired। নতুন key দিয়ে আবার Connect করো।
 - **Groq 429:** free-tier rate limit। কিছুক্ষণ পরে চেষ্টা করো।
-- **Groq 404:** model name ভুল/unavailable। `llama-3.1-8b-instant` চেষ্টা করো。
+- **Groq 404:** model name ভুল/unavailable। `llama-3.1-8b-instant` চেষ্টা করো।
 - **Empty response with `gpt-oss` / reasoning model:** পুরনো NOVA version হলে update করে নতুন ZIP চালাও, অথবা আপাতত `llama-3.3-70b-versatile` ব্যবহার করো। নতুন version reasoning model-এর জন্য আলাদা token budget ব্যবহার করে।
 - **Desktop offline:** `START-BRIDGE.bat` চলছে কি না, token file ঠিক জায়গায় আছে কি না দেখো। Token বদলালে পুরোনো agent disconnect হয়।
