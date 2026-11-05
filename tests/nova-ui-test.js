@@ -116,7 +116,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('memory created through modal', (await text(page)).includes('I prefer concise Bengali answers'));
     await click(page, '[data-edit-memory]'); await page.waitForSelector('#memory-content');
     await page.evaluate(() => document.querySelector('#memory-content').value = ''); await page.type('#memory-content', 'I prefer short answers');
-    await click(page, '#memory-form button[type="submit"]'); await sleep(350);
+    await click(page, '#memory-form button[type="submit"]'); await page.waitForFunction(() => !document.querySelector('#memory-form') && document.body.innerText.includes('I prefer short answers'), { timeout: 10000 });
     ok('memory edited', (await text(page)).includes('I prefer short answers'));
     await page.type('#memory-search', 'nothing-matches'); ok('memory search filters', (await text(page)).includes('No matching memories'));
     await page.evaluate(() => { const i = document.querySelector('#memory-search'); i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -137,6 +137,15 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#setting-name');
     ok('settings survive reload', await page.$eval('#setting-name', el => el.value) === 'Rafi');
     ok('ATLAS persona survives reload', await page.$('[data-persona="atlas"].selected') !== null);
+    await click(page, '[data-persona="jarvis"]'); await sleep(250);
+    ok('JARVIS personality is selectable', await page.$('[data-persona="jarvis"].selected') !== null);
+    await click(page, '[data-persona="mentor"]'); await sleep(250);
+    ok('mentor personality is selectable', await page.$('[data-persona="mentor"].selected') !== null);
+    await click(page, '[data-persona="custom"]'); await sleep(250);
+    await page.$eval('#character-name', el => el.value = ''); await page.type('#character-name', 'Luna');
+    await page.type('#character-style', 'Patient and concise'); await click(page, '#settings-form button[type="submit"]'); await sleep(350);
+    await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#character-name');
+    ok('custom personality and behaviour survive reload', await page.$eval('#character-name', el => el.value) === 'Luna' && await page.$eval('#character-style', el => el.value) === 'Patient and concise');
     await click(page, '[data-persona="nova"]'); await sleep(250);
 
     // In-app AI connect: secure field, no .env required, and chat never accepts a key.
@@ -153,13 +162,56 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('key-like chat text is not added to the conversation', !(await page.$eval('#messages', el => el.innerText)).includes(fakeKey));
     await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#ai-api-key'));
 
+    // Explicit continuous voice session, using a mocked browser speech engine.
+    await go(page, 'conversation');
+    await page.evaluate(() => {
+      window.__voiceStarts = 0;
+      window.SpeechRecognition = class {
+        constructor() { window.__voiceRec = this; }
+        start() { window.__voiceStarts++; } stop() { this.onend?.(); } abort() { this.onend?.(); }
+        say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); }
+      };
+      window.__realSpeak = speechSynthesis.speak.bind(speechSynthesis);
+      speechSynthesis.speak = utterance => setTimeout(() => utterance.onend?.(), 10);
+    });
+    await click(page, '[data-action="continuous-voice"]');
+    ok('continuous voice starts only on explicit opt-in', await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'true');
+    await page.evaluate(() => window.__voiceRec.say('what is 2 + 2?'));
+    await page.waitForFunction(() => document.querySelector('#messages')?.innerText.includes('what is 2 + 2') && window.__voiceStarts >= 2, { timeout: 10000 });
+    ok('continuous voice resumes after the assistant reply', await page.evaluate(() => window.__voiceStarts >= 2));
+    await click(page, '[data-action="continuous-voice"]'); const voiceCount = await page.evaluate(() => window.__voiceStarts); await sleep(1100);
+    ok('continuous voice stops on request', await page.evaluate(() => window.__voiceStarts) === voiceCount && await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'false');
+    await page.evaluate(() => { speechSynthesis.speak = window.__realSpeak; delete window.SpeechRecognition; });
+
+    // World monitor uses sourced data and never invents events on failure.
+    await page.evaluate(() => {
+      const realFetch = window.fetch; window.__worldOffline = false;
+      window.fetch = (url, options) => {
+        if (String(url).endsWith('/world')) {
+          const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000 }] } };
+          return Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        return realFetch(url, options);
+      };
+    });
+    await go(page, 'world'); await page.waitForSelector('.world-event');
+    ok('world monitor renders live source events and headlines', (await text(page)).includes('Near Dhaka') && (await text(page)).includes('BBC test headline'));
+    await click(page, '[data-world-mode="map"]');
+    ok('world monitor switches to 2D map', await page.$eval('[data-world-mode="map"]', el => el.classList.contains('active')));
+    await click(page, '.world-event'); ok('world event opens source details', (await text(page)).includes('USGS details'));
+    await noOverflow(page, 'world monitor');
+    await page.screenshot({ path: path.join(SHOTS, 'nova-world.png'), fullPage: true });
+    await page.evaluate(() => window.__worldOffline = true); await click(page, '#world-refresh');
+    await page.waitForFunction(() => document.querySelector('#world-quakes')?.innerText.includes('Feed unavailable'));
+    ok('world monitor shows source failure without fake events', await page.$('.world-event') === null && (await text(page)).includes('Feed unavailable'));
+
     // Command palette keyboard navigation.
     await page.keyboard.down('Control'); await page.keyboard.press('KeyK'); await page.keyboard.up('Control');
     await page.waitForSelector('#palette-input'); await page.type('#palette-input', 'memory vault'); await page.keyboard.press('Enter'); await sleep(300);
     ok('command palette navigates', await page.evaluate(() => location.hash) === '#memory');
 
     // Focus timer starts and pauses.
-    await go(page, 'overview'); await page.$eval('#focus-toggle', el => el.scrollIntoView({ block: 'center' })); await click(page, '#focus-toggle');
+    await go(page, 'overview'); await page.evaluate(() => document.querySelectorAll('.toast').forEach(el => el.remove())); await page.$eval('#focus-toggle', el => el.scrollIntoView({ block: 'center' })); await click(page, '#focus-toggle');
     try { await page.waitForFunction(() => document.querySelector('#focus-time')?.textContent !== '25:00', { timeout: 4000 }); } catch {}
     ok('focus timer counts down', await page.$eval('#focus-time', el => el.textContent) !== '25:00', await page.$eval('#focus-toggle', el => el.textContent));
     await click(page, '#focus-toggle'); const paused = await page.$eval('#focus-time', el => el.textContent); await sleep(1100);
@@ -233,7 +285,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
 
     // Responsive shell and every view at mobile width.
     await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
-    for (const view of ['overview', 'conversation', 'memory', 'desktop', 'activity', 'settings']) { await go(page, view); await noOverflow(page, 'mobile ' + view); }
+    for (const view of ['overview', 'conversation', 'memory', 'world', 'desktop', 'activity', 'settings']) { await go(page, view); await noOverflow(page, 'mobile ' + view); }
     await click(page, '#mobile-menu'); await sleep(350); ok('mobile navigation opens', await page.$eval('#sidebar', el => el.classList.contains('open')));
     await click(page, '#sidebar [data-view="overview"]'); await sleep(350);
     ok('mobile navigation closes after selection', await page.$eval('#sidebar', el => !el.classList.contains('open')));

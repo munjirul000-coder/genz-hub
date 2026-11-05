@@ -7,7 +7,7 @@
   <meta name="description" content="NOVA — your personal AI workspace. Conversation, memory, focus and permission-first Windows desktop control.">
   <title>NOVA — Your mind, amplified.</title>
   <link rel="icon" href="/nova/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/nova/css/nova.css?v=1">
+  <link rel="stylesheet" href="/nova/css/nova.css?v=2">
 </head>
 <body>
   <a class="skip-link" href="#view">Skip to content</a>
@@ -20,6 +20,7 @@
         <button data-view="overview" class="nav-item active"><span data-icon="grid"></span>Overview</button>
         <button data-view="conversation" class="nav-item"><span data-icon="message"></span>Conversation<span class="nav-key">⌘ J</span></button>
         <button data-view="memory" class="nav-item"><span data-icon="brain"></span>Memory vault<span class="nav-count" id="memory-count">0</span></button>
+        <button data-view="world" class="nav-item"><span data-icon="globe"></span>World monitor</button>
         <button data-view="desktop" class="nav-item"><span data-icon="monitor"></span>Desktop control</button>
         <button data-view="activity" class="nav-item"><span data-icon="activity"></span>Activity</button>
       </nav>
@@ -51,6 +52,7 @@
   </div>
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
-  <script src="/nova/js/app.js?v=1"></script>
+  <script src="/nova/js/world.js?v=1"></script>
+  <script src="/nova/js/app.js?v=2"></script>
 </body>
 </html>

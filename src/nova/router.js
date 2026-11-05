@@ -5,9 +5,10 @@ const { NovaStore } = require('./store');
 const { CATALOG, validateAction } = require('./catalog');
 const { respond, aiConfig, testAiConnection, generateWebsite, websiteIntent, websiteEditIntent } = require('./assistant');
 const { Vault } = require('./vault');
+const { getWorldData } = require('./world');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 
-const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
+const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
 const COOKIE = 'nova_session';
 
@@ -91,14 +92,17 @@ function createNovaRouter({ dataDir, agentFile }) {
     return { messages: store.messages(workspaceId), memories: store.memories(workspaceId), actions: store.actions(workspaceId), bridge: bridgeState(workspaceId),
       ai: aiState(workspaceId), remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
   }
+  router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData())));
   router.get('/sync', auth, (req, res) => { store.expireActions(); res.json(snapshot(req.nova.workspace_id, req.nova)); });
 
   router.patch('/settings', auth, owner, (req, res) => {
     const current = settingsOf(req.nova.workspace_id); const b = req.body || {}; const next = { ...current };
-    if (b.assistantName !== undefined) { if (!['NOVA', 'ATLAS'].includes(b.assistantName)) return res.status(400).json({ error: 'Choose NOVA or ATLAS.' }); next.assistantName = b.assistantName; }
+    if (b.assistantName !== undefined) { const value = clean(b.assistantName, 40); if (!value) return res.status(400).json({ error: 'Character name is required.' }); next.assistantName = value; }
     if (b.userName !== undefined) next.userName = clean(b.userName, 40);
     if (b.language !== undefined) { if (!['auto', 'en', 'bn'].includes(b.language)) return res.status(400).json({ error: 'Unsupported language.' }); next.language = b.language; }
-    if (b.persona !== undefined) { if (!['nova', 'atlas'].includes(b.persona)) return res.status(400).json({ error: 'Unsupported persona.' }); next.persona = b.persona; }
+    if (b.persona !== undefined) { if (!['nova', 'atlas', 'jarvis', 'mentor', 'custom'].includes(b.persona)) return res.status(400).json({ error: 'Unsupported persona.' }); next.persona = b.persona; }
+    if (b.customCharacterName !== undefined) { const value = clean(b.customCharacterName, 40); if (!value) return res.status(400).json({ error: 'Custom character name is required.' }); next.customCharacterName = value; }
+    if (b.customInstructions !== undefined) next.customInstructions = clean(b.customInstructions, 500);
     if (b.voiceEnabled !== undefined) next.voiceEnabled = b.voiceEnabled === true;
     if (b.voiceGender !== undefined) { if (!['feminine', 'masculine', 'auto'].includes(b.voiceGender)) return res.status(400).json({ error: 'Unsupported voice preference.' }); next.voiceGender = b.voiceGender; }
     if (b.voiceURI !== undefined) next.voiceURI = clean(b.voiceURI, 300);

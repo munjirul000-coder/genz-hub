@@ -13,6 +13,15 @@ const fs = require('fs');
 const { spawn, execFile } = require('child_process');
 
 const ACTIONS = Object.freeze({
+  open_google: { label: 'Open Google', url: 'https://www.google.com' },
+  open_google_maps: { label: 'Open Google Maps', url: 'https://maps.google.com' },
+  open_gmail: { label: 'Open Gmail', url: 'https://mail.google.com' },
+  open_google_calendar: { label: 'Open Google Calendar', url: 'https://calendar.google.com' },
+  open_github: { label: 'Open GitHub', url: 'https://github.com' },
+  open_wikipedia: { label: 'Open Wikipedia', url: 'https://www.wikipedia.org' },
+  open_paint: { label: 'Open Paint', exe: 'mspaint.exe' },
+  open_task_manager: { label: 'Open Task Manager', exe: 'taskmgr.exe' },
+  open_onscreen_keyboard: { label: 'Open On-Screen Keyboard', exe: 'osk.exe' },
   open_youtube: { label: 'Open YouTube', url: 'https://www.youtube.com' },
   open_spotify: { label: 'Open Spotify', url: 'https://open.spotify.com' },
   open_whatsapp: { label: 'Open WhatsApp', url: 'https://web.whatsapp.com' },
@@ -25,7 +34,7 @@ const ACTIONS = Object.freeze({
   mouse_move: { label: 'Move mouse pointer' },
   mouse_click: { label: 'Left click mouse' },
 });
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 function argsOf(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
@@ -160,6 +169,7 @@ async function execute(action, dryRun = false) {
     return `${item.label} sent at (${params.x}, ${params.y}). NOVA cannot see what was clicked.`;
   }
   if (item.url) await launch('rundll32.exe', ['url.dll,FileProtocolHandler', item.url]);
+  else if (item.exe) await launch(item.exe);
   else if (action.kind === 'open_notepad') await launch('notepad.exe');
   else if (action.kind === 'open_calculator') await launch('calc.exe');
   else if (action.kind === 'open_explorer') await launch('explorer.exe', [path.join(os.homedir(), 'Downloads')]);

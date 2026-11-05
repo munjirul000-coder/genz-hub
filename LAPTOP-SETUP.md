@@ -64,6 +64,12 @@ npm run nova
 
 **সাবধান:** API key কখনো chat box-এ paste করবে না। ভুলে chat-এ দিলে NOVA সেটা save/send না করে secure connect field খুলে দেবে। Key শুধু তোমার NOVA server-এ encrypted অবস্থায় থাকে।
 
+## Voice, character ও world monitor
+
+- Conversation-এ **Start voice conversation** চাপলে browser microphone দিয়ে কথা শুনবে ও উত্তর পড়বে। **Stop voice conversation** চাপলে বন্ধ হয়। Bengali-এর জন্য Settings-এ **বাংলা** select করো; mic ও voice browser-এর ওপর নির্ভর করে এবং speech browser provider-এর কাছে যেতে পারে।
+- Settings-এ **JARVIS**, **Mentor**, **Custom** বেছে voice/name/behaviour save করো। একই workspace-এ paired ফোন একই character settings পায়।
+- Sidebar → **World monitor** → **3D globe** বা **2D map**। USGS-এর সাম্প্রতিক earthquake ও BBC World headline ইন্টারনেট পেলে দেখাবে। Feed বন্ধ থাকলে error দেখাবে; এখানে সব ধরনের world event নেই।
+
 ## Website বানানো (প্রথম version)
 
 Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠালেও NOVA একটি নতুন static website তৈরি করার চেষ্টা করে। Voice input থাকলে microphone button চেপে বলাও যায়; এটি সব ধরনের project বা desktop control নয়। Speech recognition browser-এর ওপর নির্ভর করে, আর তোমার অনুরোধ সংযুক্ত AI provider-এ পাঠানো হয়।
@@ -79,7 +85,7 @@ Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠ
 ## 5) Windows desktop control চালাও
 
 1. NOVA → **Desktop control** → **Generate token**।
-2. **Save token file** দিয়ে `nova-bridge.token` নামে save করো।
+2. **Copy token** চাপো, Notepad-এ paste করে `nova-bridge.token` নামে save করো। Token কাউকে দেখাবে না।
 3. File টা repo-র `desktop` folder-এ রাখো। সেই folder-এ `nova-agent.js` আর `START-BRIDGE.bat` আছে।
 4. **`desktop\START-BRIDGE.bat`** double-click করো।
 5. Server URL জিজ্ঞেস করলে সাধারণত শুধু Enter চাপো: `http://localhost:3000`।
@@ -124,3 +130,5 @@ Connected bridge থাকলে action review-এ **Approve by voice** চে�
 - **Groq 404:** model name ভুল/unavailable। `llama-3.1-8b-instant` চেষ্টা করো।
 - **Empty response with `gpt-oss` / reasoning model:** পুরনো NOVA version হলে update করে নতুন ZIP চালাও, অথবা আপাতত `llama-3.3-70b-versatile` ব্যবহার করো। নতুন version reasoning model-এর জন্য আলাদা token budget ব্যবহার করে।
 - **Desktop offline:** `START-BRIDGE.bat` চলছে কি না, token file ঠিক জায়গায় আছে কি না দেখো। Token বদলালে পুরোনো agent disconnect হয়।
+
+বাইরের network থেকে ফোনে চালাতে আলাদা private VPN বা HTTPS endpoint setup দরকার; শুধু laptop চালু রাখলে সরাসরি internet access তৈরি হয় না। `localhost` ফোনে দিলে laptop নয়, ফোনকেই বোঝায়। নিরাপত্তার জন্য router-এ সরাসরি port খুলবে না।

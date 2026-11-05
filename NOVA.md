@@ -2,7 +2,7 @@
 
 **Your mind, amplified.** একটি Stonic-অনুপ্রাণিত, কিন্তু সম্পূর্ণ original desktop-companion MVP। এটি Gen-Z Hub repo-র ভেতরে আলাদা route, আলাদা SQLite database এবং আলাদা session দিয়ে চলে; existing social platform অপরিবর্তিত থাকে।
 
-> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; screen awareness, always-on wake word, live world monitor এবং arbitrary desktop automation এই build-এ নেই।
+> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; screen awareness, always-on wake word এবং arbitrary desktop automation এই build-এ নেই। World monitor শুধু নিচের উল্লিখিত public feed দেখায়।
 
 ---
 
@@ -25,10 +25,11 @@ Windows laptop-এ সবচেয়ে সহজ পথ: repo root-এর **`S
 - **Conversation** — English/বাংলা local commands, হিসাব, সময়/তারিখ, help, focus timer। Optional cloud AI configure করলে open-ended প্রশ্নোত্তর।
 - **Memory vault** — শুধু তুমি explicitly বললে বা add করলে save হয়। Search, category, edit, delete, export।
 - **Desktop control** — Windows agent-এর মাধ্যমে allowlisted action। প্রতিটি action-এ আলাদা approval লাগে।
-- **Voice** — browser speech recognition দিয়ে push-to-talk; optional spoken replies। Browser/OS-এর voice-এর ওপর নির্ভর করে।
+- **Voice** — push-to-talk অথবা স্পষ্টভাবে চালু/বন্ধ করা যায় এমন continuous conversation; browser speech recognition ও spoken replies-এর জন্য browser/OS-এর ওপর নির্ভর করে। Browser vendor speech process করতে পারে।
 - **Phone remote** — one-time pairing code, shared workspace, owner settings protected, revoke anytime।
 - **Focus timer** — start/pause/reset, 15/25/50 min presets, page বদলালেও চলে।
-- **NOVA / ATLAS persona** — আলাদা accent ও voice preference।
+- **Characters** — NOVA, ATLAS, JARVIS-style, Mentor ও custom personality; custom name/behaviour ও browser voice settings। Original, Stonic বা Marvel-এর সঙ্গে affiliated নয়।
+- **World monitor** — drag করা যায় এমন globe এবং 2D map; USGS M2.5+ last-day earthquake markers ও BBC World RSS headlines। Feed unavailable হলে তা দেখায়, fake event নয়।
 - **Command palette** — `Ctrl/Cmd + K`; conversation shortcut `Ctrl/Cmd + J`।
 - **Activity log** — pending, approved, running, completed, failed, cancelled, expired status।
 
@@ -47,7 +48,7 @@ Web preview একা তোমার PC control করতে পারে ন�
 ### ধাপ
 
 1. NOVA → **Desktop control** → **Download nova-agent.js**। অথবা repo-র `desktop/nova-agent.js` ব্যবহার করো।
-2. **Generate token** চাপো। Token একবারই দেখানো হয়। **Save token file** দিয়ে `nova-bridge.token` নামে agent-এর পাশে রাখো।
+2. **Generate token** চাপো। Token একবারই দেখানো হয়। **Copy token** চাপো, Notepad-এ paste করে `nova-bridge.token` নামে agent-এর পাশে save করো। কাউকে token দেখাবে না।
 3. PowerShell-এ সেই folder থেকে চালাও:
 
 ```powershell
@@ -68,8 +69,10 @@ node nova-agent.js --server https://your-nova-host.example --token-file nova-bri
 
 | Action | কী হয় |
 |---|---|
-| Open YouTube / Spotify / WhatsApp | Default browser-এ fixed URL খোলে |
-| Open Notepad / Calculator | Windows app launch |
+| Open YouTube / Spotify / WhatsApp / Google / Maps / Gmail / Calendar / GitHub / Wikipedia | Default browser-এ fixed URL খোলে; account data পড়ে বা পাঠায় না |
+| Open Notepad / Calculator / Paint / Task Manager / On-Screen Keyboard | Windows app launch |
+| Mouse move / click | Owner-approved coordinates; screen দেখতে পারে না এবং click অন্য app-এ ক্ষতিকর কাজ ঘটাতে পারে |
+| Type in Notepad | Owner-approved এক লাইনের text; সক্রিয় Notepad window-তে সীমিত |
 | Open Downloads | Downloads folder খোলে |
 | System information | OS, CPU, RAM, uptime পড়ে |
 | WhatsApp draft | International number + text দিয়ে draft খোলে; **Send নিজে চাপতে হবে** |
@@ -139,10 +142,18 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 ## Phone remote
 
 1. Desktop NOVA → **Connect phone**।
-2. Link কপি করে ফোনে খোলো, অথবা `/nova`-তে ১০-character code দাও।
+2. ফোনে PC-এর পৌঁছানো যায় এমন address-এ `/nova` খোলো এবং ১০-character code দাও। Laptop-এ `localhost` লেখা link ফোনে কাজ করবে না: সেটা ফোনকেই বোঝায়। একই Wi-Fi-তে PC-এর LAN address ব্যবহার করো। বাইরের নেটওয়ার্ক থেকে access-এর জন্য নিজে private VPN বা নিরাপদ HTTPS setup করতে হবে; NOVA স্বয়ংক্রিয়ভাবে internet-এ প্রকাশ করে না। HTTP-তে traffic unencrypted হতে পারে; নিরাপদ private network/HTTPS ব্যবহার করো।
 3. Code ৫ মিনিটে expire হয় এবং একবার ব্যবহার হয়।
 4. ফোন chat, memory ও সাধারণ desktop approval করতে পারে; mouse/keyboard action শুধু owner prepare ও approve করতে পারে। ফোন workspace delete, bridge token generate বা owner settings বদলাতে পারে না।
 5. **Settings → Paired phones → Revoke** দিলে access সাথে সাথে বন্ধ।
+
+---
+
+## World monitor ও voice conversation
+
+- Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World RSS থেকে আসে। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; কোনো feed বন্ধ থাকলে error দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)।
+- Conversation-এর **Start voice conversation** চাপলে microphone turn-by-turn চালু থাকে এবং response browser voice-এ পড়ে। **Stop voice conversation** চাপলে বন্ধ হয়; অন্য page-এ গেলে session বন্ধ হয়। Browser mic permission লাগে; browser vendor speech process করতে পারে, এবং Bengali recognition/voice availability browser ও OS-এর ওপর নির্ভর করে। এটি always-on wake word নয়।
+- Settings-এ JARVIS-style, Mentor বা Custom নির্বাচন করে name ও behaviour save করা যায়। Cloud AI-কে recent conversation, selected personality preference ও explicitly saved memories পাঠানো হয়।
 
 ---
 
@@ -153,7 +164,8 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 - Browser/OS voice না থাকলে spoken reply বা Bengali recognition সীমিত হতে পারে।
 - Desktop bridge-কে polling-এর সময় নিজের system info server-এ পাঠাতে হয়; সেটা শুধু সেই workspace-এ দেখা যায়।
 - এটি single-user companion MVP, enterprise multi-tenant product নয়। নিজের server HTTPS, backup ও access control দিয়ে চালাও।
-- Live news/globe, screen understanding, file search, calendar/email integration, wake word এই version-এর বাইরে।
+- Globe-এর hotspot কেবল USGS earthquake; এটি সব global event cover করে না। BBC বা USGS offline/blocked থাকলে পুরনো বা fake headline দেখায় না।
+- Screen understanding, file search, calendar/email data integration ও wake word এই version-এর বাইরে।
 
 ---
 

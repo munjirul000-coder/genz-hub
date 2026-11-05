@@ -44,7 +44,7 @@
   };
   const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.sparkle}</svg>`;
   function hydrateIcons(root = document) { $$('[data-icon]', root).forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
-  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
+  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const fmtDate = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const name = () => S.state?.settings.assistantName || 'NOVA';
@@ -53,17 +53,25 @@
   const SECRET_IN_CHAT = /(?:gsk_[A-Za-z0-9_-]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,})/;
   const statusPill = status => { const map = { pending: ['amber', 'Awaiting approval'], approved: ['violet', 'Queued'], running: ['violet', 'Running'], completed: ['mint', 'Completed'], failed: ['red', 'Failed'], cancelled: ['', 'Cancelled'], expired: ['', 'Expired'] }; const [color, label] = map[status] || ['', status]; return `<span class="pill pill-${color}">${label}</span>`; };
 
+  // Never let an older sync snapshot overwrite a locally completed write.
+  let writeVersion = 0, writesInFlight = 0;
   async function api(path, { method = 'GET', body, raw = false } = {}) {
     const headers = { 'X-GenZ-Client': '1', 'X-Nova-Session': S.token };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    let res;
-    try { res = await fetch('/api/nova' + path, { method, headers, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) }); }
-    catch { throw new Error('Cannot reach NOVA. Check your connection and try again.'); }
-    if (raw) { if (!res.ok) throw new Error('Export failed.'); return res.blob(); }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { const err = new Error(data.error || `Request failed (${res.status}).`); err.status = res.status; throw err; }
-    return data;
+    const write = !['GET', 'HEAD'].includes(method.toUpperCase());
+    if (write) writesInFlight++;
+    try {
+      let res;
+      try { res = await fetch('/api/nova' + path, { method, headers, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) }); }
+      catch { throw new Error('Cannot reach NOVA. Check your connection and try again.'); }
+      if (raw) { if (!res.ok) throw new Error('Export failed.'); if (write) writeVersion++; return await res.blob(); }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { const err = new Error(data.error || `Request failed (${res.status}).`); err.status = res.status; throw err; }
+      if (write) writeVersion++;
+      return data;
+    } finally { if (write) writesInFlight--; }
   }
+
   function toast(message, type = 'success') {
     const el = document.createElement('div'); el.className = 'toast ' + type;
     el.innerHTML = `${icon(type === 'error' ? 'alert' : type === 'info' ? 'sparkle' : 'check-circle')}<span>${esc(message)}</span><button class="icon-button" aria-label="Dismiss">${icon('close')}</button>`;
@@ -84,7 +92,7 @@
     $('.modal-backdrop').addEventListener('click', e => { if (e.target.classList.contains('modal-backdrop') || e.target.closest('[data-close]')) closeModal(); });
     setTimeout(() => { const first = $('.modal input:not([readonly]), .modal textarea, .modal select, .modal .btn-primary, .modal button'); first?.focus(); }, 30);
   }
-  function closeModal(restore = true) { const old = S.modal; $('#modal-root').innerHTML = ''; S.modal = null; document.body.style.overflow = ''; if (old?.onClose) old.onClose(); if (restore && previousFocus?.isConnected) previousFocus.focus(); }
+  function closeModal(restore = true) { const old = S.modal; $('#modal-root').innerHTML = ''; S.modal = null; document.body.style.overflow = ''; if (old?.onClose) old.onClose(); if (restore && previousFocus?.isConnected) previousFocus.focus(); if (old && S.voiceSession.active && !S.busy && !S.listening) scheduleVoiceTurn(); }
   function confirmDialog(title, text, label, fn, danger = false) {
     modal(title, `<div class="modal-icon">${icon(danger ? 'alert' : 'shield')}</div><p>${esc(text)}</p><div class="modal-footer"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" id="confirm-action">${esc(label)}</button></div>`);
     $('#confirm-action').onclick = async e => { e.target.disabled = true; closeModal(); try { await fn(); } catch (err) { toast(err.message, 'error'); } };
@@ -112,7 +120,7 @@
       S.state = await api('/state');
       const saved = localStorage.getItem('nova.focus.' + S.state.workspace.id);
       if (saved) { try { const f = JSON.parse(saved); if (f.endAt || f.remaining > 0) S.focus = { ...S.focus, ...f, running: !!f.endAt }; } catch {} }
-      renderShell(); navigate(['overview', 'conversation', 'memory', 'desktop', 'activity', 'settings'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview');
+      renderShell(); navigate(['overview', 'conversation', 'memory', 'world', 'desktop', 'activity', 'settings'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview');
       setInterval(sync, 4000); setInterval(tickFocus, 1000); tickFocus();
       document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
     } catch (err) {
@@ -132,9 +140,11 @@
     };
   }
   async function sync() {
-    if (!S.token || !S.state || S.busy) return;
+    if (!S.token || !S.state || S.busy || writesInFlight) return;
+    const version = writeVersion;
     try {
       const data = await api('/sync');
+      if (writesInFlight || version !== writeVersion || S.busy) return;
       const previousActions = S.state.actions;
       S.state = { ...S.state, ...data };
       renderShell();
@@ -159,6 +169,7 @@
     $('#user-avatar').textContent = initial; $('.top-avatar').textContent = initial;
     $('#profile-name').textContent = s.settings.userName || 'Your workspace';
     $('#profile-role').textContent = isOwner() ? 'Owner · Local session' : 'Remote · Paired phone';
+    $$('[data-action="continuous-voice"]').forEach(b => { b.setAttribute('aria-pressed', String(S.voiceSession.active)); b.innerHTML = `${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}`; const label = b.parentElement?.querySelector('span'); if (label) label.textContent = S.voiceSession.active ? 'Microphone session active' : 'Optional · uses browser speech service'; });
     $('#sidebar-bridge-status').innerHTML = `<i class="status-dot" style="color:${online() ? 'var(--mint)' : 'var(--subtle)'}"></i>${online() ? 'Connected' : 'Not connected'}`;
     const engineLabel = s.ai.configured ? (s.ai.provider === 'groq' ? 'Groq + local' : 'AI + local') : 'Local engine';
     $('#engine-pill').innerHTML = `<i class="status-dot"></i>${engineLabel}`;
@@ -166,12 +177,13 @@
     document.documentElement.style.setProperty('--violet-soft', s.settings.persona === 'atlas' ? 'rgba(125,211,252,.12)' : 'rgba(167,139,250,.12)');
   }
   function navigate(view) {
+    if (S.voiceSession.active && !['overview', 'conversation'].includes(view)) stopVoiceConversation();
     S.view = view; location.hash = view;
     $$('.nav-item[data-view]').forEach(el => { el.classList.toggle('active', el.dataset.view === view); if (el.dataset.view === view) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); });
-    $('#breadcrumb-current').textContent = { overview: 'Overview', conversation: 'Conversation', memory: 'Memory vault', desktop: 'Desktop control', activity: 'Activity', settings: 'Settings' }[view];
+    $('#breadcrumb-current').textContent = { overview: 'Overview', conversation: 'Conversation', memory: 'Memory vault', world: 'World monitor', desktop: 'Desktop control', activity: 'Activity', settings: 'Settings' }[view];
     $('#sidebar').classList.remove('open');
     if (S.orb) { S.orb.destroy(); S.orb = null; }
-    const views = { overview: renderOverview, conversation: renderConversation, memory: renderMemory, desktop: renderDesktop, activity: renderActivity, settings: renderSettings };
+    const views = { overview: renderOverview, conversation: renderConversation, memory: renderMemory, world: renderWorld, desktop: renderDesktop, activity: renderActivity, settings: renderSettings };
     views[view](); hydrateIcons($('#view')); window.scrollTo({ top: 0, behavior: 'instant' });
   }
   const remoteBanner = () => !isOwner() ? `<div class="remote-banner">${icon('phone')}You’re controlling this workspace remotely. Desktop actions still need approval.</div>` : '';
@@ -199,7 +211,7 @@
     if ($('#memory-preview-list')) $('#memory-preview-list').innerHTML = s.memories.length ? s.memories.slice(0, 3).map(m => `<div class="memory-mini">${icon('sparkle')}<div><p>${esc(m.content)}</p><small>${esc(m.category)} · ${fmtDate(m.updated_at)}</small></div></div>`).join('') : `<div class="empty-mini">${icon('brain')}<p>A memory worth keeping?</p><small>Say “Remember…” or add one yourself.</small><button class="text-button" data-action="add-memory" style="margin-top:8px">${icon('plus')}Add a memory</button></div>`;
   }
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
-  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div></div>`; }
+  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Microphone session active' : 'Optional · uses browser speech service'}</span></div></div>`; }
   function renderConversation() {
     $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
@@ -274,7 +286,7 @@
       toast('API key chat-e pathano hoy ni. Secure field-e connect korun.', 'info');
       return connectAiModal(secret[0]);
     }
-    S.busy = true; if (input) { input.value = ''; input.style.height = 'auto'; }
+    S.busy = true; if (S.voiceSession.active && S.listening) { try { S.recognition?.stop(); } catch {} } if (input) { input.value = ''; input.style.height = 'auto'; }
     const send = $('.send-button'); if (send) send.disabled = true;
     if (S.view !== 'conversation' && S.view !== 'overview') navigate('conversation');
     S.state.messages.push({ id: 'temp-user', role: 'user', content: text, created_at: Date.now() }); renderMessages();
@@ -286,9 +298,9 @@
       if (data.action) S.state.actions.unshift(data.action);
       if (data.website) showWebsite(data.website);
       if (data.uiAction?.type === 'focus') startFocus(data.uiAction.minutes);
-      speak(data.message.content);
+      await speak(data.message.content, S.voiceSession.active);
     } catch (err) { S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); toast(err.message, 'error'); if (input) input.value = text; }
-    finally { S.busy = false; if (send) send.disabled = false; renderMessages(); renderShell(); renderOverviewDynamic(); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; $('#chat-input')?.focus(); }
+    finally { S.busy = false; if (send) send.disabled = false; renderMessages(); renderShell(); renderOverviewDynamic(); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; $('#chat-input')?.focus(); if (S.voiceSession.active) scheduleVoiceTurn(); }
   }
 
   /* Procedural particle core — no image, WebGL or external dependency. */
@@ -318,6 +330,34 @@
   }
 
   /* Memory vault */
+  /* Live world monitor. All markers and headlines come from named sources;
+     no sample events are displayed when feeds are unavailable. */
+  function renderWorld() {
+    $('#view').innerHTML = `${remoteBanner()}${heading('World monitor.', 'A wider view, grounded in real sources.', `<button class="btn btn-ghost" id="world-refresh">${icon('refresh')}Refresh</button>`)}<div class="world-layout"><section class="card world-stage"><div class="world-stage-head"><div><span class="world-eyebrow">LIVE DATA / LAST 24 HOURS</span><h2>Earthquake monitor</h2><p>USGS earthquakes M2.5+ · Drag globe to rotate</p></div><div class="world-modes"><button class="chip active" data-world-mode="globe">3D globe</button><button class="chip" data-world-mode="map">2D map</button></div></div><canvas id="world-canvas" tabindex="0" aria-label="Interactive earthquake globe. Use left and right arrow keys to rotate."></canvas><div class="world-stage-foot"><span><i class="world-dot"></i>USGS earthquake · M2.5+</span><span id="world-time">Loading live sources…</span></div><div id="world-selected" class="world-selection">Select a marker or an event below for details.</div></section><div class="world-side"><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">USGS / RECENT EVENTS</span><h2>Earthquakes</h2></div>${icon('activity')}</div><div id="world-quakes" class="world-list"><p class="world-empty">Loading…</p></div></section><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">BBC / WORLD NEWS</span><h2>Latest headlines</h2></div>${icon('globe')}</div><div id="world-news" class="world-list"><p class="world-empty">Loading…</p></div></section></div></div><p class="world-disclaimer">Public feeds can be delayed or unavailable. Earthquakes are not a complete picture of global events. Map outlines: Natural Earth / world-atlas.</p>`;
+    const canvas = $('#world-canvas'), frame = $('#view');
+    const visual = window.NovaWorld.create(canvas, event => {
+      if (!frame.contains(canvas)) return;
+      $('#world-selected').innerHTML = event ? `<strong>M ${esc(event.magnitude)} · ${esc(event.place)}</strong><span>${esc(new Date(event.time).toLocaleString())} ${event.url ? `· <a href="${esc(event.url)}" target="_blank" rel="noopener noreferrer">USGS details ↗</a>` : ''}</span>` : 'Coastline map is unavailable; check the local files.';
+    });
+    S.orb = visual;
+    $$('#view [data-world-mode]').forEach(btn => { btn.onclick = () => { visual.setMode(btn.dataset.worldMode); $$('#view [data-world-mode]').forEach(b => b.classList.toggle('active', b === btn)); }; });
+    async function load() {
+      const button = $('#world-refresh'); if (!button) return; button.disabled = true;
+      try {
+        const data = await api('/world'); if (!frame.contains(canvas)) return;
+        visual.setPoints(data.quakes.items);
+        $('#world-time').textContent = `Checked ${new Date(data.fetchedAt).toLocaleTimeString()} · cached up to 5 min`;
+        $('#world-quakes').innerHTML = data.quakes.ok ? (data.quakes.items.length ? data.quakes.items.map(q => `<button class="world-event" data-quake-lat="${esc(q.lat)}" data-quake-lon="${esc(q.lon)}"><span class="quake-mag">${esc(q.magnitude.toFixed(1))}</span><span><strong>${esc(q.place)}</strong><small>${esc(new Date(q.time).toLocaleString())}</small></span></button>`).join('') : '<p class="world-empty">No qualifying earthquakes in this feed.</p>') : `<p class="world-empty warning">${esc(data.quakes.error)}</p>`;
+        $$('#world-quakes .world-event').forEach(btn => { btn.onclick = () => { const event = data.quakes.items.find(q => q.lat === Number(btn.dataset.quakeLat) && q.lon === Number(btn.dataset.quakeLon)); if (event) $('#world-selected').innerHTML = `<strong>M ${esc(event.magnitude)} · ${esc(event.place)}</strong><span>${esc(new Date(event.time).toLocaleString())} ${event.url ? `· <a href="${esc(event.url)}" target="_blank" rel="noopener noreferrer">USGS details ↗</a>` : ''}</span>`; }; });
+        $('#world-news').innerHTML = data.news.ok ? (data.news.items.length ? data.news.items.map(n => `<a class="world-headline" href="${esc(n.url)}" target="_blank" rel="noopener noreferrer"><strong>${esc(n.title)}</strong><small>BBC World ${n.time ? '· ' + esc(new Date(n.time).toLocaleString()) : ''} ↗</small></a>`).join('') : '<p class="world-empty">No headlines returned by the feed.</p>') : `<p class="world-empty warning">${esc(data.news.error)}</p>`;
+      } catch (err) { if (frame.contains(canvas)) { $('#world-time').textContent = 'Live sources unavailable'; $('#world-quakes').textContent = err.message; $('#world-news').textContent = err.message; } }
+      finally { if (button.isConnected) button.disabled = false; }
+    }
+    $('#world-refresh').onclick = load; load();
+    const timer = setInterval(load, 5 * 60000); const destroy = visual.destroy;
+    visual.destroy = () => { clearInterval(timer); destroy(); };
+  }
+
   function renderMemory() {
     $('#view').innerHTML = `${remoteBanner()}${heading('A memory that stays yours.', 'The details you choose to keep. Edit or forget them anytime.', `<button class="btn btn-primary" data-action="add-memory">${icon('plus')}Add memory</button>`)}<div class="toolbar"><label class="search-field">${icon('search')}<input id="memory-search" type="search" placeholder="Search your memories…" value="${esc(S.memorySearch)}" aria-label="Search memories"></label><div class="filter-chips">${['all', 'personal', 'preference', 'work', 'note'].map(c => `<button class="chip ${S.memoryFilter === c ? 'active' : ''}" data-memory-filter="${c}">${c === 'all' ? 'All memories' : c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div></div><div class="memory-grid" id="memory-grid"></div>`;
     $('#memory-search').oninput = e => { S.memorySearch = e.target.value; renderMemoryGrid(); };
@@ -419,14 +459,14 @@
   /* Settings */
   function renderSettings() {
     const s = S.state.settings; const owner = isOwner();
-    $('#view').innerHTML = `${remoteBanner()}${heading('Make it feel like you.', 'A companion that fits the way you think, speak and work.')}<div class="settings-layout"><div class="stack"><section class="card settings-card"><h2>Your companion</h2><p class="settings-sub">A familiar presence, with a personality you choose.</p><div class="persona-grid"><button class="persona-option ${s.persona === 'nova' ? 'selected' : ''}" data-persona="nova" ${!owner ? 'disabled' : ''}><span class="persona-orb"></span><span><strong>NOVA</strong><small>Warm · intuitive · bright</small></span>${s.persona === 'nova' ? icon('check-circle') : ''}</button><button class="persona-option ${s.persona === 'atlas' ? 'selected' : ''}" data-persona="atlas" ${!owner ? 'disabled' : ''}><span class="persona-orb atlas"></span><span><strong>ATLAS</strong><small>Calm · grounded · clear</small></span>${s.persona === 'atlas' ? icon('check-circle') : ''}</button></div><form id="settings-form"><fieldset ${!owner ? 'disabled' : ''} style="border:0;padding:0;margin:0"><div class="form-grid"><div class="field"><label for="setting-name">What should I call you?</label><input id="setting-name" maxlength="40" value="${esc(s.userName)}" placeholder="Your name"></div><div class="field"><label for="setting-workspace">Workspace name</label><input id="setting-workspace" maxlength="50" required value="${esc(S.state.workspace.name)}"></div><div class="field"><label for="setting-language">Conversation language</label><select id="setting-language"><option value="auto" ${s.language === 'auto' ? 'selected' : ''}>Match my language</option><option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option><option value="bn" ${s.language === 'bn' ? 'selected' : ''}>বাংলা</option></select></div><div class="field"><label for="setting-timezone">Timezone</label><select id="setting-timezone">${[...new Set([s.timezone, 'Asia/Dhaka', 'UTC', 'America/New_York', 'Europe/London', 'Asia/Kolkata', 'Asia/Singapore'])].map(tz => `<option value="${esc(tz)}" ${s.timezone === tz ? 'selected' : ''}>${esc(tz)}</option>`).join('')}</select></div></div><div class="divider"></div><div class="setting-row"><div><strong>Spoken replies</strong><p>Read responses aloud using your browser’s available voices.</p></div><label class="toggle"><input type="checkbox" id="setting-voice" ${s.voiceEnabled ? 'checked' : ''} aria-label="Spoken replies"><span></span></label></div><div class="form-grid" style="margin-top:16px"><div class="field"><label for="setting-gender">Voice preference</label><select id="setting-gender"><option value="feminine" ${s.voiceGender === 'feminine' ? 'selected' : ''}>Feminine</option><option value="masculine" ${s.voiceGender === 'masculine' ? 'selected' : ''}>Masculine</option><option value="auto" ${s.voiceGender === 'auto' ? 'selected' : ''}>System default</option></select><small>Actual voices depend on your browser and OS.</small></div><div class="field"><label for="setting-rate">Speaking pace <span id="rate-value">${s.speechRate}×</span></label><input type="range" id="setting-rate" min="0.7" max="1.3" step="0.1" value="${s.speechRate}" style="padding:12px 0"></div><div class="field full"><label for="setting-voice-uri">Installed voice</label><select id="setting-voice-uri"><option value="">Choose automatically</option></select></div></div><div class="settings-actions"><button type="button" class="btn btn-ghost" id="test-voice" style="margin-right:auto">${icon('volume')}Test voice</button><button type="submit" class="btn btn-primary">${icon('check')}Save preferences</button></div></fieldset></form></section><section class="card settings-card"><h2>Intelligence</h2><p class="settings-sub">Local commands work out of the box. Open-ended AI is optional.</p><div class="provider-status">${icon('cpu')}<div><strong>${S.state.ai.configured ? (S.state.ai.provider === 'groq' ? 'Groq connected' : 'AI provider connected') : 'Local command mode'}</strong><p>${S.state.ai.configured ? `Model: ${esc(S.state.ai.model)}. ${S.state.ai.source === 'workspace' ? 'Your key is encrypted in this workspace.' : 'Using the server environment key.'} Open-ended replies are sent to ${S.state.ai.provider === 'groq' ? 'Groq' : 'the configured provider'}; local commands stay deterministic.` : 'Memory, calculations, time, focus timers and desktop commands work without an API key. I won’t invent answers to open-ended questions.'}</p></div></div>${S.state.ai.configured ? `<div class="settings-actions" style="justify-content:flex-start;margin-top:0;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" id="test-ai" data-action="test-ai" ${!owner ? 'disabled' : ''}>${icon('activity')}Test AI connection</button>${S.state.ai.hasKey ? `<button class="btn btn-sm btn-ghost" data-action="disconnect-ai" ${!owner ? 'disabled' : ''}>${icon('logout')}Disconnect</button>` : ''}<button class="btn btn-sm btn-ghost" data-action="connect-ai" ${!owner ? 'disabled' : ''}>${icon('refresh')}Change key</button></div>` : `<div class="info-banner" style="margin:14px 0 0">${icon('sparkle')}<div><strong>Have a Groq API key?</strong><p>Connect it here in a secure field — no <span class="mono">.env</span> file needed. NOVA will test it and connect automatically. Never paste your key into chat.</p></div></div><div class="settings-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn btn-primary" data-action="connect-ai" ${!owner ? 'disabled' : ''}>${icon('link')}Connect Groq</button></div>`}<p class="muted" style="font-size:10px;margin-top:12px">Keys are sent only to this NOVA server, encrypted at rest, and never returned to the browser. Groq free tiers have rate limits; if you hit them, NOVA will say so. Advanced: server env presets are documented in <span class="mono">NOVA.md</span>.</p></section></div><div class="stack"><section class="card settings-card"><div class="between"><h2>Paired phones</h2>${owner ? `<button class="text-button" data-action="remote">${icon('plus')}Pair phone</button>` : ''}</div><p class="settings-sub" style="margin-bottom:8px">Your workspace, from your pocket.</p><div id="remote-devices"></div></section><section class="card settings-card"><h2>Your data</h2><p class="settings-sub">Stored in this workspace’s SQLite database on the server. Not shared with other workspaces.</p><div class="setting-row"><div><strong>Export workspace</strong><p>Memories, conversation and action history.</p></div><button class="btn btn-sm btn-ghost" data-action="export" ${!owner ? 'disabled' : ''}>${icon('download')}Export</button></div><div class="setting-row"><div><strong>Clear conversation</strong><p>Memories stay in your vault.</p></div><button class="btn btn-sm btn-ghost" data-action="clear-chat" ${!owner ? 'disabled' : ''}>${icon('trash')}Clear</button></div></section>${owner ? `<section class="card settings-card danger-zone"><h2>Danger zone</h2><div class="setting-row"><div><strong>Delete this workspace</strong><p>Permanently removes memories, chats, pairings and bridge access.</p></div><button class="btn btn-sm btn-danger" data-action="delete-workspace">Delete</button></div></section>` : ''}<section class="card settings-card"><h2>About this build</h2><p class="settings-sub" style="margin-bottom:10px">NOVA v0.1 · Working MVP</p><p class="muted" style="font-size:10px">An original companion inspired by the idea of a personal AI desktop. Not affiliated with Stonic AI. Windows actions require the local agent. Voice input uses your browser’s speech service. Screen awareness, a live world monitor and always-on wake word are not included in this build.</p><a class="text-button" href="/" style="margin-top:12px">Back to Gen-Z Hub ${icon('arrow-up-right')}</a></section></div></div>`;
+    $('#view').innerHTML = `${remoteBanner()}${heading('Make it feel like you.', 'A companion that fits the way you think, speak and work.')}<div class="settings-layout"><div class="stack"><section class="card settings-card"><h2>Your companion</h2><p class="settings-sub">A familiar presence, with a personality you choose.</p><div class="persona-grid"><button class="persona-option ${s.persona === 'nova' ? 'selected' : ''}" data-persona="nova" ${!owner ? 'disabled' : ''}><span class="persona-orb"></span><span><strong>NOVA</strong><small>Warm · intuitive · bright</small></span>${s.persona === 'nova' ? icon('check-circle') : ''}</button><button class="persona-option ${s.persona === 'atlas' ? 'selected' : ''}" data-persona="atlas" ${!owner ? 'disabled' : ''}><span class="persona-orb atlas"></span><span><strong>ATLAS</strong><small>Calm · grounded · clear</small></span>${s.persona === 'atlas' ? icon('check-circle') : ''}</button><button class="persona-option ${s.persona === 'jarvis' ? 'selected' : ''}" data-persona="jarvis" ${!owner ? 'disabled' : ''}><span class="persona-orb atlas"></span><span><strong>JARVIS</strong><small>Polished · precise</small></span>${s.persona === 'jarvis' ? icon('check-circle') : ''}</button><button class="persona-option ${s.persona === 'mentor' ? 'selected' : ''}" data-persona="mentor" ${!owner ? 'disabled' : ''}><span class="persona-orb"></span><span><strong>Mentor</strong><small>Patient · encouraging</small></span>${s.persona === 'mentor' ? icon('check-circle') : ''}</button><button class="persona-option ${s.persona === 'custom' ? 'selected' : ''}" data-persona="custom" ${!owner ? 'disabled' : ''}><span class="persona-orb"></span><span><strong>Custom</strong><small>Your own character</small></span>${s.persona === 'custom' ? icon('check-circle') : ''}</button></div><form id="settings-form"><fieldset ${!owner ? 'disabled' : ''} style="border:0;padding:0;margin:0"><div class="form-grid"><div class="field"><label for="setting-name">What should I call you?</label><input id="setting-name" maxlength="40" value="${esc(s.userName)}" placeholder="Your name"></div><div class="field"><label for="setting-workspace">Workspace name</label><input id="setting-workspace" maxlength="50" required value="${esc(S.state.workspace.name)}"></div><div class="field"><label for="setting-language">Conversation language</label><select id="setting-language"><option value="auto" ${s.language === 'auto' ? 'selected' : ''}>Match my language</option><option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option><option value="bn" ${s.language === 'bn' ? 'selected' : ''}>বাংলা</option></select></div><div class="field"><label for="setting-timezone">Timezone</label><select id="setting-timezone">${[...new Set([s.timezone, 'Asia/Dhaka', 'UTC', 'America/New_York', 'Europe/London', 'Asia/Kolkata', 'Asia/Singapore'])].map(tz => `<option value="${esc(tz)}" ${s.timezone === tz ? 'selected' : ''}>${esc(tz)}</option>`).join('')}</select></div></div><div class="divider"></div><div class="form-grid"><div class="field"><label for="character-name">Custom character name</label><input id="character-name" maxlength="40" required value="${esc(s.customCharacterName || 'MY ASSISTANT')}"></div><div class="field"><label for="character-style">Custom behaviour</label><textarea id="character-style" maxlength="500" rows="2" placeholder="e.g. patient, upbeat and concise">${esc(s.customInstructions || '')}</textarea></div></div><p class="muted" style="font-size:10px;margin-top:8px">Used when Custom is selected. These preferences are sent to your connected AI provider and cannot override safety rules.</p><div class="divider"></div><div class="setting-row"><div><strong>Spoken replies</strong><p>Read responses aloud using your browser’s available voices.</p></div><label class="toggle"><input type="checkbox" id="setting-voice" ${s.voiceEnabled ? 'checked' : ''} aria-label="Spoken replies"><span></span></label></div><div class="form-grid" style="margin-top:16px"><div class="field"><label for="setting-gender">Voice preference</label><select id="setting-gender"><option value="feminine" ${s.voiceGender === 'feminine' ? 'selected' : ''}>Feminine</option><option value="masculine" ${s.voiceGender === 'masculine' ? 'selected' : ''}>Masculine</option><option value="auto" ${s.voiceGender === 'auto' ? 'selected' : ''}>System default</option></select><small>Actual voices depend on your browser and OS.</small></div><div class="field"><label for="setting-rate">Speaking pace <span id="rate-value">${s.speechRate}×</span></label><input type="range" id="setting-rate" min="0.7" max="1.3" step="0.1" value="${s.speechRate}" style="padding:12px 0"></div><div class="field full"><label for="setting-voice-uri">Installed voice</label><select id="setting-voice-uri"><option value="">Choose automatically</option></select></div></div><div class="settings-actions"><button type="button" class="btn btn-ghost" id="test-voice" style="margin-right:auto">${icon('volume')}Test voice</button><button type="submit" class="btn btn-primary">${icon('check')}Save preferences</button></div></fieldset></form></section><section class="card settings-card"><h2>Intelligence</h2><p class="settings-sub">Local commands work out of the box. Open-ended AI is optional.</p><div class="provider-status">${icon('cpu')}<div><strong>${S.state.ai.configured ? (S.state.ai.provider === 'groq' ? 'Groq connected' : 'AI provider connected') : 'Local command mode'}</strong><p>${S.state.ai.configured ? `Model: ${esc(S.state.ai.model)}. ${S.state.ai.source === 'workspace' ? 'Your key is encrypted in this workspace.' : 'Using the server environment key.'} Open-ended replies are sent to ${S.state.ai.provider === 'groq' ? 'Groq' : 'the configured provider'}; local commands stay deterministic.` : 'Memory, calculations, time, focus timers and desktop commands work without an API key. I won’t invent answers to open-ended questions.'}</p></div></div>${S.state.ai.configured ? `<div class="settings-actions" style="justify-content:flex-start;margin-top:0;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" id="test-ai" data-action="test-ai" ${!owner ? 'disabled' : ''}>${icon('activity')}Test AI connection</button>${S.state.ai.hasKey ? `<button class="btn btn-sm btn-ghost" data-action="disconnect-ai" ${!owner ? 'disabled' : ''}>${icon('logout')}Disconnect</button>` : ''}<button class="btn btn-sm btn-ghost" data-action="connect-ai" ${!owner ? 'disabled' : ''}>${icon('refresh')}Change key</button></div>` : `<div class="info-banner" style="margin:14px 0 0">${icon('sparkle')}<div><strong>Have a Groq API key?</strong><p>Connect it here in a secure field — no <span class="mono">.env</span> file needed. NOVA will test it and connect automatically. Never paste your key into chat.</p></div></div><div class="settings-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn btn-primary" data-action="connect-ai" ${!owner ? 'disabled' : ''}>${icon('link')}Connect Groq</button></div>`}<p class="muted" style="font-size:10px;margin-top:12px">Keys are sent only to this NOVA server, encrypted at rest, and never returned to the browser. Groq free tiers have rate limits; if you hit them, NOVA will say so. Advanced: server env presets are documented in <span class="mono">NOVA.md</span>.</p></section></div><div class="stack"><section class="card settings-card"><div class="between"><h2>Paired phones</h2>${owner ? `<button class="text-button" data-action="remote">${icon('plus')}Pair phone</button>` : ''}</div><p class="settings-sub" style="margin-bottom:8px">Your workspace, from your pocket.</p><div id="remote-devices"></div></section><section class="card settings-card"><h2>Your data</h2><p class="settings-sub">Stored in this workspace’s SQLite database on the server. Not shared with other workspaces.</p><div class="setting-row"><div><strong>Export workspace</strong><p>Memories, conversation and action history.</p></div><button class="btn btn-sm btn-ghost" data-action="export" ${!owner ? 'disabled' : ''}>${icon('download')}Export</button></div><div class="setting-row"><div><strong>Clear conversation</strong><p>Memories stay in your vault.</p></div><button class="btn btn-sm btn-ghost" data-action="clear-chat" ${!owner ? 'disabled' : ''}>${icon('trash')}Clear</button></div></section>${owner ? `<section class="card settings-card danger-zone"><h2>Danger zone</h2><div class="setting-row"><div><strong>Delete this workspace</strong><p>Permanently removes memories, chats, pairings and bridge access.</p></div><button class="btn btn-sm btn-danger" data-action="delete-workspace">Delete</button></div></section>` : ''}<section class="card settings-card"><h2>About this build</h2><p class="settings-sub" style="margin-bottom:10px">NOVA v0.1 · Working MVP</p><p class="muted" style="font-size:10px">An original companion inspired by the idea of a personal AI desktop. Not affiliated with Stonic AI. Windows actions require the local agent. Voice input uses your browser’s speech service. Screen awareness and an always-on wake word are not included. The world monitor uses external public feeds when available.</p><a class="text-button" href="/" style="margin-top:12px">Back to Gen-Z Hub ${icon('arrow-up-right')}</a></section></div></div>`;
     populateVoices();
     $('#setting-rate').oninput = e => { $('#rate-value').textContent = e.target.value + '×'; };
     $('#test-voice').onclick = () => speak(`Hi${s.userName ? ' ' + s.userName : ''}. I’m ${name()}. Your mind, amplified.`, true);
     $('#settings-form').onsubmit = async e => {
       e.preventDefault(); const btn = $('button[type=submit]', e.target); btn.disabled = true;
       try {
-        const data = await api('/settings', { method: 'PATCH', body: { userName: $('#setting-name').value, workspaceName: $('#setting-workspace').value, language: $('#setting-language').value, timezone: $('#setting-timezone').value, voiceEnabled: $('#setting-voice').checked, voiceGender: $('#setting-gender').value, speechRate: Number($('#setting-rate').value), voiceURI: $('#setting-voice-uri').value } });
+        const data = await api('/settings', { method: 'PATCH', body: { customCharacterName: $('#character-name').value, customInstructions: $('#character-style').value, ...(s.persona === 'custom' ? { assistantName: $('#character-name').value } : {}), userName: $('#setting-name').value, workspaceName: $('#setting-workspace').value, language: $('#setting-language').value, timezone: $('#setting-timezone').value, voiceEnabled: $('#setting-voice').checked, voiceGender: $('#setting-gender').value, speechRate: Number($('#setting-rate').value), voiceURI: $('#setting-voice-uri').value } });
         S.state.settings = data.settings; S.state.workspace.name = $('#setting-workspace').value; renderShell(); toast('Preferences saved. Make yourself at home.');
       } catch (err) { toast(err.message, 'error'); } finally { btn.disabled = false; }
     };
@@ -461,7 +501,7 @@
     try {
       const data = await api('/remote/create', { method: 'POST', body: {} });
       const link = `${location.origin}/nova#remote=${data.code}`;
-      modal('Your workspace, to go.', `<div class="modal-icon">${icon('phone')}</div><p>Open this link on your phone, or visit <strong>${esc(location.origin)}/nova</strong> and enter the code. It expires in 5 minutes and can be used once.</p><div class="pair-code">${esc(data.code)}</div><div class="pair-expiry" id="pair-expiry">Expires in 5:00</div><div class="pair-link">${esc(link)}</div><div class="modal-footer"><button class="btn btn-ghost" id="copy-pair-code">${icon('copy')}Copy code</button><button class="btn btn-primary" id="copy-pair-link">${icon('link')}Copy pairing link</button></div><p style="font-size:9px;color:var(--subtle);margin:16px 0 0">Paired phones can chat, manage memories and approve desktop actions. Revoke access in Settings → Paired phones.</p>`);
+      modal('Your workspace, to go.', `<div class="modal-icon">${icon('phone')}</div><p>The code expires in 5 minutes and can be used once. Your phone needs a reachable server address: <strong>localhost means the phone itself</strong>, not your PC. Use your PC’s LAN address on the same Wi-Fi, or a private VPN / HTTPS address for access outside. NOVA does not set up a public connection automatically.</p><div class="pair-code">${esc(data.code)}</div><div class="pair-expiry" id="pair-expiry">Expires in 5:00</div><div class="pair-link">${esc(link)}</div><div class="modal-footer"><button class="btn btn-ghost" id="copy-pair-code">${icon('copy')}Copy code</button><button class="btn btn-primary" id="copy-pair-link">${icon('link')}Copy pairing link</button></div><p style="font-size:9px;color:var(--subtle);margin:16px 0 0">Paired phones can chat, manage memories and approve desktop actions. Revoke access in Settings → Paired phones.</p>`);
       $('#copy-pair-code').onclick = () => copy(data.code, 'Pairing code copied.'); $('#copy-pair-link').onclick = () => copy(link, 'Pairing link copied. Open it on your phone.');
       const interval = setInterval(() => { if (!$('#pair-expiry')) return clearInterval(interval); const left = Math.max(0, data.expiresAt - Date.now()); $('#pair-expiry').textContent = left ? `Expires in ${Math.floor(left / 60000)}:${String(Math.floor(left % 60000 / 1000)).padStart(2, '0')}` : 'Code expired. Generate a new one.'; }, 1000);
     } catch (err) { toast(err.message, 'error'); }
@@ -485,30 +525,54 @@
     fill(); speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
   }
   function speak(text, force = false) {
-    if (!('speechSynthesis' in window)) { if (force) toast('Speech output is not supported in this browser.', 'info'); return; }
+    if (!('speechSynthesis' in window)) { if (force) toast('Speech output is not supported in this browser.', 'info'); return Promise.resolve(); }
     const s = { ...S.state.settings, ...(S.view === 'settings' && $('#setting-voice-uri') ? { voiceURI: $('#setting-voice-uri').value, voiceGender: $('#setting-gender').value, speechRate: Number($('#setting-rate').value), voiceEnabled: $('#setting-voice').checked } : {}) };
-    if (!s.voiceEnabled && !force) return;
+    if (!s.voiceEnabled && !force) return Promise.resolve();
     speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\*\*/g, '').replace(/[•#]/g, '').slice(0, 1200));
     const voices = speechSynthesis.getVoices(); const lang = /[\u0980-\u09FF]/.test(text) ? 'bn' : 'en';
     u.lang = lang === 'bn' ? 'bn-BD' : 'en-US'; u.rate = s.speechRate || 1;
     const chosen = voices.find(v => v.voiceURI === s.voiceURI) || voices.find(v => v.lang.startsWith(lang) && (s.voiceGender === 'auto' || new RegExp(s.voiceGender === 'feminine' ? 'female|samantha|zira|aria|jenny|sonia|ava|google.*english' : 'male|david|daniel|guy|alex|mark', 'i').test(v.name))) || voices.find(v => v.lang.startsWith(lang));
     if (chosen) u.voice = chosen;
-    u.onerror = e => { if (force && e.error !== 'interrupted' && e.error !== 'canceled') toast('Voice playback failed. Check your browser’s speech settings.', 'error'); };
-    speechSynthesis.speak(u);
+    return new Promise(resolve => {
+      let done = false; const finish = () => { if (done) return; done = true; clearTimeout(timer); if (S.voiceSession.finishSpeech === finish) S.voiceSession.finishSpeech = null; resolve(); };
+      S.voiceSession.finishSpeech = finish;
+      const timer = setTimeout(finish, 45000);
+      u.onend = finish; u.onerror = e => { if (force && !['interrupted', 'canceled'].includes(e.error)) toast('Voice playback failed. Check your browser’s speech settings.', 'error'); finish(); };
+      try { speechSynthesis.speak(u); } catch { finish(); }
+    });
+  }
+  function stopVoiceConversation() {
+    S.voiceSession.active = false; clearTimeout(S.voiceSession.timer); S.voiceSession.timer = null;
+    if (S.listening && S.recognition) { try { S.recognition.abort(); } catch {} }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    S.voiceSession.finishSpeech?.();
+    renderShell();
+  }
+  function scheduleVoiceTurn() {
+    clearTimeout(S.voiceSession.timer);
+    if (!S.voiceSession.active) return;
+    S.voiceSession.timer = setTimeout(() => { if (S.voiceSession.active && !S.busy && !S.listening && !S.modal) startVoice(); }, 800);
+  }
+  function toggleVoiceConversation() {
+    if (S.voiceSession.active) { stopVoiceConversation(); toast('Voice conversation stopped.'); return; }
+    if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) { startVoice(); return; }
+    if (S.listening) { toast('Stop the current microphone session first.', 'info'); return; }
+    S.voiceSession.active = true; if (!['overview', 'conversation'].includes(S.view)) navigate('conversation');
+    renderShell(); toast('Voice conversation is on. Use Stop voice conversation to end it.', 'info'); startVoice();
   }
   function startVoice() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) return modal('Voice input isn’t available here', `<div class="modal-icon">${icon('mic')}</div><p>This browser doesn’t support speech recognition. Try Chrome or Edge on HTTPS, or use the text box. Voice input may use your browser vendor’s speech service; it is not a local wake-word listener.</p><div class="modal-footer"><button class="btn btn-primary" data-close>Got it</button></div>`);
-    if (S.listening) { S.recognition?.stop(); return; }
+    if (S.listening) { if (S.voiceSession.active) stopVoiceConversation(); else S.recognition?.stop(); return; }
     if (S.view !== 'overview' && S.view !== 'conversation') navigate('conversation');
     const rec = new Recognition(); S.recognition = rec; S.listening = true;
     rec.lang = S.state.settings.language === 'bn' ? 'bn-BD' : /[\u0980-\u09FF]/.test($('#chat-input')?.value || '') ? 'bn-BD' : 'en-US';
     rec.interimResults = true; rec.continuous = false;
     $$('.mic-button').forEach(b => b.classList.add('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'LISTENING…';
     rec.onresult = e => { const transcript = [...e.results].map(r => r[0].transcript).join(''); if ($('#chat-input')) $('#chat-input').value = transcript; if (e.results[e.results.length - 1].isFinal) { rec.stop(); sendMessage(transcript); } };
-    rec.onerror = e => { const messages = { 'not-allowed': 'Microphone permission was denied. Allow it in your browser settings.', 'no-speech': 'I didn’t catch that. Try again when you’re ready.', 'audio-capture': 'No microphone was found.', network: 'The browser speech service is unavailable. You can still type.' }; if (e.error !== 'aborted') toast(messages[e.error] || 'Voice input stopped. Please try again.', 'info'); };
-    rec.onend = () => { S.listening = false; $$('.mic-button').forEach(b => b.classList.remove('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; };
-    try { rec.start(); toast('Listening. Speak now; tap the microphone again to stop.', 'info'); } catch { S.listening = false; toast('Could not start the microphone.', 'error'); }
+    rec.onerror = e => { const messages = { 'not-allowed': 'Microphone permission was denied. Allow it in your browser settings.', 'no-speech': 'I didn’t catch that. Try again when you’re ready.', 'audio-capture': 'No microphone was found.', network: 'The browser speech service is unavailable. You can still type.' }; if (e.error !== 'aborted' && (e.error !== 'no-speech' || !S.voiceSession.active)) toast(messages[e.error] || 'Voice input stopped. Please try again.', 'info'); if (['not-allowed', 'audio-capture', 'network', 'service-not-allowed'].includes(e.error)) stopVoiceConversation(); };
+    rec.onend = () => { if (S.recognition === rec) S.recognition = null; S.listening = false; $$('.mic-button').forEach(b => b.classList.remove('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; if (S.voiceSession.active && !S.busy) scheduleVoiceTurn(); };
+    try { rec.start(); if (!S.voiceSession.active) toast('Listening. Speak now; tap the microphone again to stop.', 'info'); } catch { S.listening = false; if (S.voiceSession.active) stopVoiceConversation(); toast('Could not start the microphone.', 'error'); }
   }
 
   /* Command palette */
@@ -523,7 +587,7 @@
   }
   function renderPalette(query) {
     const q = query.toLowerCase();
-    const pages = [['overview', 'grid', 'Overview'], ['conversation', 'message', 'Conversation'], ['memory', 'brain', 'Memory vault'], ['desktop', 'monitor', 'Desktop control'], ['activity', 'activity', 'Activity'], ['settings', 'settings', 'Settings']].map(([view, ic, label]) => ({ label, detail: 'Go to page', icon: ic, run: () => navigate(view) }));
+    const pages = [['overview', 'grid', 'Overview'], ['conversation', 'message', 'Conversation'], ['memory', 'brain', 'Memory vault'], ['world', 'globe', 'World monitor'], ['desktop', 'monitor', 'Desktop control'], ['activity', 'activity', 'Activity'], ['settings', 'settings', 'Settings']].map(([view, ic, label]) => ({ label, detail: 'Go to page', icon: ic, run: () => navigate(view) }));
     const actions = Object.entries(S.state.catalog).filter(([k]) => k !== 'whatsapp_draft' && k !== 'keyboard_type' && !k.startsWith('mouse_')).map(([kind, item]) => ({ label: item.label, detail: 'Desktop action · approval required', icon: item.icon, run: () => prepareAction(kind) }));
     const memories = S.state.memories.map(m => ({ label: m.content, detail: 'Memory · ' + m.category, icon: 'brain', run: () => memoryModal(m) }));
     S.paletteItems = [...pages, ...actions, ...memories, { label: 'Add a memory', detail: 'Save something worth keeping', icon: 'plus', run: () => memoryModal() }, { label: 'Start focus timer', detail: `${S.focus.minutes} minutes`, icon: 'timer', run: () => { startFocus(S.focus.minutes); navigate('overview'); } }].filter(item => (item.label + ' ' + item.detail).toLowerCase().includes(q)).slice(0, 14);
@@ -553,14 +617,14 @@
     if (el.dataset.deleteMemory) { const m = S.state.memories.find(x => x.id === el.dataset.deleteMemory); return confirmDialog('Forget this memory?', m.content, 'Delete memory', async () => { await api('/memories/' + m.id, { method: 'DELETE' }); S.state.memories = S.state.memories.filter(x => x.id !== m.id); renderMemoryGrid(); renderShell(); toast('Memory deleted.'); }, true); }
     if (el.dataset.memoryFilter) { S.memoryFilter = el.dataset.memoryFilter; $$('[data-memory-filter]').forEach(b => b.classList.toggle('active', b === el)); return renderMemoryGrid(); }
     if (el.dataset.focusMinutes) { S.focus = { minutes: +el.dataset.focusMinutes, remaining: +el.dataset.focusMinutes * 60, running: false, endAt: 0 }; saveFocus(); $$('[data-focus-minutes]').forEach(b => b.classList.toggle('active', b === el)); return tickFocus(); }
-    if (el.dataset.persona && isOwner()) { try { const data = await api('/settings', { method: 'PATCH', body: { persona: el.dataset.persona, assistantName: el.dataset.persona === 'atlas' ? 'ATLAS' : 'NOVA', voiceGender: el.dataset.persona === 'atlas' ? 'masculine' : 'feminine' } }); S.state.settings = data.settings; renderShell(); renderSettings(); toast(`${data.settings.assistantName} is ready.`); } catch (err) { toast(err.message, 'error'); } return; }
+    if (el.dataset.persona && isOwner()) { try { const persona = el.dataset.persona; const names = { nova: 'NOVA', atlas: 'ATLAS', jarvis: 'JARVIS', mentor: 'MENTOR', custom: S.state.settings.customCharacterName || 'MY ASSISTANT' }; const data = await api('/settings', { method: 'PATCH', body: { persona, assistantName: names[persona], ...(persona === 'atlas' || persona === 'jarvis' ? { voiceGender: 'masculine' } : persona === 'nova' ? { voiceGender: 'feminine' } : {}) } }); S.state.settings = data.settings; renderShell(); renderSettings(); toast(`${data.settings.assistantName} is ready.`); } catch (err) { toast(err.message, 'error'); } return; }
     if (el.dataset.revokeRemote) return confirmDialog('Revoke this phone?', 'It will immediately lose access to this workspace.', 'Revoke access', async () => { await api('/remote/' + el.dataset.revokeRemote, { method: 'DELETE' }); S.state.remotes = S.state.remotes.filter(r => r.token_hash !== el.dataset.revokeRemote); renderRemoteDevices(); toast('Phone access revoked.'); });
     if (el.dataset.paletteIndex !== undefined) { const item = S.paletteItems[+el.dataset.paletteIndex]; closeModal(); return item?.run(); }
     const action = el.dataset.action; if (!action) return;
     const handlers = {
       workspace: () => navigate('settings'), palette: openPalette, help: helpModal, remote: remoteModal,
       'connect-desktop': () => navigate('desktop'), 'start-chat': () => { navigate('conversation'); $('#chat-input')?.focus(); },
-      voice: startVoice, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder,
+      voice: startVoice, 'continuous-voice': toggleVoiceConversation, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder,
       'disconnect-ai': () => confirmDialog('Disconnect Groq?', 'NOVA will remove the encrypted key from this workspace and return to local command mode (unless a server environment key is configured).', 'Disconnect', async () => {
         const data = await api('/ai/disconnect', { method: 'POST', body: {} });
         S.state.ai = data.ai; renderShell(); if (S.view === 'settings') renderSettings();
@@ -582,6 +646,6 @@
   });
   $('#mobile-menu').onclick = () => $('#sidebar').classList.toggle('open');
   $('#sidebar-scrim').onclick = () => $('#sidebar').classList.remove('open');
-  window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (S.state && ['overview', 'conversation', 'memory', 'desktop', 'activity', 'settings'].includes(v) && v !== S.view) navigate(v); });
+  window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (S.state && ['overview', 'conversation', 'memory', 'world', 'desktop', 'activity', 'settings'].includes(v) && v !== S.view) navigate(v); });
   boot();
 })();

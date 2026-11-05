@@ -2,6 +2,15 @@
 // This catalog is shared by the server and the Windows agent. The agent never
 // receives a shell command, executable path, or arbitrary URL from a browser.
 const CATALOG = Object.freeze({
+  open_google: { label: 'Open Google', detail: 'Opens Google Search in your default browser.', icon: 'globe', group: 'Web' },
+  open_google_maps: { label: 'Open Google Maps', detail: 'Opens Google Maps in your default browser.', icon: 'globe', group: 'Web' },
+  open_gmail: { label: 'Open Gmail', detail: 'Opens Gmail; NOVA does not read or send mail.', icon: 'message', group: 'Web' },
+  open_google_calendar: { label: 'Open Google Calendar', detail: 'Opens Google Calendar; NOVA does not read or edit events.', icon: 'calendar', group: 'Web' },
+  open_github: { label: 'Open GitHub', detail: 'Opens GitHub in your default browser.', icon: 'link', group: 'Web' },
+  open_wikipedia: { label: 'Open Wikipedia', detail: 'Opens Wikipedia in your default browser.', icon: 'globe', group: 'Web' },
+  open_paint: { label: 'Open Paint', detail: 'Launches Windows Paint.', icon: 'edit', group: 'Apps' },
+  open_task_manager: { label: 'Open Task Manager', detail: 'Launches Windows Task Manager; NOVA will not stop processes.', icon: 'activity', group: 'Apps' },
+  open_onscreen_keyboard: { label: 'Open On-Screen Keyboard', detail: 'Launches Windows On-Screen Keyboard.', icon: 'grid', group: 'Apps' },
   open_youtube: { label: 'Open YouTube', detail: 'Opens youtube.com in your default browser.', icon: 'play', group: 'Web' },
   open_spotify: { label: 'Open Spotify', detail: 'Opens the Spotify web player. Playback stays in your control.', icon: 'music', group: 'Web' },
   open_whatsapp: { label: 'Open WhatsApp', detail: 'Opens WhatsApp Web. NOVA never sends a message automatically.', icon: 'message', group: 'Web' },

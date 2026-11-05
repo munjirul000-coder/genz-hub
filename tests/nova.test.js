@@ -405,3 +405,59 @@ test('Notepad typing is owner-only, reviewed and rejects secrets and unsafe cont
   const claimed = await req('/bridge/poll', { method: 'POST', headers, body: {} });
   assert.equal(claimed.data.action.kind, 'keyboard_type'); assert.deepEqual(claimed.data.action.params, { text: 'Hello' });
 });
+
+test('world feeds parse sourced events and reject untrusted links', () => {
+  const { quakeItems, newsItems } = require('../src/nova/world');
+  const features = [{ geometry: { coordinates: [90.4, 23.7] }, properties: { mag: 4.3, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' } }, { geometry: { coordinates: [300, 0] }, properties: { mag: 3, time: 1700000000000 } }, null];
+  const q = quakeItems({ features }); assert.equal(q.length, 1); assert.equal(q[0].lat, 23.7); assert.equal(q[0].magnitude, 4.3);
+  assert.equal(quakeItems({ features: [{ ...features[0], properties: { ...features[0].properties, url: 'https://evil.example/' } }] })[0].url, '');
+  const rss = '<rss><channel><item><title><![CDATA[World &amp; News]]></title><link>https://www.bbc.com/news/test</link><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item><item><title>Bad</title><link>https://evil.example/</link></item></channel></rss>';
+  const news = newsItems(rss); assert.equal(news.length, 1); assert.equal(news[0].title, 'World & News'); assert.match(news[0].url, /^https:\/\/www\.bbc\.com/);
+  assert.throws(() => newsItems('not xml')); assert.throws(() => quakeItems({}));
+});
+
+test('world endpoint fetches fixed public sources, reports real source status and requires a session', async () => {
+  const existingOwner = store.createWorkspace().token;
+  assert.equal((await req('/world')).status, 401);
+  const realFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [{ geometry: { coordinates: [90.4, 23.7] }, properties: { mag: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' } }] }), { status: 200 });
+    if (String(url).startsWith('https://feeds.bbci.co.uk/')) throw new Error('offline');
+    return realFetch(url, options);
+  };
+  try {
+    const response = await req('/world', { token: existingOwner });
+    assert.equal(response.status, 200); assert.equal(response.data.quakes.ok, true); assert.equal(response.data.quakes.items.length, 1);
+    assert.equal(response.data.news.ok, false); assert.deepEqual(response.data.news.items, []);
+  } finally { global.fetch = realFetch; }
+});
+
+test('character settings support custom persona, persist and remain owner-only', async () => {
+  const owner = store.createWorkspace().token;
+  const saved = await req('/settings', { method: 'PATCH', token: owner, body: { persona: 'custom', assistantName: 'Luna', customCharacterName: 'Luna', customInstructions: 'Patient and concise', voiceGender: 'feminine' } });
+  assert.equal(saved.status, 200); assert.equal(saved.data.settings.persona, 'custom');
+  const state = await req('/state', { token: owner }); assert.equal(state.data.settings.assistantName, 'Luna'); assert.equal(state.data.settings.customInstructions, 'Patient and concise');
+  for (const persona of ['jarvis', 'mentor', 'nova', 'atlas']) assert.equal((await req('/settings', { method: 'PATCH', token: owner, body: { persona } })).status, 200);
+  assert.equal((await req('/settings', { method: 'PATCH', token: owner, body: { persona: 'invalid' } })).status, 400);
+  const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });
+  const remote = (await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } })).data.token;
+  assert.equal((await req('/settings', { method: 'PATCH', token: remote, body: { persona: 'jarvis' } })).status, 403);
+});
+
+test('Banglish explicit memories and name recall work without cloud access', async () => {
+  const { respond } = require('../src/nova/assistant');
+  const settings = { language: 'auto', assistantName: 'NOVA' };
+  const memory = localReply('amar nam Rafi mone rakho', settings, [], 'Asia/Dhaka').memory;
+  assert.equal(memory.content, 'My name is Rafi'); assert.equal(memory.category, 'personal');
+  assert.equal(localReply('amar blue colour pochondo mone rakho', settings, [], 'Asia/Dhaka').memory.category, 'preference');
+  const answer = await respond({ text: 'amar nam ki?', settings, memories: [memory], history: [], timezone: 'Asia/Dhaka', config: { configured: true } });
+  assert.match(answer.content, /Rafi/); assert.equal(answer.engine, 'local');
+});
+
+test('expanded PC skills use fixed destinations and require approval', async () => {
+  for (const [message, kind] of [['Open Google Maps', 'open_google_maps'], ['Open Gmail', 'open_gmail'], ['Open GitHub', 'open_github'], ['Open Paint', 'open_paint'], ['Open Task Manager', 'open_task_manager']]) {
+    assert.equal(actionIntent(message), kind);
+    assert.match(await agent.execute({ kind, params: {} }, true), /DRY RUN/);
+    assert.throws(() => agent.validate(kind, { url: 'https://evil.example' }));
+  }
+});
