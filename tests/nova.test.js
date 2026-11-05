@@ -376,3 +376,32 @@ test('mouse commands require valid coordinates, owner consent and a connected br
   const claimed = await req('/bridge/poll', { method: 'POST', headers, body: {} });
   assert.equal(claimed.data.action.kind, 'mouse_click'); assert.deepEqual(claimed.data.action.params, { x: 10, y: 20 });
 });
+
+test('Notepad typing is owner-only, reviewed and rejects secrets and unsafe controls', async () => {
+  const { keyboardIntent } = require('../src/nova/assistant');
+  const { validateAction } = require('../src/nova/catalog');
+  assert.deepEqual(keyboardIntent('type notepad: Hello NOVA'), { kind: 'keyboard_type', params: { text: 'Hello NOVA' } });
+  assert.equal(keyboardIntent('type notepad: gsk_test_key_abcdefghijklmnopqrstuvwxyz'), null);
+  for (const params of [{ text: '' }, { text: 'a\nb' }, { text: 'a\tb' }, { text: 'x'.repeat(301) }, { text: 'gsk_test_key_abcdefghijklmnopqrstuvwxyz' }, { text: 'hello', command: 'x' }]) {
+    assert.ok(validateAction('keyboard_type', params).error);
+    assert.throws(() => agent.validate('keyboard_type', params));
+  }
+  assert.match(await agent.execute({ kind: 'keyboard_type', params: { text: 'Hello' } }, true), /DRY RUN/);
+  const owner = await workspace();
+  const ownerId = (await req('/state', { token: owner })).data.workspace.id;
+  const bridge = { data: { token: store.issueBridge(ownerId) } };
+  const pair = await req('/remote/create', { method: 'POST', token: owner, body: {} });
+  const remote = (await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } })).data.token;
+  assert.equal((await req('/actions', { method: 'POST', token: remote, body: { kind: 'keyboard_type', params: { text: 'Hello' } } })).status, 403);
+  assert.equal((await req('/chat', { method: 'POST', token: remote, body: { message: 'type notepad: Hello' } })).status, 403);
+  const proposed = await req('/chat', { method: 'POST', token: owner, body: { message: 'type notepad: Hello' } });
+  assert.equal(proposed.data.action.kind, 'keyboard_type'); assert.equal(proposed.data.action.status, 'pending');
+  const id = proposed.data.action.id;
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: remote, body: {} })).status, 403);
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: owner, body: {} })).status, 409);
+  const headers = { Authorization: 'Bearer ' + bridge.data.token };
+  await req('/bridge/poll', { method: 'POST', headers, body: {} });
+  assert.equal((await req('/actions/' + id + '/approve', { method: 'POST', token: owner, body: {} })).status, 200);
+  const claimed = await req('/bridge/poll', { method: 'POST', headers, body: {} });
+  assert.equal(claimed.data.action.kind, 'keyboard_type'); assert.deepEqual(claimed.data.action.params, { text: 'Hello' });
+});

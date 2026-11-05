@@ -90,7 +90,14 @@ Bridge window open থাকলে desktop control কাজ করবে। ব
 
 ### পরীক্ষামূলক mouse control
 
-Updated NOVA এবং updated Windows bridge দুটোই দরকার। Desktop control-এ **Mouse control**-এ X/Y screen coordinate দিয়ে **Review move** বা **Review left click** চাপো, তারপর owner হিসেবে অনুমতি দাও। Chat-এ `mouse move 500 300` বা `mouse click 500 300`-ও বলা যায়। NOVA screen দেখতে পারে না, তাই নিজে লক্ষ্যবস্তু চিনতে পারে না। ভুল জায়গায় click করলে file delete-সহ যেকোনো action হতে পারে—screen দেখে অনুমতি দেবে। প্রতিটি move/click-এ আলাদা অনুমতি লাগে; voice-only অনুমতি বা keyboard automation এখনো নেই। Windows-এর virtual screen-এর বাইরে coordinate হলে তা প্রত্যাখ্যাত হবে। এই নতুন mouse feature বাস্তব Windows laptop-এ এখনো পরীক্ষা করা হয়নি।
+Updated NOVA এবং updated Windows bridge দুটোই দরকার। Desktop control-এ **Mouse control**-এ X/Y screen coordinate দিয়ে **Review move** বা **Review left click** চাপো, তারপর owner হিসেবে অনুমতি দাও। Chat-এ `mouse move 500 300` বা `mouse click 500 300`-ও বলা যায়। NOVA screen দেখতে পারে না, তাই নিজে লক্ষ্যবস্তু চিনতে পারে না। ভুল জায়গায় click করলে file delete-সহ যেকোনো action হতে পারে—screen দেখে অনুমতি দেবে। প্রতিটি move/click-এ আলাদা অনুমতি লাগে; voice approval ব্যবহার করলেও প্রতিটি action আলাদা অনুমোদন করতে হবে। Windows-এর virtual screen-এর বাইরে coordinate হলে তা প্রত্যাখ্যাত হবে। এই নতুন mouse feature বাস্তব Windows laptop-এ এখনো পরীক্ষা করা হয়নি।
+
+### পরীক্ষামূলক Notepad typing এবং voice approval
+
+Desktop control-এ **Keyboard: type in Notepad**-এ এক লাইনের লেখা দিয়ে **Review typing** চাপো। অনুমতির পরে সঙ্গে সঙ্গে Notepad সামনে আনো; bridge action পাওয়ার প্রায় পাঁচ সেকেন্ড পর শুধু foreground Notepad-এ লিখবে। Focus অন্যত্র চলে গেলে থামার চেষ্টা করবে; কিছু লেখা ইতোমধ্যে লেখা হয়ে থাকতে পারে। অন্য app, shortcuts, Enter বা arbitrary commands সমর্থিত নয়। লেখাটি action history-তে সংরক্ষিত হয় এবং paired device দেখতে পারে—কখনো password বা secret দেবে না।
+
+Connected bridge থাকলে action review-এ **Approve by voice** চেপে `অনুমতি দিচ্ছি` বলেও ওই একটি action অনুমোদন করা যায়। Browser-এর speech recognition প্রয়োজন এবং browser vendor-এর service ব্যবহৃত হতে পারে। **Voice দিয়ে বক্তার পরিচয় যাচাই হয় না**—কাছে থাকা অন্য কেউ বা recording-ও একই কথা বলতে পারে। একবারে সব কাজের অনুমতি দেওয়া হয় না; প্রতিটি action আলাদা অনুমোদন লাগে। আসল Windows keyboard input ও microphone recognition এখনো বাস্তব laptop-এ পরীক্ষা করা হয়নি।
+
 
 
 ## 6) ফোনকে remote বানাও (একই Wi‑Fi)

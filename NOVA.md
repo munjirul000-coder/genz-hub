@@ -74,7 +74,7 @@ node nova-agent.js --server https://your-nova-host.example --token-file nova-bri
 | System information | OS, CPU, RAM, uptime পড়ে |
 | WhatsApp draft | International number + text দিয়ে draft খোলে; **Send নিজে চাপতে হবে** |
 
-**যা কখনোই চলে না:** arbitrary shell command, custom executable/URL, file delete/format, shutdown, screen capture, automatic WhatsApp send। Approval ২ মিনিটে expire হয়। Agent heartbeat ছাড়া system info দেখায় না।
+**সীমাবদ্ধতা:** সরাসরি arbitrary shell command, custom executable/URL, file delete/format, shutdown বা screen capture-এর action নেই; WhatsApp স্বয়ংক্রিয়ভাবে send হয় না। তবে অনুমোদিত mouse click অন্য app-এ delete বা অন্য ঝুঁকিপূর্ণ কাজ শুরু করতে পারে, তাই আগে screen দেখে নাও। Approval ২ মিনিটে expire হয়। Agent heartbeat ছাড়া system info দেখায় না।
 
 ### Windows ছাড়া পরীক্ষা
 
@@ -141,7 +141,7 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 1. Desktop NOVA → **Connect phone**।
 2. Link কপি করে ফোনে খোলো, অথবা `/nova`-তে ১০-character code দাও।
 3. Code ৫ মিনিটে expire হয় এবং একবার ব্যবহার হয়।
-4. ফোন chat, memory ও desktop approval করতে পারে; workspace delete, bridge token generate বা owner settings বদলাতে পারে না।
+4. ফোন chat, memory ও সাধারণ desktop approval করতে পারে; mouse/keyboard action শুধু owner prepare ও approve করতে পারে। ফোন workspace delete, bridge token generate বা owner settings বদলাতে পারে না।
 5. **Settings → Paired phones → Revoke** দিলে access সাথে সাথে বন্ধ।
 
 ---

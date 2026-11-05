@@ -141,7 +141,7 @@ function createNovaRouter({ dataDir, agentFile }) {
           : 'আমি একটি static website তৈরি করে save করেছি। Preview খুলেছি; পরে Build website → Saved websites থেকেও পাবে। এটি live website বা backend নয়।' };
       } else result = { engine: 'local', content: `Website তৈরি বা পরিবর্তন করা যায়নি: ${generated.error} কোনো নতুন project তৈরি হয়নি।` };
     } else result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId) });
-    if (result.action?.kind?.startsWith('mouse_') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can prepare mouse actions.' });
+    if ((result.action?.kind?.startsWith('mouse_') || result.action?.kind === 'keyboard_type') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can prepare mouse and keyboard actions.' });
     // A workspace may be deleted while a cloud request is in flight.
     if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
     if (result.memory && memories.length >= 200) return res.status(400).json({ error: 'Memory vault is full (200 items). Delete an old memory first.' });
@@ -226,7 +226,7 @@ function createNovaRouter({ dataDir, agentFile }) {
 
   router.post('/actions', auth, (req, res) => {
     const kind = clean(req.body?.kind, 50); const valid = validateAction(kind, req.body?.params || {});
-    if (kind.startsWith('mouse_') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can prepare mouse actions.' });
+    if ((kind.startsWith('mouse_') || kind === 'keyboard_type') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can prepare mouse and keyboard actions.' });
     if (valid.error) return res.status(400).json({ error: valid.error });
     store.expireActions();
     const pending = store.actions(req.nova.workspace_id).filter(a => ['pending', 'approved', 'running'].includes(a.status));
@@ -235,7 +235,7 @@ function createNovaRouter({ dataDir, agentFile }) {
   });
   router.post('/actions/:id/approve', auth, (req, res) => {
     const action = ownAction(req); if (!action) return res.status(404).json({ error: 'Action not found.' });
-    if (action.kind.startsWith('mouse_') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can approve mouse actions.' });
+    if ((action.kind.startsWith('mouse_') || action.kind === 'keyboard_type') && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can approve mouse and keyboard actions.' });
     store.expireActions();
     const current = store.action(action.id);
     if (current.status !== 'pending') return res.status(409).json({ error: `This action is already ${current.status}.` });

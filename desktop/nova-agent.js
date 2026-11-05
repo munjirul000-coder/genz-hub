@@ -21,10 +21,11 @@ const ACTIONS = Object.freeze({
   open_explorer: { label: 'Open Downloads' },
   system_info: { label: 'System information' },
   whatsapp_draft: { label: 'Open WhatsApp draft' },
+  keyboard_type: { label: 'Type in Notepad' },
   mouse_move: { label: 'Move mouse pointer' },
   mouse_click: { label: 'Left click mouse' },
 });
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 function argsOf(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
@@ -38,6 +39,11 @@ function argsOf(argv) {
 function validate(kind, params = {}) {
   if (!Object.prototype.hasOwnProperty.call(ACTIONS, kind)) throw new Error('Action is not allowlisted.');
   if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error('Invalid parameters.');
+  if (kind === 'keyboard_type') {
+    const text = params.text;
+    if (Object.keys(params).join(',') !== 'text' || typeof text !== 'string' || !text.trim() || text.length > 300 || /[\x00-\x1f\x7f]/.test(text) || /(?:gsk_[A-Za-z0-9_-]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,})/.test(text)) throw new Error('Invalid keyboard text.');
+    return { text };
+  }
   if (kind === 'mouse_move' || kind === 'mouse_click') {
     if (Object.keys(params).sort().join(',') !== 'x,y' || !Number.isInteger(params.x) || !Number.isInteger(params.y) || params.x < -32768 || params.x > 32767 || params.y < -32768 || params.y > 32767) throw new Error('Invalid mouse coordinates.');
     return { x: params.x, y: params.y };
@@ -96,11 +102,59 @@ function sendMouse(kind, params) {
     });
   });
 }
+// Only send single-line Unicode text to the foreground Notepad process. No
+// arbitrary keystrokes, shortcuts or shell commands are accepted.
+const KEYBOARD_SCRIPT = `
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+public static class NovaKeyboard {
+    [StructLayout(LayoutKind.Sequential)] public struct MOUSEINPUT { public int dx, dy; public uint mouseData, flags, time; public UIntPtr extra; }
+    [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT { public ushort vk, scan; public uint flags, time; public UIntPtr extra; }
+    [StructLayout(LayoutKind.Sequential)] public struct HARDWAREINPUT { public uint message; public ushort low, high; }
+    [StructLayout(LayoutKind.Explicit)] public struct UNION { [FieldOffset(0)] public MOUSEINPUT mouse; [FieldOffset(0)] public KEYBDINPUT key; [FieldOffset(0)] public HARDWAREINPUT hardware; }
+    [StructLayout(LayoutKind.Sequential)] public struct INPUT { public uint type; public UNION data; }
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint id);
+    [DllImport("user32.dll", SetLastError=true)] static extern uint SendInput(uint n, INPUT[] inputs, int size);
+    public static void TypeText(string text) {
+        IntPtr target = GetForegroundWindow(); uint pid;
+        GetWindowThreadProcessId(target, out pid);
+        if (target == IntPtr.Zero || pid == 0 || !string.Equals(Process.GetProcessById((int)pid).ProcessName, "notepad", StringComparison.OrdinalIgnoreCase)) throw new Exception("Activate Notepad before typing.");
+        foreach (char c in text) {
+            if (GetForegroundWindow() != target) throw new Exception("Focus changed while typing; stopped.");
+            INPUT[] events = new INPUT[2];
+            events[0].type = 1; events[0].data.key.scan = c; events[0].data.key.flags = 4;
+            events[1].type = 1; events[1].data.key.scan = c; events[1].data.key.flags = 6;
+            if (SendInput(2, events, Marshal.SizeOf(typeof(INPUT))) != 2) throw new Exception("Windows rejected keyboard input.");
+        }
+    }
+}
+'@
+Start-Sleep -Seconds 5
+[NovaKeyboard]::TypeText($env:NOVA_KEYBOARD_TEXT)
+`;
+function sendKeyboard(params) {
+  const encoded = Buffer.from(KEYBOARD_SCRIPT, 'utf16le').toString('base64');
+  const env = { ...process.env, NOVA_KEYBOARD_TEXT: params.text };
+  return new Promise((resolve, reject) => {
+    execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { shell: false, windowsHide: true, timeout: 20000, maxBuffer: 65536, env }, err => {
+      if (err) return reject(new Error('Keyboard action failed or stopped. Open and focus Notepad within 5 seconds; some text may already have been typed.'));
+      resolve();
+    });
+  });
+}
 async function execute(action, dryRun = false) {
   const params = validate(action.kind, action.params);
   const item = ACTIONS[action.kind];
   if (dryRun) return `[DRY RUN] ${item.label}: no desktop operation was performed.`;
   if (process.platform !== 'win32') throw new Error('The NOVA bridge executes actions on Windows only. Use --dry-run for protocol tests.');
+  if (action.kind === 'keyboard_type') {
+    await sendKeyboard(params);
+    return 'Text was sent to the focused Notepad window.';
+  }
   if (action.kind === 'mouse_move' || action.kind === 'mouse_click') {
     await sendMouse(action.kind, params);
     return `${item.label} sent at (${params.x}, ${params.y}). NOVA cannot see what was clicked.`;
@@ -129,7 +183,7 @@ async function main() {
   if (args['self-test']) {
     const invalid = [{ kind: 'shell', params: {} }, { kind: 'open_youtube', params: { url: 'https://evil.example' } }, { kind: 'whatsapp_draft', params: { phone: '123', text: 'hi' } }, { kind: '__proto__', params: {} }];
     for (const a of invalid) { let rejected = false; try { validate(a.kind, a.params); } catch { rejected = true; } if (!rejected) throw new Error('Safety self-test failed: ' + a.kind); }
-    for (const kind of Object.keys(ACTIONS)) validate(kind, kind === 'whatsapp_draft' ? { phone: '+8801712345678', text: 'Hello' } : kind.startsWith('mouse_') ? { x: 10, y: 10 } : {});
+    for (const kind of Object.keys(ACTIONS)) validate(kind, kind === 'whatsapp_draft' ? { phone: '+8801712345678', text: 'Hello' } : kind.startsWith('mouse_') ? { x: 10, y: 10 } : kind === 'keyboard_type' ? { text: 'Hello' } : {});
     console.log('PASS: allowlist, parameter validation and dangerous-action rejection.'); return;
   }
   const base = (args.server || process.env.NOVA_SERVER || 'http://localhost:3000').replace(/\/$/, '');

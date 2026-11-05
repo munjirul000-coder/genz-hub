@@ -24,6 +24,13 @@ function mouseIntent(text) {
   return valid.error ? null : { kind, params: valid.params };
 }
 
+function keyboardIntent(text) {
+  const match = String(text || '').match(/^type\s+(?:in\s+)?notepad\s*:\s*(.+)$/i);
+  if (!match) return null;
+  const valid = validateAction('keyboard_type', { text: match[1] });
+  return valid.error ? null : { kind: 'keyboard_type', params: valid.params };
+}
+
 // Only an explicit request to create a website starts a build. Questions and
 // negations remain normal chat; never infer a request to edit/delete a project.
 function websiteIntent(text) {
@@ -74,6 +81,8 @@ function calculate(input) {
 function localReply(text, settings, memories, timezone) {
   const t = text.trim(); const lower = t.toLowerCase(); const bn = BN.test(t) || settings.language === 'bn';
   const say = (en, bangla) => bn ? bangla : en;
+  const keyboard = keyboardIntent(t);
+  if (keyboard) return { content: say('I prepared text for Notepad. Review it and approve; then focus Notepad within five seconds. Never include secrets.', 'Notepad-এ লেখার জন্য action প্রস্তুত। দেখে অনুমতি দাও, তারপর পাঁচ সেকেন্ডের মধ্যে Notepad-এ যাও। গোপন তথ্য লিখবে না।'), action: keyboard };
   const mouse = mouseIntent(t);
   if (mouse) return { content: say('I prepared a mouse action. Review the coordinates and approve it before anything happens. I cannot see your screen.', 'Mouse action প্রস্তুত করেছি। Coordinates দেখে অনুমতি দিলে চলবে। আমি তোমার screen দেখতে পারি না।'), action: mouse };
   const kind = actionIntent(t);
@@ -236,4 +245,4 @@ async function testAiConnection(savedConfig) {
       : 'This NOVA server could not reach the AI provider. Hosted previews often block outbound AI calls — run NOVA on your own laptop (START-NOVA.bat) and connect there. On your own server, check internet/firewall.' };
   }
 }
-module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent, websiteEditIntent, mouseIntent };
+module.exports = { respond, localReply, actionIntent, calculate, aiConfig, testAiConnection, providerError, generateWebsite, websiteIntent, websiteEditIntent, mouseIntent, keyboardIntent };

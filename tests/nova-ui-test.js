@@ -178,6 +178,37 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('mouse click review displays coordinates and deletion warning', (await text(page)).includes('Screen coordinates: X 500, Y 300') && (await text(page)).includes('A click may delete files'));
     ok('mouse click cannot run while bridge offline', await page.$('#approve-action') === null);
     await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await page.type('#keyboard-text', 'Hello NOVA');
+    await click(page, '#keyboard-form button[type="submit"]'); await page.waitForSelector('.approval-detail');
+    ok('keyboard action review shows text and requires Notepad', (await text(page)).includes('Hello NOVA') && (await text(page)).includes('focus Notepad within 5 seconds'));
+    ok('keyboard action cannot run while bridge offline', await page.$('#approve-action') === null);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    // Simulate a connected bridge and browser speech recognition; no OS inputs are executed.
+    const onlineResult = await page.evaluate(async () => {
+      const token = sessionStorage.getItem('nova.token');
+      const h = { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': token };
+      const issue = await fetch('/api/nova/bridge/token', { method: 'POST', headers: h, body: '{}' });
+      const issued = await issue.json();
+      const poll = await fetch('/api/nova/bridge/poll', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', Authorization: 'Bearer ' + issued.token }, body: '{}' });
+      return poll.status;
+    });
+    assert.equal(onlineResult, 200);
+    await page.waitForFunction(() => document.querySelector('#desktop-bridge-pill')?.textContent === 'Connected', { timeout: 10000 });
+    await page.evaluate(() => {
+      window.SpeechRecognition = class {
+        constructor() { window.__approvalRecognition = this; }
+        start() {} stop() { this.onend?.(); } abort() { this.onend?.(); }
+        say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); }
+      };
+    });
+    await click(page, '#keyboard-form button[type="submit"]'); await page.waitForSelector('#voice-approve');
+    await page.setViewport({ width: 390, height: 844 }); await noOverflow(page, 'mobile voice approval');
+    await page.setViewport({ width: 1440, height: 1000 });
+    await click(page, '#voice-approve'); await page.evaluate(() => window.__approvalRecognition.say('do not approve'));
+    ok('unrecognised voice does not approve the action', (await text(page)).includes('nothing was approved') && await page.$('#approve-action') !== null);
+    await click(page, '#voice-approve'); await page.evaluate(() => window.__approvalRecognition.say('অনুমতি দিচ্ছি'));
+    await page.waitForSelector('.modal', { hidden: true });
+    ok('exact spoken confirmation approves a reviewed action', (await text(page)).includes('Approved. Your desktop agent will run it shortly.'));
     await noOverflow(page, 'desktop control');
     await page.screenshot({ path: path.join(SHOTS, 'nova-desktop-control.png'), fullPage: true });
 
