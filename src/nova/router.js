@@ -37,10 +37,13 @@ function createNovaRouter({ dataDir, agentFile }) {
     next();
   });
 
+  // Rate-limit only failed authentication. A bad client cannot consume the
+  // legitimate agent's polling allowance, even when both share the same IP.
+  const invalidBridgeAuth = U.rateLimit({ max: 12, windowMs: 60000, key: 'nova-bridge-invalid-auth' });
   function bridgeAuth(req, res, next) {
     const match = (req.get('authorization') || '').match(/^Bearer ([A-Za-z0-9_-]{40,100})$/);
     const row = match && store.bridgeByToken(match[1]);
-    if (!row) return res.status(401).json({ error: 'Invalid bridge token. Generate a new token in NOVA → Desktop control.' });
+    if (!row) return invalidBridgeAuth(req, res, () => res.status(401).json({ error: 'Invalid bridge token. Generate a new token in NOVA → Desktop control.' }));
     req.bridge = row; next();
   }
   function auth(req, res, next) {

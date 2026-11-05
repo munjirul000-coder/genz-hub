@@ -262,3 +262,17 @@ test('website generation requires an owner, a safe brief and configured AI', asy
   const remote = await req('/remote/pair', { method: 'POST', body: { code: pair.data.code } });
   assert.equal((await req('/website/generate', { method: 'POST', token: remote.data.token, body: { brief: 'site' } })).status, 403);
 });
+
+test('repeated invalid bridge credentials are limited without blocking valid agents', async () => {
+  const owner = await workspace();
+  const issued = await req('/bridge/token', { method: 'POST', token: owner, body: {} });
+  let limited = false;
+  for (let i = 0; i < 20; i++) {
+    const result = await req('/bridge/result', { method: 'POST', body: {}, headers: { Authorization: 'Bearer ' + 'x'.repeat(43) } });
+    if (result.status === 429) { limited = true; break; }
+    assert.equal(result.status, 401);
+  }
+  assert.equal(limited, true);
+  const valid = await req('/bridge/poll', { method: 'POST', body: {}, headers: { Authorization: `Bearer ${issued.data.token}` } });
+  assert.equal(valid.status, 200);
+});
