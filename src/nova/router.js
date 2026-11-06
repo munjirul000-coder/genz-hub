@@ -15,12 +15,13 @@ const { createNativeVoice } = require('./native-voice');
 const { createGoalPlanner } = require('./goal-planner');
 const { createNativeScreen, screenVoiceIntent } = require('./native-screen');
 const { getSignals, getFlights, REGIONS } = require('./world-signals');
+const { createNativePower } = require('./native-power');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
 const COOKIE = 'nova_session';
 
-function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeVoiceOptions = {}, nativeScreenOptions = {} }) {
+function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeVoiceOptions = {}, nativeScreenOptions = {}, nativePowerOptions = {} }) {
   const store = new NovaStore(dataDir);
   const vault = new Vault(dataDir);
   const router = express.Router();
@@ -84,6 +85,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   const autonomy = createAutonomy({ store, workspaceAi, dataDir, bridgeOnline });
   const goalPlanner = createGoalPlanner({ store, workspaceAi, bridgeOnline });
   const nativeScreen = createNativeScreen({ ...nativeScreenOptions, sessionActive: (workspace, hash) => store.ownerSessionActive(workspace, hash), workspaceAi });
+  const nativePower = createNativePower({ ...nativePowerOptions, sessionActive: (workspace, hash) => store.ownerSessionActive(workspace, hash) });
   const nativeVoice = createNativeVoice({
     ...nativeVoiceOptions,
     sessionActive: (workspace, hash) => store.ownerSessionActive(workspace, hash),
@@ -129,7 +131,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   });
   function snapshot(workspaceId, session) {
     return { messages: store.messages(workspaceId), memories: store.memories(workspaceId), actions: store.actions(workspaceId), bridge: bridgeState(workspaceId),
-      ai: aiState(workspaceId), nativeVoice: session.role === 'owner' ? { ...nativeVoice.status(workspaceId), supported: nativeVoice.supported() } : { state: 'off', supported: false }, nativeScreen: session.role === 'owner' ? { ...nativeScreen.status(workspaceId, session.token_hash), supported: nativeScreen.supported() } : { state: 'off', supported: false }, remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
+      ai: aiState(workspaceId), nativeVoice: session.role === 'owner' ? { ...nativeVoice.status(workspaceId), supported: nativeVoice.supported() } : { state: 'off', supported: false }, nativeScreen: session.role === 'owner' ? { ...nativeScreen.status(workspaceId, session.token_hash), supported: nativeScreen.supported() } : { state: 'off', supported: false }, nativePower: session.role === 'owner' ? nativePower.status(workspaceId, session.token_hash) : null, remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
   }
   router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData({ force: req.query.refresh === '1' }))));
   router.get('/world/signals', auth, U.rateLimit({ max: 25, windowMs: 60000, key: 'nova-world-signals' }), U.wrap(async (req, res) => res.json(await getSignals())));
@@ -471,6 +473,18 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
     if (!isLocalRequest(req)) return res.status(403).json({ error: 'Open NOVA on this Windows PC using localhost to connect its bridge.' });
     next();
   }
+  // Sensitive power requests are deliberately separate from chat, AI plans,
+  // bridge actions and remote devices. Only a direct local owner may act.
+  router.post('/native-power/prepare', auth, owner, localOnly, U.rateLimit({ max: 8, windowMs: 60000, key: 'nova-power-prepare' }), (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Explicit review is required.' });
+    res.json(nativePower.prepare(req.nova.workspace_id, req.nova.token_hash, req.body.kind));
+  });
+  router.post('/native-power/confirm', auth, owner, localOnly, U.rateLimit({ max: 8, windowMs: 60000, key: 'nova-power-confirm' }), (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Explicit confirmation is required.' });
+    res.json(nativePower.confirm(req.nova.workspace_id, req.nova.token_hash, req.body.id, req.body.kind));
+  });
+  router.post('/native-power/heartbeat', auth, owner, localOnly, U.rateLimit({ max: 50, windowMs: 60000, key: 'nova-power-heartbeat' }), (req, res) => res.json(nativePower.heartbeat(req.nova.workspace_id, req.nova.token_hash, req.body?.id)));
+  router.post('/native-power/cancel', auth, owner, localOnly, (req, res) => res.json(nativePower.cancel(req.nova.workspace_id, req.nova.token_hash, req.body?.id)));
   // Screen permission is separate from microphone and desktop-control
   // permission. Only a direct local owner can start, request or stop it.
   router.post('/native-screen/start', auth, owner, localOnly, U.rateLimit({ max: 6, windowMs: 60000, key: 'nova-native-screen-start' }), U.wrap(async (req, res) => {
@@ -546,10 +560,10 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   });
   router.delete('/workspace', auth, owner, (req, res) => {
     if (req.body?.confirmation !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm workspace deletion.' });
-    goalPlanner.stopWorkspace(req.nova.workspace_id); nativeScreen.stop(req.nova.workspace_id); nativeVoice.stop(req.nova.workspace_id); localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
+    goalPlanner.stopWorkspace(req.nova.workspace_id); nativePower.cancelWorkspace(req.nova.workspace_id); nativeScreen.stop(req.nova.workspace_id); nativeVoice.stop(req.nova.workspace_id); localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
   });
   router.use((req, res) => res.status(404).json({ error: 'NOVA endpoint not found.' }));
   router.use((err, req, res, next) => { console.error('[nova]', err.message); res.status(err.status || 500).json({ error: err.status ? err.message : 'NOVA could not complete that request. Please try again.' }); });
-  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); goalPlanner.close(); nativeScreen.close(); nativeVoice.close(); localBridge.close(); } };
+  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); goalPlanner.close(); nativePower.close(); nativeScreen.close(); nativeVoice.close(); localBridge.close(); } };
 }
 module.exports = { createNovaRouter, DEFAULT_SETTINGS };

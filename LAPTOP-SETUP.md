@@ -221,3 +221,9 @@ NOVA আপডেটের পর **Desktop control → Native screen permission
 ### World monitor
 
 **World monitor** খুললে 3D globe, earthquake, নির্দিষ্ট শহরের model-based আবহাওয়া, সীমিত অঞ্চলের NHC storm advisory এবং খবর দেখা যায়। Flight tracker-এ অঞ্চল বেছে **TURN ON** চাপলে adsb.lol-এর ওই অঞ্চলের aircraft snapshot আসে; একটি বিমান বেছে তার পরবর্তী snapshot অনুসরণ করা যায়। **TURN OFF** দিলে aircraft layer বন্ধ। ছবি বা রঙের সাজসজ্জা বাস্তব ঘটনা নয়। এটি সম্পূর্ণ বিশ্বের সব ঝড়/বৃষ্টি/বিমান বা নিরবচ্ছিন্ন live flight route নয়; NHC ঝড়ের তথ্য বাংলাদেশকে cover করে না, GDACS-এর বিশ্বব্যাপী সাম্প্রতিক cyclone report অসম্পূর্ণ ও marker আনুমানিক centroid, weather radar নয়, aircraft coverage অসম্পূর্ণ এবং data cache/বিলম্ব হতে পারে। নিরাপত্তা বা aviation-এর জন্য সরকারি উৎস ব্যবহার করো।
+
+### পরীক্ষামূলক Windows power options
+
+**Desktop control → Windows power options** থেকে shutdown/restart/sleep বেছে আগে review, তারপর আলাদা confirm করা যায়। আগে কাজ save করো। Confirm করলে ৩০ সেকেন্ডের countdown; NOVA পেজ খোলা, দৃশ্যমান ও সক্রিয় রাখতে হবে। লাল **Cancel power request** দিয়ে থামাও। পেজ বন্ধ বা আড়াল হলে countdown বাতিলের চেষ্টা হয়; শেষ মুহূর্তে cancel ও Windows request-এর মধ্যে race হতে পারে। একবার Windows-এ request পৌঁছালে কাজ নাও থামতে পারে।
+
+এটি এখনো বাস্তব Windows laptop-এ পরীক্ষা হয়নি; tests simulated। প্রথম ধাপে এটি voice দিয়ে চালানো যায় না, অন্য desktop কাজ বা software install অনুমোদন করে না।

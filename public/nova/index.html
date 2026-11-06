@@ -7,7 +7,7 @@
   <meta name="description" content="NOVA — your personal AI workspace. Conversation, memory, focus and permission-first Windows desktop control.">
   <title>NOVA — Your mind, amplified.</title>
   <link rel="icon" href="/nova/assets/nova-emblem.png?v=1" type="image/png">
-  <link rel="stylesheet" href="/nova/css/nova.css?v=16">
+  <link rel="stylesheet" href="/nova/css/nova.css?v=17">
 </head>
 <body>
   <a class="skip-link" href="#view">Skip to content</a>
@@ -46,6 +46,7 @@
           <button class="avatar top-avatar" data-view="settings" aria-label="Workspace settings">Y</button>
         </div>
       </header>
+      <div id="native-power-banner" class="native-power-banner" hidden role="status" aria-live="polite"><strong id="native-power-indicator"></strong><button type="button" class="btn btn-sm btn-danger" data-action="native-power-cancel" id="native-power-cancel">Cancel power request</button></div>
       <div id="native-screen-banner" class="native-screen-banner" hidden role="status" aria-live="polite"><strong id="native-screen-indicator"></strong><button type="button" class="btn btn-sm btn-danger" data-action="native-screen-stop">Stop screen access</button></div>
       <div id="view" tabindex="-1"><div class="loading-screen"><span class="loading-orbit"></span><strong>Waking up your workspace…</strong></div></div>
       <footer class="workspace-footer"><span><span data-icon="shield"></span>Your workspace. Your permissions. Always.</span><span>NOVA <span class="muted">v0.1 · MVP</span></span></footer>
@@ -55,6 +56,6 @@
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
   <script src="/nova/js/world.js?v=3"></script>
   <script src="/nova/js/voice-alerts.js?v=1"></script>
-  <script src="/nova/js/app.js?v=19"></script>
+  <script src="/nova/js/app.js?v=20"></script>
 </body>
 </html>

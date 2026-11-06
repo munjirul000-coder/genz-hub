@@ -98,3 +98,7 @@ body{background:radial-gradient(ellipse at 82% 2%,#08243c 0,transparent 34%),rad
 
 .wm-item.wm-selected{background:#bba76c18;box-shadow:inset 2px 0 #e5c879;padding-left:7px}.wm-untrack{display:block;margin:7px 0;color:#f2d399;background:transparent;border:0;font-size:9px;text-decoration:underline;text-align:left}.wm-untrack[hidden]{display:none}
 .wm-hint a{color:#acd7c8}
+
+.native-power-banner:not([hidden]) { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; background:#742626; color:#fff4f4; border-bottom:2px solid #ff9b79; font-size:13px; }
+.native-power-banner button { flex-shrink:0; }
+@media (max-width:600px) { .native-power-banner:not([hidden]) { align-items:flex-start; flex-direction:column; } }
