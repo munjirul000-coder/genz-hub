@@ -259,6 +259,7 @@ const server = app.listen(PORT, '0.0.0.0', () => console.log(`Gen-Z Hub running 
 
 function shutdown(sig) {
   console.log(`[${sig}] shutting down…`);
+  nova.close();
   server.close(() => { try { nova.store.close(); db.close(); } catch (e) {} process.exit(0); });
   setTimeout(() => process.exit(1), 8000).unref();
 }

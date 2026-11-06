@@ -6,6 +6,7 @@ const { CATALOG, validateAction } = require('./catalog');
 const { respond, aiConfig, testAiConnection, generateWebsite, websiteIntent, websiteEditIntent } = require('./assistant');
 const { Vault } = require('./vault');
 const { getWorldData } = require('./world');
+const { createLocalBridge, isLocalRequest } = require('./local-bridge');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip } = require('./project-builder');
 const { createAutonomy } = require('./autonomy');
@@ -14,16 +15,17 @@ const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto'
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
 const COOKIE = 'nova_session';
 
-function createNovaRouter({ dataDir, agentFile }) {
+function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
   const store = new NovaStore(dataDir);
   const vault = new Vault(dataDir);
   const router = express.Router();
+  const localBridge = createLocalBridge({ store, agentFile, ...localBridgeOptions });
   const timer = setInterval(() => store.cleanup(), 60000); timer.unref();
   const bridgeOnline = (row) => !!(row?.last_seen && Date.now() - row.last_seen < 15000);
   const bridgeState = (workspaceId) => {
     const row = store.bridge(workspaceId);
     let info = {}; try { info = JSON.parse(row?.system_info || '{}'); } catch {}
-    return { configured: !!row, online: bridgeOnline(row), lastSeen: row?.last_seen || null, system: info };
+    return { configured: !!row, online: bridgeOnline(row), lastSeen: row?.last_seen || null, system: info, managed: localBridge.managed(workspaceId) };
   };
   const cookieOptions = (req) => ({ httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' || req.secure, path: '/api/nova', maxAge: 30 * 86400000 });
   const setSession = (req, res, session) => { res.cookie(COOKIE, session.token, { ...cookieOptions(req), maxAge: session.expiresAt - Date.now() }); };
@@ -355,6 +357,21 @@ function createNovaRouter({ dataDir, agentFile }) {
     res.json({ action: cancelled });
   });
 
+  // Unlike the bearer-only agent polling endpoints, these are browser owner
+  // operations, restricted to a direct same-origin loopback request on Windows.
+  function localOnly(req, res, next) {
+    if (!isLocalRequest(req)) return res.status(403).json({ error: 'Open NOVA on this Windows PC using localhost to connect its bridge.' });
+    next();
+  }
+  router.post('/local-bridge/start', auth, owner, localOnly, U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-local-bridge-start' }), U.wrap(async (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm local desktop bridge access first.' });
+    res.json(await localBridge.start(req.nova.workspace_id, req.socket.localPort));
+  }));
+  router.post('/local-bridge/stop', auth, owner, localOnly, (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm disconnecting the local bridge first.' });
+    return localBridge.stop(req.nova.workspace_id) ? res.json({ ok: true }) : res.json({ ok: false, error: 'No one-click bridge is running in this workspace.' });
+  });
+
   router.post('/bridge/token', auth, owner, U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-bridge-token' }), (req, res) => {
     res.json({ token: store.issueBridge(req.nova.workspace_id), warning: 'Shown once. Keep this secret private. Generating a new token disconnects the previous agent.' });
   });
@@ -394,10 +411,10 @@ function createNovaRouter({ dataDir, agentFile }) {
   });
   router.delete('/workspace', auth, owner, (req, res) => {
     if (req.body?.confirmation !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm workspace deletion.' });
-    store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
+    localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
   });
   router.use((req, res) => res.status(404).json({ error: 'NOVA endpoint not found.' }));
   router.use((err, req, res, next) => { console.error('[nova]', err.message); res.status(err.status || 500).json({ error: err.status ? err.message : 'NOVA could not complete that request. Please try again.' }); });
-  return { router, store };
+  return { router, store, close: () => { clearInterval(timer); localBridge.close(); } };
 }
 module.exports = { createNovaRouter, DEFAULT_SETTINGS };

@@ -154,6 +154,13 @@ class NovaStore {
     this.db.prepare("UPDATE actions SET status='cancelled',result='Bridge credentials were reset.',updated_at=? WHERE workspace_id=? AND status IN ('pending','approved','running')").run(now, workspaceId);
     return raw;
   }
+  revokeManagedBridge(workspaceId, tokenHash) {
+    return this.db.transaction(() => {
+      const removed = this.db.prepare('DELETE FROM bridge WHERE workspace_id=? AND token_hash=?').run(workspaceId, tokenHash);
+      if (removed.changes) this.db.prepare("UPDATE actions SET status='cancelled',result='Local bridge disconnected.',updated_at=? WHERE workspace_id=? AND status IN ('pending','approved')").run(Date.now(), workspaceId);
+      return removed.changes > 0;
+    })();
+  }
   bridgeByToken(raw) {
     if (!raw || raw.length > 200) return null;
     return this.db.prepare('SELECT * FROM bridge WHERE token_hash=?').get(hash(raw)) || null;

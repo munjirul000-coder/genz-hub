@@ -73,3 +73,5 @@ body{background:radial-gradient(ellipse at 82% 2%,#08243c 0,transparent 34%),rad
 @media(max-width:380px){.news-grid{grid-template-columns:1fr}}
 /* Undo the compact headline-list alignment for the image-card layout. */
 .news-card{align-items:stretch;gap:0}.news-image{width:100%;flex:none}
+.bridge-easy{margin:0 22px 22px;padding:20px;border:1px solid #2a7593;border-radius:13px;background:radial-gradient(circle at 95% 0,#1a5673a8,transparent 45%),linear-gradient(135deg,#102c42,#091a2a);box-shadow:inset 0 1px #a4eeff12}.bridge-easy-tag{font-size:9px;font-weight:800;letter-spacing:.14em;color:#74dfff}.bridge-easy h3{font-size:18px;color:#effbff;margin:5px 0}.bridge-easy p{font-size:11px;color:#bad0dc;line-height:1.6}.bridge-easy .btn{margin-top:14px}.bridge-easy #local-bridge-status:empty{display:none}.bridge-easy #local-bridge-status:not(:empty){margin-top:10px;color:#9ce8ff}.manual-bridge-label{font-size:9px;letter-spacing:.15em;color:#8aacc0;font-weight:800;margin-bottom:14px}
+@media(max-width:760px){.bridge-easy{margin:0 16px 18px;padding:16px}.bridge-easy h3{font-size:16px}}

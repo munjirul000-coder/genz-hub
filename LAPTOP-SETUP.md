@@ -100,6 +100,8 @@ Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠ
 
 ## 5) Windows desktop control চালাও
 
+**সহজ উপায়:** এই laptop-এ NOVA খুলে **Desktop control → Connect this PC → Connect** চাপো। Token copy বা আলাদা ফাইল লাগে না। NOVA খোলা রাখো। বন্ধ করতে একই পেজে **Disconnect this PC** চাপো। NOVA restart করলে আবার Connect চাপতে হবে। Connect করলে আগের bridge token এবং অপেক্ষমাণ action বাতিল হতে পারে; সাধারণ action review লাগে, আর অনুমোদিত visual session একাধিক সাধারণ step চালাতে পারে। অন্য ফোন বা hosted preview থেকে এই local shortcut চালু করা যায় না। নিচের ধাপগুলো শুধু manual setup-এর বিকল্প।
+
 1. NOVA → **Desktop control** → **Generate token**।
 2. **Copy token** চাপো, Notepad-এ paste করে `nova-bridge.token` নামে save করো। Token কাউকে দেখাবে না।
 3. File টা repo-র `desktop` folder-এ রাখো। সেই folder-এ `nova-agent.js` আর `START-BRIDGE.bat` আছে।

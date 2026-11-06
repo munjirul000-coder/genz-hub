@@ -425,7 +425,30 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.screenshot({ path: path.join(SHOTS, 'nova-approval.png') });
     await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));  await sleep(300);
     await go(page, 'activity'); ok('cancelled action appears in activity', (await text(page)).includes('Cancelled'));
+    const realLocalCheck = await page.evaluate(async () => {
+      const response = await fetch('/api/nova/local-bridge/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': sessionStorage.getItem('nova.token') || '' }, body: JSON.stringify({ confirm: true }) });
+      return { status: response.status, data: await response.json() };
+    });
+    ok('same-origin browser request reaches local-only Windows check', realLocalCheck.status === 200 && realLocalCheck.data.ok === false && /only on the Windows PC/.test(realLocalCheck.data.error));
+    await page.evaluate(() => {
+      window.__beforeEasyBridge = window.fetch; window.__easyBridgeOn = false; window.__easyStarts = 0;
+      window.fetch = async (url, options = {}) => {
+        if (String(url).endsWith('/local-bridge/start')) { window.__easyStarts++; window.__easyBridgeOn = true; return new Response(JSON.stringify({ ok: true }), { status: 200 }); }
+        if (String(url).endsWith('/local-bridge/stop')) { window.__easyBridgeOn = false; return new Response(JSON.stringify({ ok: true }), { status: 200 }); }
+        const response = await window.__beforeEasyBridge(url, options);
+        if (String(url).endsWith('/sync')) { const data = await response.json(); data.bridge = { ...data.bridge, online: window.__easyBridgeOn, managed: window.__easyBridgeOn }; return new Response(JSON.stringify(data), { status: 200 }); }
+        return response;
+      };
+    });
     await go(page, 'desktop'); ok('desktop setup instructions render', (await text(page)).includes('Download nova-agent.js'));
+    ok('simple Windows bridge connection is visible without token setup', (await text(page)).includes('Connect this PC') && (await text(page)).includes('No downloads, token copying'));
+    await click(page, '#local-bridge-button'); await page.waitForSelector('#confirm-action');
+    ok('connecting the local bridge asks for informed confirmation', (await text(page)).includes('previous bridge token will be replaced') && (await page.evaluate(() => window.__easyStarts)) === 0);
+    await click(page, '#confirm-action'); await page.waitForFunction(() => document.querySelector('#local-bridge-button')?.innerText.includes('Disconnect this PC'));
+    ok('one-click bridge connects and provides a stop control', (await text(page)).includes('Connected. Keep NOVA open.') && (await page.evaluate(() => window.__easyStarts)) === 1);
+    await click(page, '#local-bridge-button'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.querySelector('#local-bridge-button')?.innerText.includes('Connect this PC'));
+    ok('one-click bridge can be disconnected', (await text(page)).includes('Local bridge disconnected.'));
+    await page.evaluate(() => { window.fetch = window.__beforeEasyBridge; });
     await page.type('#mouse-x', '500'); await page.type('#mouse-y', '300');
     await click(page, '#mouse-form button[value="mouse_click"]'); await page.waitForSelector('.approval-detail');
     ok('mouse click review displays coordinates and deletion warning', (await text(page)).includes('Screen coordinates: X 500, Y 300') && (await text(page)).includes('A click may delete files'));

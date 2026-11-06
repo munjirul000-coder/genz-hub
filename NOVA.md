@@ -45,6 +45,10 @@ Web preview একা তোমার PC control করতে পারে ন�
 - Node.js 20 বা নতুন
 - NOVA server চালু আছে such a way that the PC can reach it (localhost অথবা HTTPS host)
 
+### সহজ পদ্ধতি: এই Windows PC এক ক্লিকে connect
+
+NOVA এই একই Windows laptop-এ `localhost` দিয়ে খোলা থাকলে **Desktop control → Connect this PC → Connect** চাপো। Local bridge background-এ চালু হয়; token copy, file বা অতিরিক্ত terminal লাগে না। একবার চালু করলে পেজে **Disconnect this PC** দিয়ে বন্ধ করা যায়; NOVA বন্ধ হলে managed bridge-ও থামে। NOVA আবার চালু করলে এই button আবার চাপতে হবে। Connect করার সময় আগের bridge token বদলে যায় এবং অপেক্ষমাণ action বাতিল হয়। আগে থেকে চলমান action শেষ হয়ে যেতে পারে। সাধারণ action review লাগে; visual work session অনুমোদিত হলে একাধিক সাধারণ step চালাতে পারে এবং ঝুঁকি আছে। এই shortcut owner এবং একই PC-র local browser-এর জন্য; remote ফোন বা hosted preview থেকে PC bridge চালু হয় না।
+
 ### ধাপ
 
 1. NOVA → **Desktop control** → **Download nova-agent.js**। অথবা repo-র `desktop/nova-agent.js` ব্যবহার করো।

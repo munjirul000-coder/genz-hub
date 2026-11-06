@@ -229,11 +229,13 @@ async function main() {
   let failures = 0; let stopping = false;
   process.on('SIGINT', () => { stopping = true; console.log('\nDisconnecting…'); });
   process.on('SIGTERM', () => { stopping = true; });
+  // A managed local bridge is attached by IPC and stops if NOVA exits.
+  if (typeof process.send === 'function') process.on('disconnect', () => { stopping = true; });
   while (!stopping) {
     try {
       const { action } = await request(base, 'poll', token, { system: systemInfo() });
       failures = 0;
-      if (action) {
+      if (action && !stopping) {
         console.log(`Running approved action: ${action.label}`);
         let ok = true, result;
         try { result = await execute(action, dryRun); } catch (err) { ok = false; result = err.message; }
