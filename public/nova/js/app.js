@@ -216,7 +216,7 @@
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
   function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${isOwner() && !voiceCompanion ? `<div class="voice-session-row"><button type="button" class="text-button" data-action="native-voice">${icon('mic')}Windows background voice (experimental)</button><span id="native-voice-status" role="status"></span></div>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><label for="voice-language">Recognition language</label> <select id="voice-language" aria-label="Voice recognition language"><option value="bn-BD" ${voiceRecognitionLanguage() === 'bn-BD' ? 'selected' : ''}>বাংলা (Bangladesh)</option><option value="en-US" ${voiceRecognitionLanguage() === 'en-US' ? 'selected' : ''}>English</option></select><p>Choose the language you will speak. Auto does not detect languages reliably.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-chat-only" id="voice-chat-only" aria-pressed="${S.voiceSession.chatOnly}">${S.voiceSession.chatOnly ? 'আড্ডা মোড বন্ধ করো' : 'আড্ডা মোড চালু করো'}</button><p id="voice-chat-status">${S.voiceSession.chatOnly ? 'আড্ডা মোড: এই window-র chat থেকে desktop কাজ বা memory save হবে না। অন্য window ও বোতাম প্রভাবিত নয়।' : 'আড্ডা মোডে এই window-র chat থেকে desktop কাজ বা memory save হয় না। কথার আগে নোভা বলতে হবে।'}</p><p>কথার text এই workspace-এ থাকে। AI যুক্ত থাকলে সাম্প্রতিক আলাপ ও তোমার সংরক্ষিত memory সংযুক্ত AI provider-এ পাঠানো হয়। Microphone browser-এর speech service ব্যবহার করতে পারে।</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div><div id="voice-project-result" role="status" aria-live="polite">${voiceProjectMarkup()}</div></div>` : ''}</div>`; }
   function renderConversation() {
-    $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button> <button class="btn btn-ghost" data-action="project-builder">${icon('folder')}Project builder</button> <button class="btn btn-ghost" data-action="auto-work">${icon('monitor')}Visual work</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
+    $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button> <button class="btn btn-ghost" data-action="project-builder">${icon('folder')}Project builder</button> <button class="btn btn-ghost" data-action="goal-plan">${icon('sparkle')}Plan a goal</button> <button class="btn btn-ghost" data-action="auto-work">${icon('monitor')}Visual work</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
   }
   // Authorization is scoped to one new static project, never to desktop control.
@@ -312,6 +312,80 @@
       finally { if (analyze.isConnected) analyze.disabled = suggest.disabled = !stream; }
     }
     analyze.onclick = () => inspect('describe'); suggest.onclick = () => inspect('suggest-click');
+  }
+
+  // AI output is advisory; only the server's fixed catalog actions can be
+  // prepared, and each action still needs its own explicit approval.
+  function goalPlanDialog(initialGoal = '') {
+    if (!isOwner()) return toast('Only the owner can create a goal plan.', 'error');
+    if (S.voiceSession.active) stopVoiceConversation();
+    let plan = null, disposed = false, recognition = null, polling = null, working = false;
+    const controller = new AbortController();
+    const path = () => '/goal-plans/' + encodeURIComponent(plan.id);
+    const pageHide = () => { if (plan?.state === 'active') fetch('/api/nova' + path() + '/stop', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': S.token }, body: '{}' }).catch(() => {}); };
+    window.addEventListener('pagehide', pageHide);
+    function dispose() {
+      if (disposed) return; disposed = true; window.removeEventListener('pagehide', pageHide); clearTimeout(polling); controller.abort();
+      if (recognition) { recognition.onresult = recognition.onend = recognition.onerror = null; try { recognition.abort(); } catch {} recognition = null; S.listening = false; }
+      if (plan?.state === 'active') api(path() + '/stop', { method: 'POST', body: {} }).catch(() => {});
+    }
+    modal('Plan a goal · step by step', `<p>Write or speak a goal. Creating a plan sends the goal to your connected AI provider; do not include passwords or keys. No screenshot, chat history or memory is sent for planning.</p><p>The AI suggests up to six steps and can be wrong. Only fixed app/site opening and system information actions are supported; each needs a separate approval. Other steps are for you to do or clarify. No typing, clicking, installing, sending, deleting or automatic execution. Plans last ten minutes and are not saved; prepared actions and their results appear in activity history.</p><div class="field"><label for="goal-plan-input">Your goal</label><textarea id="goal-plan-input" maxlength="1000" rows="3" placeholder="উদাহরণ: আমাকে কাজ শুরু করতে সাহায্য করো">${esc(initialGoal)}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" id="goal-plan-voice">${icon('mic')}Speak goal</button><button class="btn btn-primary" id="goal-plan-create">Send goal &amp; make plan</button></div><p id="goal-plan-status" role="status" aria-live="polite">Browser speech may use an online speech service. Voice does not identify the speaker.</p><div id="goal-plan-result"></div>`, { className: 'website-modal', onClose: dispose });
+    const status = $('#goal-plan-status'), result = $('#goal-plan-result'), create = $('#goal-plan-create');
+    function paint() {
+      if (disposed || !plan) return;
+      status.textContent = `${plan.state.toUpperCase()} · ${plan.message || ''}`;
+      result.innerHTML = `<p><strong>Suggested plan:</strong> ${esc(plan.summary)}</p><ol class="goal-plan-list">${plan.steps.map((step, i) => `<li><strong>${esc(step.description)}</strong><p>${step.kind === 'manual' ? 'Your step / clarification · NOVA cannot do this automatically.' : `Fixed action: ${esc(step.label)} · ${esc(step.detail)}`}</p><small>${esc(step.status)}${step.result ? ' · ' + esc(step.result) : ''}</small>${plan.state === 'active' && i === plan.index ? '<span> · current step</span>' : ''}</li>`).join('')}</ol><div id="goal-plan-controls" class="modal-footer"></div>`;
+      const controls = $('#goal-plan-controls');
+      if (plan.state !== 'active') return;
+      const step = plan.steps[plan.index];
+      if (step.kind === 'manual') controls.innerHTML = '<button class="btn btn-ghost" id="goal-manual">I did this step</button>';
+      else if (!plan.action) controls.innerHTML = '<button class="btn btn-ghost" id="goal-prepare">Review this action</button>';
+      else if (plan.action.status === 'pending') controls.innerHTML = `<button class="btn btn-ghost" id="goal-approve-voice">${icon('mic')}Approve by voice</button><button class="btn btn-primary" id="goal-approve">Approve this action</button>`;
+      else controls.innerHTML = '<span class="muted">Waiting for the agent’s actual result…</span>';
+      controls.insertAdjacentHTML('beforeend', '<button class="btn btn-danger" id="goal-stop">Stop plan</button>');
+      if ($('#goal-prepare')) $('#goal-prepare').onclick = () => operate('prepare');
+      if ($('#goal-approve')) $('#goal-approve').onclick = () => operate('approve', { confirm: true });
+      if ($('#goal-approve-voice')) $('#goal-approve-voice').onclick = () => listen('approve');
+      if ($('#goal-manual')) $('#goal-manual').onclick = () => operate('manual-done', { confirm: true });
+      $('#goal-stop').onclick = () => operate('stop');
+    }
+    async function refresh() {
+      if (disposed || !plan || plan.state !== 'active') return;
+      try { const data = await api(path(), { signal: controller.signal }); if (disposed) return; plan = data.plan; paint(); }
+      catch (err) { if (!disposed) status.textContent = 'Could not check the result. ' + err.message; }
+      if (!disposed && plan?.state === 'active' && plan.action && plan.action.status !== 'pending') polling = setTimeout(refresh, 1500);
+    }
+    async function operate(op, body = {}) {
+      if (working || disposed) return; working = true; clearTimeout(polling);
+      try { const data = await api(path() + '/' + op, { method: 'POST', body, signal: controller.signal }); if (disposed) return; if (data.plan) plan = data.plan; paint(); if (!data.ok) throw new Error(data.error || 'Could not complete this step.'); if (plan.action && plan.action.status !== 'pending') polling = setTimeout(refresh, 1500); }
+      catch (err) { if (!disposed) status.textContent = err.message; }
+      finally { working = false; }
+    }
+    function listen(mode) {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition || recognition || S.listening) { status.textContent = 'Speech recognition is unavailable or busy; use the buttons.'; return; }
+      const rec = new Recognition(); recognition = rec; S.listening = true;
+      rec.lang = S.state.settings.language === 'en' ? 'en-US' : 'bn-BD'; rec.interimResults = false; rec.continuous = false;
+      status.textContent = mode === 'goal' ? 'Listening for your goal. Browser speech service may receive audio.' : 'Say “approve” or “অনুমতি দিচ্ছি” for this one fixed action. Voice does not verify identity.';
+      rec.onresult = e => {
+        const item = e.results[e.results.length - 1]; if (!item?.isFinal || disposed || recognition !== rec) return;
+        const spoken = String(item[0]?.transcript || '').trim();
+        if (mode === 'goal') { $('#goal-plan-input').value = spoken.slice(0, 1000); status.textContent = 'Check the recognized goal, then send it for planning.'; }
+        else if (['approve', 'অনুমতি দিচ্ছি', 'অনুমতি দিলাম'].includes(spoken.toLowerCase().replace(/[.!?।]+$/g, '').trim()) && plan?.action?.status === 'pending') operate('approve', { confirm: true });
+        else status.textContent = 'Approval not recognized; nothing was approved.';
+        try { rec.stop(); } catch {}
+      };
+      rec.onerror = () => { if (!disposed) status.textContent = 'Speech recognition failed; nothing was approved.'; };
+      rec.onend = () => { if (recognition === rec) recognition = null; S.listening = false; };
+      try { rec.start(); } catch { recognition = null; S.listening = false; status.textContent = 'Microphone could not start.'; }
+    }
+    $('#goal-plan-voice').onclick = () => listen('goal');
+    create.onclick = async () => {
+      const goal = $('#goal-plan-input').value.trim(); if (!goal) { status.textContent = 'Describe your goal first.'; return; }
+      create.disabled = true; status.textContent = 'Asking the connected AI to suggest a plan…';
+      try { const data = await api('/goal-plans', { method: 'POST', body: { goal, confirm: true }, signal: controller.signal }); if (disposed) return; if (!data.ok) throw new Error(data.error || 'Planning failed.'); plan = data.plan; create.disabled = true; $('#goal-plan-input').disabled = true; $('#goal-plan-voice').disabled = true; paint(); }
+      catch (err) { if (!disposed) { status.textContent = err.message; create.disabled = false; } }
+    };
   }
 
   // One explicit, time-limited authorization drives a see/act/check loop. The
@@ -1153,6 +1227,7 @@
         else if (voiceCompanion && S.voiceSession.active && /^(?:(?:আড্ডা|গল্প)(?:\s*মোড)?\s*বন্ধ(?: করো)?|(?:chat|friend) mode off)[।.!]?$/i.test(transcript)) setVoiceChatOnly(false);
         else if (voiceCompanion && S.voiceSession.active && S.voiceSession.pendingProject) decideVoiceProject(transcript);
         else if (voiceCompanion && S.voiceSession.active && S.voiceSession.pendingAction) decideVoiceAction(transcript);
+        else if (voiceCompanion && S.voiceSession.active && !S.voiceSession.chatOnly && /^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i.test(transcript)) goalPlanDialog(transcript.replace(/^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i, '').trim());
         else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:চালু(?: করো)?|start|on)[।.!]?$/i.test(transcript)) voiceAlertCommand(true);
         else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:বন্ধ(?: করো)?|stop|off)[।.!]?$/i.test(transcript)) voiceAlertCommand(false);
         else sendMessage(transcript, true);
@@ -1228,7 +1303,7 @@
     const handlers = {
       workspace: () => navigate('settings'), palette: openPalette, help: helpModal, remote: remoteModal,
       'connect-desktop': () => navigate('desktop'), 'local-bridge': () => localBridgeModal(), 'local-bridge-disable': () => localBridgeModal(true), 'start-chat': () => { navigate('conversation'); $('#chat-input')?.focus(); },
-      'native-voice': nativeVoiceDialog, voice: startVoice, 'continuous-voice': toggleVoiceConversation, 'voice-window': openVoiceWindow, 'voice-app-permission': voiceAppPermission, 'voice-chat-only': () => setVoiceChatOnly(!S.voiceSession.chatOnly), 'voice-news-alerts': voiceNewsAlerts, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder, 'project-builder': projectBuilder, 'screen-viewer': screenShareModal, 'auto-work': autonomousWorkModal,
+      'goal-plan': goalPlanDialog, 'native-voice': nativeVoiceDialog, voice: startVoice, 'continuous-voice': toggleVoiceConversation, 'voice-window': openVoiceWindow, 'voice-app-permission': voiceAppPermission, 'voice-chat-only': () => setVoiceChatOnly(!S.voiceSession.chatOnly), 'voice-news-alerts': voiceNewsAlerts, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder, 'project-builder': projectBuilder, 'screen-viewer': screenShareModal, 'auto-work': autonomousWorkModal,
       'disconnect-ai': () => confirmDialog('Disconnect Groq?', 'NOVA will remove the encrypted key from this workspace and return to local command mode (unless a server environment key is configured).', 'Disconnect', async () => {
         const data = await api('/ai/disconnect', { method: 'POST', body: {} });
         S.state.ai = data.ai; renderShell(); if (S.view === 'settings') renderSettings();

@@ -12,6 +12,7 @@ const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip } = require('./project-builder');
 const { createAutonomy } = require('./autonomy');
 const { createNativeVoice } = require('./native-voice');
+const { createGoalPlanner } = require('./goal-planner');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
@@ -79,6 +80,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
     return aiConfig();
   }
   const autonomy = createAutonomy({ store, workspaceAi, dataDir, bridgeOnline });
+  const goalPlanner = createGoalPlanner({ store, workspaceAi, bridgeOnline });
   const nativeVoice = createNativeVoice({
     ...nativeVoiceOptions,
     sessionActive: (workspace, hash) => store.ownerSessionActive(workspace, hash),
@@ -324,6 +326,32 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
       res.json({ ok: true, answer: answer.trim().slice(0, 4000) });
     } catch { res.json({ ok: false, error: 'Could not reach the vision model. Check your connection and model.' }); }
   }));
+  // Planning sends only the goal, requires an explicit consent and does not
+  // execute anything. Each fixed action requires a separate owner approval.
+  router.post('/goal-plans', auth, owner, U.rateLimit({ max: 6, windowMs: 60000, key: 'nova-goal-plan' }), U.wrap(async (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm sending the goal to your AI provider first.' });
+    const abort = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+    try { const plan = await goalPlanner.create(req.nova.workspace_id, req.nova.token_hash, req.body?.goal, abort.signal); if (!abort.signal.aborted) res.json({ ok: true, plan }); }
+    catch (err) { if (!abort.signal.aborted) res.json({ ok: false, error: err.name === 'AbortError' || err.name === 'TimeoutError' ? 'Planning timed out or was stopped.' : err.message }); }
+  }));
+  function goalPlan(req, res, next) {
+    const plan = goalPlanner.find(req.nova.workspace_id, req.nova.token_hash, req.params.id);
+    if (!plan) return res.status(404).json({ error: 'Goal plan not found.' });
+    req.goalPlan = plan; next();
+  }
+  router.get('/goal-plans/:id', auth, owner, goalPlan, (req, res) => res.json({ ok: true, plan: goalPlanner.snapshot(req.goalPlan) }));
+  router.post('/goal-plans/:id/:operation', auth, owner, goalPlan, (req, res) => {
+    try {
+      const op = req.params.operation; let plan;
+      if (op === 'prepare') plan = goalPlanner.prepare(req.goalPlan);
+      else if (op === 'approve') { if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm this specific action first.' }); plan = goalPlanner.approve(req.goalPlan); }
+      else if (op === 'manual-done') { if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm that you completed this step yourself.' }); plan = goalPlanner.manualDone(req.goalPlan); }
+      else if (op === 'stop') plan = goalPlanner.stop(req.goalPlan);
+      else return res.status(404).json({ error: 'Unknown plan operation.' });
+      res.json({ ok: true, plan });
+    } catch (err) { res.json({ ok: false, error: err.message, plan: goalPlanner.snapshot(req.goalPlan) }); }
+  });
   // One project-scoped grant: visual steps continue only while the owner keeps
   // the sharing page open. High-risk/uncertain steps pause for separate consent.
   router.post('/autonomy/start', auth, owner, U.rateLimit({ max: 10, windowMs: 60000, key: 'nova-auto-start' }), (req, res) => {
@@ -400,6 +428,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   });
   router.post('/actions/:id/approve', auth, (req, res) => {
     const action = ownAction(req); if (!action) return res.status(404).json({ error: 'Action not found.' });
+    if (action.label.startsWith('NOVA PLAN:')) return res.status(403).json({ error: 'Approve this step in its owner goal plan.' });
     if ((action.kind.startsWith('mouse_') || action.kind.startsWith('keyboard_')) && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can approve mouse and keyboard actions.' });
     store.expireActions();
     const current = store.action(action.id);
@@ -454,7 +483,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   router.post('/bridge/poll', bridgeAuth, U.rateLimit({ max: 90, windowMs: 60000, key: 'nova-bridge-poll' }), (req, res) => {
     const s = req.body?.system || {};
     const info = { hostname: clean(s.hostname, 100), os: clean(s.os, 100), arch: clean(s.arch, 20), cpu: clean(s.cpu, 150), cores: Math.max(0, Math.min(256, Number(s.cores) || 0)), memoryGB: Math.max(0, Math.min(4096, Number(s.memoryGB) || 0)), freeMemoryGB: Math.max(0, Math.min(4096, Number(s.freeMemoryGB) || 0)), uptimeHours: Math.max(0, Math.min(100000, Number(s.uptimeHours) || 0)), agentVersion: clean(s.agentVersion, 20) };
-    store.heartbeat(req.bridge.workspace_id, info); store.expireActions();
+    store.heartbeat(req.bridge.workspace_id, info); store.expireActions(); goalPlanner.guardWorkspace(req.bridge.workspace_id);
     res.json({ action: store.claimAction(req.bridge.workspace_id) });
   });
   router.post('/bridge/result', bridgeAuth, (req, res) => {
@@ -486,10 +515,10 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   });
   router.delete('/workspace', auth, owner, (req, res) => {
     if (req.body?.confirmation !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm workspace deletion.' });
-    nativeVoice.stop(req.nova.workspace_id); localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
+    goalPlanner.stopWorkspace(req.nova.workspace_id); nativeVoice.stop(req.nova.workspace_id); localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
   });
   router.use((req, res) => res.status(404).json({ error: 'NOVA endpoint not found.' }));
   router.use((err, req, res, next) => { console.error('[nova]', err.message); res.status(err.status || 500).json({ error: err.status ? err.message : 'NOVA could not complete that request. Please try again.' }); });
-  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); nativeVoice.close(); localBridge.close(); } };
+  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); goalPlanner.close(); nativeVoice.close(); localBridge.close(); } };
 }
 module.exports = { createNovaRouter, DEFAULT_SETTINGS };

@@ -56,7 +56,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await click(page, '[data-action="native-voice"]');
     ok('background voice requires explicit consent and explains privacy', (await text(page)).includes('I agree · start microphone') && (await text(page)).includes('Do not speak passwords') && (await text(page)).includes('not yet been tested on Windows hardware'));
     ok('background voice offers Bengali and English', await page.$$eval('#native-language option', options => options.map(o => o.value).join(',') === 'bn-BD,en-US'));
-    await click(page, '#native-confirm'); await sleep(300);
+    await click(page, '#native-confirm'); await page.waitForFunction(() => document.body.innerText.includes('available only on this Windows PC'), { timeout: 8000 });
     ok('non-Windows start reports an honest error', (await text(page)).includes('available only on this Windows PC'));
     await click(page, '.modal [data-close]');
 
@@ -71,6 +71,41 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('chat returns a real local calculation', (await text(page)).includes('512'));
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#messages');
     ok('conversation survives reload', (await text(page)).includes('512'));
+
+    // Plan UI uses mocked server responses; actual plan security is API-tested separately.
+    await go(page, 'conversation');
+    await page.evaluate(() => {
+      const original = window.fetch; window.__planFetch = original; window.__planApprovals = 0; window.__planStop = 0; window.__planPoll = 0;
+      window.SpeechRecognition = class { constructor() { window.__planRec = this; } start() {} stop() { this.onend?.(); } abort() { this.onend?.(); } say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); } };
+      const steps = [{ description: '<img src=x onerror="window.__planXss=true"> Open Notepad', kind: 'open_notepad', label: 'Open Notepad', detail: 'Launches a new, empty Windows Notepad window.', status: 'waiting', result: null }, { description: 'Write notes yourself', kind: 'manual', status: 'waiting', result: null }];
+      const state = (index = 0, action = null, final = false) => ({ id: 'ui-plan', summary: 'Get ready', index, action, state: final ? 'complete' : 'active', message: final ? 'Overall goal not verified.' : 'Review the next step.', steps, expiresAt: Date.now() + 60000 });
+      const pending = { id: 'ui-action', kind: 'open_notepad', status: 'pending', params: {} };
+      window.fetch = (url, opts = {}) => {
+        const u = String(url); let plan;
+        if (u.endsWith('/goal-plans')) { window.__planStartBody = JSON.parse(opts.body); plan = state(); }
+        else if (u.endsWith('/goal-plans/ui-plan/prepare')) { steps[0].status = 'pending'; plan = state(0, pending); }
+        else if (u.endsWith('/goal-plans/ui-plan/approve')) { window.__planApprovals++; steps[0].status = 'approved'; plan = state(0, { ...pending, status: 'approved' }); }
+        else if (u.endsWith('/goal-plans/ui-plan/manual-done')) { steps[1].status = 'user-confirmed'; steps[1].result = 'User confirmed, not verified.'; plan = state(2, null, true); }
+        else if (u.endsWith('/goal-plans/ui-plan/stop')) { window.__planStop++; plan = { ...state(), state: 'stopped' }; }
+        else if (u.endsWith('/goal-plans/ui-plan')) { window.__planPoll++; steps[0].status = 'completed'; steps[0].result = 'Agent reported launch.'; plan = state(1); }
+        else return original(url, opts);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, plan }), { status: 200 }));
+      };
+    });
+    await click(page, '[data-action="goal-plan"]');
+    ok('goal planning explains consent and limited capabilities', (await text(page)).includes('No screenshot, chat history or memory') && (await text(page)).includes('No typing, clicking'));
+    await page.setViewport({ width: 390, height: 844 }); await noOverflow(page, 'mobile goal plan'); await page.setViewport({ width: 1440, height: 1000 });
+    await page.type('#goal-plan-input', 'Help me get ready'); await click(page, '#goal-plan-create'); await page.waitForSelector('#goal-prepare');
+    ok('plan output is escaped and no action is approved on creation', await page.evaluate(() => !window.__planXss && !document.querySelector('#goal-plan-result img') && window.__planApprovals === 0 && window.__planStartBody.confirm));
+    await click(page, '#goal-prepare'); await page.waitForSelector('#goal-approve');
+    ok('fixed action is shown before approval', (await text(page)).includes('Open Notepad') && await page.evaluate(() => window.__planApprovals === 0));
+    await click(page, '#goal-approve-voice'); await page.evaluate(() => window.__planRec.say('not approved'));
+    ok('unrecognized voice never approves a planned action', await page.evaluate(() => window.__planApprovals === 0));
+    await click(page, '#goal-approve-voice'); await page.evaluate(() => window.__planRec.say('অনুমতি দিচ্ছি')); await page.waitForSelector('#goal-manual', { timeout: 10000 });
+    ok('next step waits for agent result', await page.evaluate(() => window.__planApprovals === 1 && window.__planPoll > 0) && (await text(page)).includes('Agent reported launch.'));
+    await click(page, '#goal-manual'); await page.waitForFunction(() => document.querySelector('#goal-plan-status')?.textContent.includes('COMPLETE'));
+    ok('manual completion is clearly user confirmed, not independently verified', (await text(page)).includes('User confirmed, not verified.') && (await text(page)).includes('Overall goal not verified.'));
+    await click(page, '.modal [data-close]'); await page.evaluate(() => { window.fetch = window.__planFetch; delete window.SpeechRecognition; });
 
     // Chat shows only trusted World Monitor links, with all other content escaped.
     await go(page, 'conversation');

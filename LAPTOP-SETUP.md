@@ -193,3 +193,12 @@ Continuous voice চালু করলে প্রতিটি অনুরো
 **বাস্তব Windows microphone/tray-এ এখনও পরীক্ষা হয়নি।** Windows-এর System.Speech-এ নির্বাচিত language-এর recognizer ও TTS voice দুটোই দরকার। `bn-BD` recognizer অনেক Windows-এ থাকে না; না থাকলে স্পষ্ট error দেখাবে, তখন বাংলা ব্যবহারে আগের browser voice window ব্যবহার করো। Sleep, hardware/permission, recognition error বা দীর্ঘ uninterrupted speech-এ থামতে দেরি হতে পারে; নিশ্চয়তা নেই। Server বন্ধ হলে worker বন্ধ হওয়ার কথা; সন্দেহ হলে Windows microphone indicator ও tray পরীক্ষা করো।
 
 প্রতিটি অনুরোধের শুরুতে “Nova”/“নোভা” বলো। Recognition ভুল হতে পারে, কাছের যে কেউ বা recording ডাকতে পারে; এটি পরিচয় যাচাই করে না। Windows স্থানীয় recognizer ব্যবহার করে, NOVA audio file রাখে না; wake-যুক্ত কথার text ও reply workspace-এ থাকে এবং সাম্প্রতিক আলাপ ও সংরক্ষিত memory সংযুক্ত AI-তে যেতে পারে। কিছু পরিচিত secret pattern আটকানোর চেষ্টা আছে, তবে সব গোপন তথ্য চেনা যায় না—password/key কখনো বলবে না। শুধু laptop-এর local owner session থেকে চালু/বন্ধ করা যায়; paired phone বা remote proxy নয়।
+
+
+### লক্ষ্য থেকে ধাপে ধাপে পরিকল্পনা (পরীক্ষামূলক)
+
+Conversation → **Plan a goal**। লক্ষ্য লিখতে বা **Speak goal** দিয়ে বলতে পারো; লেখা দেখে **Send goal & make plan** চাপলে লক্ষ্যটি সংযুক্ত AI provider-এ যায়। পরিকল্পনার জন্য screenshot, আগের chat বা memory পাঠানো হয় না। Password, key বা গোপন তথ্য লিখো/বোলো না। AI ভুল বুঝতে পারে—তার পরামর্শ পড়ে যাচাই করো।
+
+সর্বোচ্চ ছয়টি প্রস্তাবিত ধাপ দেখা যায়। NOVA শুধু নির্দিষ্ট app/site খোলা ও system info নেওয়ার ধাপ প্রস্তুত করতে পারে; **Review this action**-এ আসল কাজ দেখে আলাদা অনুমোদন দিতে হবে। **Approve by voice** চাপলে “অনুমতি দিচ্ছি” বলেও ওই ধাপ অনুমোদন করা যায়—কণ্ঠ পরিচয় যাচাই করে না। Windows bridge সংযুক্ত থাকা লাগে। Agent ফল না জানানো পর্যন্ত পরের ধাপে যাবে না; বন্ধ করার পরও ইতিমধ্যে চলা কাজ শেষ হতে পারে। ফাইল তৈরি, টাইপ/ক্লিক, ডিলিট, ইনস্টল, টাকা পাঠানো বা প্রকাশ এভাবে স্বয়ংক্রিয়ভাবে হয় না। অসমর্থিত কাজ/প্রশ্ন নিজে করতে বা স্পষ্ট করতে হবে; **I did this step** হলো তোমার ঘোষণা, NOVA সেটি যাচাই করে না। সব ধাপ শেষ মানেই পুরো লক্ষ্য পূরণ প্রমাণ নয়।
+
+প্রস্তুত action ও তার ফল activity history-তে থাকে। Plan window বন্ধ বা **Stop plan** দিলে অপেক্ষমাণ/queued ধাপ বাতিলের চেষ্টা হয়; plan দশ মিনিট পর শেষ এবং server restart-এ থাকে না। Browser voice window-তে “নোভা পরিকল্পনা করো [লক্ষ্য]” বললে goal-সহ plan window খোলে; voice session থেমে যায় এবং goal পাঠানোর আগে বোতামে সম্মতি প্রয়োজন। পুরো প্রক্রিয়াটি এখনও mouse ছাড়া স্বয়ংক্রিয় নয়। আলাদা Windows background voice এখনও শুধু আড্ডা, এই planner চালায় না; বাস্তব Windows microphone/desktop পরীক্ষা বাকি।
