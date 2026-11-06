@@ -528,7 +528,7 @@ test('one project approval creates isolated files, sandboxed preview and ZIP', a
     assert.equal((await req('/builder/generate', { method: 'POST', token: remote, body: { brief: 'Bakery', confirm: true } })).status, 403);
     assert.equal(generationCalls, 0);
     const result = await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Bakery', confirm: true } });
-    assert.equal(result.data.ok, true); assert.equal(generationCalls, 3);
+    assert.equal(result.data.ok, true); assert.equal(result.data.grant, undefined); assert.equal(generationCalls, 3);
     const id = result.data.project.id;
     assert.equal((await req('/builder/projects/' + id, { token: stranger })).status, 404);
     assert.equal((await req('/builder/projects/' + id, { token: remote })).status, 403);
@@ -542,6 +542,50 @@ test('one project approval creates isolated files, sandboxed preview and ZIP', a
     assert.deepEqual(Object.keys(unpacked).sort(), ['app.js', 'index.html', 'styles.css']);
     assert.equal(require('fflate').strFromU8(unpacked['app.js']), js);
     assert.equal((await req('/builder/projects/not-a-uuid', { token: owner })).status, 404);
+  } finally { global.fetch = realFetch; }
+});
+
+test('voice project grant is scoped, revocable, bounded and makes new copies', async () => {
+  const realFetch = global.fetch; let calls = 0; let context = false; let pauseNext = false, release; let signalStart;
+  const started = new Promise(resolve => { signalStart = resolve; });
+  const html = '<!doctype html><html><head><link href="styles.css"></head><body><h1>Site</h1><script src="app.js"></script></body></html>';
+  global.fetch = async (url, options) => {
+    if (!String(url).startsWith('https://api.groq.com/')) return realFetch(url, options);
+    const messages = JSON.parse(options.body).messages;
+    if (pauseNext) { pauseNext = false; signalStart(); await new Promise(resolve => { release = resolve; }); }
+    const probe = messages.length === 1; if (!probe && JSON.stringify(messages).includes('This is a revision')) context = true;
+    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: probe ? 'OK' : [html, 'body { color: red }', '/* safe */'][calls++ % 3] } }] }), { status: 200 });
+  };
+  try {
+    const workspace = store.createWorkspace(); const owner = workspace.token;
+    const otherSession = store.createSession(workspace.workspaceId).token;
+    const stranger = store.createWorkspace().token;
+    const remote = store.redeemPairing(store.createPairing(workspace.workspaceId).code).token;
+    const vault = new Vault(dir); store.saveAiProvider(workspace.workspaceId, { provider: 'groq', model: 'llama-3.3-70b-versatile', base_url: 'https://api.groq.com/openai/v1', ...vault.encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', workspace.workspaceId) });
+    assert.equal((await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Make site', allowRevisions: true } })).status, 400);
+    const created = (await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Make site', confirm: true, allowRevisions: true } })).data;
+    assert.equal(created.ok, true); assert.equal(created.grant.remaining, 2); assert.ok(created.grant.expiresAt > Date.now());
+    const body = { grant: created.grant.token, projectId: created.project.id, changes: 'Change color' };
+    const realNow = Date.now; Date.now = () => realNow() + 16 * 60000;
+    try { assert.equal((await req('/builder/revise', { method: 'POST', token: owner, body })).status, 403); } finally { Date.now = realNow; }
+    for (const token of [stranger, otherSession, remote]) assert.equal((await req('/builder/revise', { method: 'POST', token, body })).status, 403);
+    assert.equal((await req('/builder/revise', { method: 'POST', token: owner, body: { ...body, projectId: 'other' } })).status, 403);
+    const first = await req('/builder/revise', { method: 'POST', token: owner, body }); assert.equal(first.data.ok, true); assert.equal(first.data.remaining, 1);
+    assert.notEqual(first.data.project.id, created.project.id); assert.equal(context, true);
+    assert.equal((await req('/builder/revise', { method: 'POST', token: owner, body })).status, 403);
+    const second = await req('/builder/revise', { method: 'POST', token: owner, body: { ...body, projectId: first.data.project.id } });
+    assert.equal(second.data.remaining, 0); assert.notEqual(second.data.project.id, first.data.project.id);
+    assert.equal((await req('/builder/revise', { method: 'POST', token: owner, body: { ...body, projectId: second.data.project.id } })).status, 403);
+    assert.equal((await req('/builder/projects/' + created.project.id, { token: owner })).status, 200);
+    const created2 = (await req('/builder/generate', { method: 'POST', token: owner, body: { brief: 'Another site', confirm: true, allowRevisions: true } })).data;
+    const revision2 = { grant: created2.grant.token, projectId: created2.project.id, changes: 'Update' };
+    pauseNext = true;
+    const pending = req('/builder/revise', { method: 'POST', token: owner, body: revision2 });
+    await started;
+    await req('/builder/revoke-grant', { method: 'POST', token: owner, body: { grant: created2.grant.token } });
+    release(); assert.equal((await pending).status, 403);
+    assert.equal((await req('/builder/revise', { method: 'POST', token: owner, body: revision2 })).status, 403);
+    assert.equal((await req('/builder/projects', { token: owner })).data.projects.length, 4);
   } finally { global.fetch = realFetch; }
 });
 

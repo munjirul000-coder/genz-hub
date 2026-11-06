@@ -247,6 +247,12 @@ Conversation বা Overview-এ **Open separate voice window → Open window** 
 ইচ্ছা করলে আলাদা নিশ্চিতকরণ দিয়ে শুধু Firefox, Chrome, Edge, Notepad ও Calculator এই session-এ স্পষ্ট ও local-recognized নির্দেশে review ছাড়া খুলতে দিতে পারো; AI দিয়ে বোঝা নির্দেশ ও অন্য action review লাগে, voice বন্ধ করলে অনুমতি মুছে যায়। অন্য action review লাগে; চলমান কাজ stop-এর পরেও শেষ হতে পারে। বাস্তব Windows-এ minimized microphone ও wake word যাচাই বাকি। বাংলাদেশ সংবাদ Jago News 24 থেকে সর্বশেষ national/country/politics/economy headlines হিসেবে আসে; feed পুরোনো বা unavailable হলে জানানো হয়। BBC/Guardian বিশ্ব সংবাদ অপরিবর্তিত।
 
 
+### Voice দিয়ে একটি static website কাজ (পরীক্ষামূলক)
+
+আলাদা voice window-তে listening চালু থাকলে বলো: “নোভা একটা bakery ওয়েবসাইট তৈরি করো”। NOVA জানাবে বর্ণনা AI provider-এ যাবে এবং তিনটি নতুন static file তৈরি হবে; ৬০ সেকেন্ডের মধ্যে “নোভা অনুমতি দিচ্ছি” বললে কাজ শুরু হবে, অথবা “নোভা বাতিল” বললে হবে না। কাজ চলার সময় “নোভা কাজ বন্ধ করো” বলে থামানোর অনুরোধ দেওয়া যায়। আগেই save শুরু হয়ে গেলে সেটি শেষ হয়ে থাকতে পারে—Saved projects-এ যাচাই করো। সফল হলে sandboxed preview আসে; AI তৈরি code ব্যবহারের আগে যাচাই করো।
+
+একই অনুমতিতে, কাজ শেষ হওয়ার ১৫ মিনিটের মধ্যে ওই project-এ আরও সর্বোচ্চ দুটি চাওয়া পরিবর্তন বলতে পারো: “নোভা ওয়েবসাইটের রঙ নীল করো”। প্রতিটি পরিবর্তনে পুরোনো file বদলানো না হয়ে একটি নতুন version তৈরি হয়। Voice বন্ধ/নতুন project চাইলে অনুমতি বাতিল হয়; session/server বন্ধ হলে মেয়াদ বা অনুমতি থাকে না। কেউ কাছ থেকে কথা বা recording চালিয়েও অনুমতি দিতে পারে—voice পরিচয় যাচাই করে না। এটি কেবল static website prototype: desktop দেখা বা চালানো, installation, server/backend তৈরি বা website প্রকাশ নয়। বাস্তব Windows microphone-এ এই ধাপের পরীক্ষা এখনও বাকি।
+
 ### Voice permission ও খবর সতর্কতা: সীমাবদ্ধতা
 
 Continuous voice চালু করলে প্রতিটি অনুরোধের আগে “নোভা” বা “Nova” বলতে হবে; একা নাম বললে পরবর্তী অনুরোধের জন্য কিছুক্ষণ অপেক্ষা করবে। আলাদা voice window-তে সাধারণ action তৈরি হলে NOVA তার নাম ও প্রাসঙ্গিক বিবরণ পড়ে অনুমতি চাইতে পারে। “নোভা অনুমতি দিচ্ছি” / “Nova approve” বা “নোভা বাতিল” / “Nova cancel” বলে সিদ্ধান্ত দাও; অনুরোধ সময়সীমা শেষ হলে আবার বলতে হবে। “নোভা শোনা বন্ধ করো” / “Nova stop listening” বললে voice ও news monitoring বন্ধ হয়। Voice বা recording দিয়ে পরিচয় যাচাই হয় না; বাড়ির অন্য কেউ wake phrase এবং approval বললে সেটিও অনুমোদিত হতে পারে। ভুল মাউস ক্লিক তথ্য মুছে দিতে পারে—কথায় অনুমতি দিলেও স্ক্রিন দেখে নিশ্চিত হও। কিছু কাজ এখনও হাতে review বা screen-sharing চায়; সব ধরনের PC কাজ এই build পারে না।

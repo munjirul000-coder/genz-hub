@@ -1,5 +1,6 @@
 'use strict';
 const express = require('express');
+const crypto = require('crypto');
 const U = require('../util');
 const { NovaStore } = require('./store');
 const { CATALOG, validateAction } = require('./catalog');
@@ -20,7 +21,8 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
   const vault = new Vault(dataDir);
   const router = express.Router();
   const localBridge = createLocalBridge({ store, agentFile, ...localBridgeOptions });
-  const timer = setInterval(() => store.cleanup(), 60000); timer.unref();
+  const projectGrants = new Map();
+  const timer = setInterval(() => { store.cleanup(); for (const [key, grant] of projectGrants) if (grant.expiresAt <= Date.now()) projectGrants.delete(key); }, 60000); timer.unref();
   const bridgeOnline = (row) => !!(row?.last_seen && Date.now() - row.last_seen < 15000);
   const bridgeState = (workspaceId) => {
     const row = store.bridge(workspaceId);
@@ -212,7 +214,47 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
       if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
       if (!result.ok) return res.json(result);
       const project = await saveProject(dataDir, workspaceId, brief, result.files);
-      if (!abort.signal.aborted) res.json({ ok: true, project });
+      if (!abort.signal.aborted) {
+        let grant;
+        if (req.body?.allowRevisions === true) {
+          const raw = crypto.randomBytes(32).toString('base64url');
+          const key = crypto.createHash('sha256').update(raw).digest('hex');
+          grant = { token: raw, expiresAt: Date.now() + 15 * 60000, remaining: 2 };
+          projectGrants.set(key, { workspaceId, sessionHash: req.nova.token_hash, projectId: project.id, expiresAt: grant.expiresAt, remaining: 2 });
+        }
+        res.json({ ok: true, project, ...(grant ? { grant } : {}) });
+      }
+    } finally { building.delete(workspaceId); }
+  }));
+  // An opt-in, session-bound grant covers at most two requested revisions of
+  // this one generated project. Revisions create new copies, not overwrites.
+  function projectGrant(req) {
+    const raw = clean(req.body?.grant, 100);
+    if (!/^[A-Za-z0-9_-]{40,100}$/.test(raw)) return null;
+    const key = crypto.createHash('sha256').update(raw).digest('hex');
+    const grant = projectGrants.get(key);
+    if (!grant || grant.expiresAt <= Date.now() || grant.workspaceId !== req.nova.workspace_id || grant.sessionHash !== req.nova.token_hash) return null;
+    return { key, grant };
+  }
+  router.post('/builder/revoke-grant', auth, owner, (req, res) => { const found = projectGrant(req); if (found) projectGrants.delete(found.key); res.json({ ok: true }); });
+  router.post('/builder/revise', auth, owner, U.rateLimit({ max: 12, windowMs: 60000, key: 'nova-builder-revise' }), U.wrap(async (req, res) => {
+    const found = projectGrant(req), changes = clean(req.body?.changes, 1500), projectId = clean(req.body?.projectId, 50);
+    if (!found || found.grant.projectId !== projectId || found.grant.remaining <= 0) return res.status(403).json({ error: 'Project permission expired, was revoked, or does not cover this project.' });
+    if (!changes || SECRET_IN_CHAT.test(changes)) return res.status(400).json({ error: 'Describe the revision without passwords or API keys.' });
+    const workspaceId = req.nova.workspace_id;
+    if (building.has(workspaceId)) return res.status(409).json({ error: 'A project build is already running.' });
+    building.add(workspaceId); const abort = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+    try {
+      const previous = await readProject(dataDir, workspaceId, projectId);
+      if (!previous) return res.status(404).json({ error: 'Project not found.' });
+      const result = await generateProject(workspaceAi(workspaceId), `Update this website: ${changes}`, abort.signal, previous.files);
+      if (abort.signal.aborted) return;
+      if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
+      if (!result.ok) return res.json(result);
+      if (projectGrants.get(found.key) !== found.grant || found.grant.expiresAt <= Date.now()) return res.status(403).json({ error: 'Project permission expired or was revoked.' });
+      const project = await saveProject(dataDir, workspaceId, `Revision: ${changes}`, result.files);
+      if (!abort.signal.aborted) { found.grant.projectId = project.id; found.grant.remaining--; res.json({ ok: true, project, remaining: found.grant.remaining }); }
     } finally { building.delete(workspaceId); }
   }));
   router.get('/builder/projects', auth, owner, U.wrap(async (req, res) => res.json({ projects: await listProjects(dataDir, req.nova.workspace_id) })));
@@ -421,6 +463,6 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
   });
   router.use((req, res) => res.status(404).json({ error: 'NOVA endpoint not found.' }));
   router.use((err, req, res, next) => { console.error('[nova]', err.message); res.status(err.status || 500).json({ error: err.status ? err.message : 'NOVA could not complete that request. Please try again.' }); });
-  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); localBridge.close(); } };
+  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); localBridge.close(); } };
 }
 module.exports = { createNovaRouter, DEFAULT_SETTINGS };

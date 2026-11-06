@@ -580,6 +580,70 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('approval without the wake word is ignored', await voice.evaluate(() => window.__voiceApprovals === 1));
     await voice.evaluate(() => window.__voiceRecognition.say('Nova approve')); await voice.waitForFunction(() => window.__voiceApprovals === 2 && window.__voiceStartCount >= 8);
     ok('a pending action can be approved by voice without a mouse', await voice.evaluate(() => window.__voiceApprovals === 2));
+    // Hands-free project flow: fake browser speech and model; actual owner server,
+    // sandbox and real Windows speech service are tested separately where possible.
+    await voice.setRequestInterception(true);
+    voice.on('request', request => {
+      if (/\/builder\/projects\/[0-9a-f-]+\/preview$/.test(request.url())) request.respond({ status: 200, contentType: 'text/html', headers: { 'Content-Security-Policy': "sandbox allow-scripts; default-src 'none'" }, body: '<h1>Mock project preview</h1>' });
+      else request.continue();
+    });
+    await voice.evaluate(() => {
+      const baseFetch = window.fetch; window.__buildRequests = []; window.__revisionRequests = []; window.__revokeRequests = 0; window.__buildMode = 'success';
+      const id1 = '11111111-1111-4111-8111-111111111111', id2 = '22222222-2222-4222-8222-222222222222';
+      window.fetch = async (url, opts = {}) => {
+        const target = String(url);
+        if (target.endsWith('/builder/revoke-grant')) { window.__revokeRequests++; return new Response('{"ok":true}'); }
+        if (target.endsWith('/builder/generate')) {
+          window.__buildRequests.push(JSON.parse(opts.body));
+          if (window.__buildMode === 'delay') return new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => { window.__buildAborted = true; reject(new Error('aborted')); }, { once: true }));
+          if (window.__buildMode === 'fail') return new Response(JSON.stringify({ ok: false, error: 'Mock provider failure' }));
+          return new Response(JSON.stringify({ ok: true, project: { id: id1, name: 'Test site' }, grant: { token: 'a'.repeat(43), expiresAt: Date.now() + 900000, remaining: 2 } }));
+        }
+        if (target.endsWith('/builder/revise')) { window.__revisionRequests.push(JSON.parse(opts.body)); return new Response(JSON.stringify({ ok: true, project: { id: id2, name: 'Updated site' }, remaining: 1 })); }
+        return baseFetch(url, opts);
+      };
+    });
+    async function sayProject(command) {
+      await voice.waitForFunction(() => window.__voiceListening === true, { timeout: 10000 });
+      const starts = await voice.evaluate(() => window.__voiceStartCount);
+      await voice.evaluate(c => window.__voiceRecognition.say(c), command);
+      await voice.waitForFunction(n => window.__voiceStartCount > n && window.__voiceListening === true, { timeout: 15000 }, starts);
+    }
+    await sayProject('নোভা একটা bakery ওয়েবসাইট তৈরি করো');
+    const projectPrompt = await text(voice);
+    ok('Bengali website voice request asks scoped permission without stopping continuous voice', (projectPrompt.includes('two requested revisions') || projectPrompt.includes('দুটি পরিবর্তন')) && await voice.evaluate(() => window.__buildRequests.length === 0));
+    await sayProject('approve');
+    ok('project approval without wake word cannot start work', await voice.evaluate(() => window.__buildRequests.length === 0));
+    await sayProject('Nova do not approve');
+    ok('ambiguous project approval cannot start work', await voice.evaluate(() => window.__buildRequests.length === 0));
+    await sayProject('Nova cancel');
+    ok('spoken cancellation of project approval starts nothing', await voice.evaluate(() => window.__buildRequests.length === 0));
+    await sayProject('নোভা একটা bakery ওয়েবসাইট তৈরি করো');
+    await sayProject('নোভা অনুমতি দিচ্ছি');
+    await voice.waitForSelector('#voice-project-preview', { timeout: 15000 });
+    const vframe = await (await voice.$('#voice-project-preview')).contentFrame(); await vframe.waitForSelector('h1');
+    ok('spoken approval starts one build and a sandboxed preview', await voice.evaluate(() => window.__buildRequests.length === 1 && window.__buildRequests[0].confirm === true && window.__buildRequests[0].allowRevisions === true) && await voice.$eval('#voice-project-preview', el => el.getAttribute('sandbox')) === 'allow-scripts');
+    await sayProject('নোভা ওয়েবসাইটের রঙ নীল করো');
+    await voice.waitForFunction(() => window.__revisionRequests.length === 1 && document.querySelector('#voice-project-result')?.textContent.includes('Updated site'));
+    ok('one scoped voice permission allows an explicitly requested revision', await voice.evaluate(() => window.__revisionRequests[0].projectId === '11111111-1111-4111-8111-111111111111'));
+    await voice.evaluate(() => { window.__buildMode = 'delay'; });
+    await sayProject('Nova build a second website'); await sayProject('Nova approve');
+    await voice.waitForFunction(() => window.__buildRequests.length === 2);
+    const chatsBeforeDuplicate = await voice.evaluate(() => window.__voiceMessages.length);
+    await sayProject('Nova build another website');
+    ok('a running voice project does not start a duplicate or fall through to chat', await voice.evaluate(n => window.__buildRequests.length === 2 && window.__voiceMessages.length === n, chatsBeforeDuplicate));
+    await sayProject('Nova stop project');
+    await voice.waitForFunction(() => window.__buildAborted === true);
+    ok('voice stop aborts project request and reports save race honestly', (await text(voice)).includes('save already in progress may finish'));
+    await voice.evaluate(() => { window.__buildMode = 'fail'; });
+    await sayProject('Nova build a failed website'); await sayProject('Nova approve');
+    await voice.waitForFunction(() => document.querySelector('#voice-project-result')?.textContent.includes('Mock provider failure'));
+    ok('project provider error is shown instead of claiming success', (await text(voice)).includes('Mock provider failure'));
+    await sayProject('Nova build an expired website');
+    await voice.evaluate(() => { window.__realNow = Date.now; Date.now = () => window.__realNow() + 61000; });
+    await sayProject('Nova approve');
+    await voice.evaluate(() => { Date.now = window.__realNow; });
+    ok('expired spoken approval cannot start work', await voice.evaluate(() => window.__buildRequests.length === 3));
     await voice.evaluate(() => window.__voiceRecognition.say('Nova news alerts on'));
     await voice.waitForFunction(() => document.querySelector('#voice-news-proof a')?.href === 'https://www.bbc.com/news/alert-test', { timeout: 15000 });
     ok('new relevant report is announced with its source link and emergency disclaimer', await voice.evaluate(() => window.__voiceSpoken.some(t => t.includes('World war fears in test report') && /not an official emergency alert/i.test(t))));
