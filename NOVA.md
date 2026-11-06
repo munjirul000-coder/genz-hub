@@ -29,7 +29,7 @@ Windows laptop-এ সবচেয়ে সহজ পথ: repo root-এর **`S
 - **Phone remote** — one-time pairing code, shared workspace, owner settings protected, revoke anytime।
 - **Focus timer** — start/pause/reset, 15/25/50 min presets, page বদলালেও চলে।
 - **Characters** — NOVA, ATLAS, JARVIS-style, Mentor ও custom personality; custom name/behaviour ও browser voice settings। Original, Stonic বা Marvel-এর সঙ্গে affiliated নয়।
-- **World monitor** — drag করা যায় এমন globe এবং 2D map; USGS M2.5+ last-day earthquake markers ও BBC World RSS headlines। Feed unavailable হলে তা দেখায়, fake event নয়।
+- **World monitor** — drag করা যায় এমন globe এবং 2D map; USGS M2.5+ last-day earthquake markers ও BBC World / The Guardian RSS headlines। Feed unavailable হলে তা দেখায়, fake event নয়।
 - **Command palette** — `Ctrl/Cmd + K`; conversation shortcut `Ctrl/Cmd + J`।
 - **Activity log** — pending, approved, running, completed, failed, cancelled, expired status।
 
@@ -185,12 +185,12 @@ NOVA screenshot দেখে পরের step নির্বাচন কর�
 
 ## World monitor ও voice conversation
 
-- Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World RSS থেকে আসে। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; কোনো feed বন্ধ থাকলে error দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)। নীল grid, তারা, orbit ও জমির বিন্দু সাজসজ্জা; শুধু USGS feed-এর কমলা marker ভূমিকম্পের তথ্য।
+- Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World ও The Guardian RSS থেকে আসে; একটি news source বন্ধ থাকলেও অন্যটি কাজ করতে পারে। প্রতিটি খবরের source ও সময় দেখানো হয়। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; Refresh চাপলে নতুন করে চেষ্টা করে। Source ছবি দিলে thumbnail দেখায়, না দিলে placeholder; fake ছবি নয়। Browser ছবিগুলো সরাসরি publisher-এর image host থেকে লোড করে, তাই publisher তোমার IP পেতে পারে। Feed বন্ধ থাকলে সেটি দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)। নীল grid, তারা, orbit ও জমির বিন্দু সাজসজ্জা; শুধু USGS feed-এর কমলা marker ভূমিকম্পের তথ্য।
 - Conversation-এর **Start voice conversation** চাপলে microphone turn-by-turn চালু থাকে এবং response browser voice-এ পড়ে। **Stop voice conversation** চাপলে বন্ধ হয়; অন্য page-এ গেলে session বন্ধ হয়। Browser mic permission লাগে; browser vendor speech process করতে পারে, এবং Bengali recognition/voice availability browser ও OS-এর ওপর নির্ভর করে। বাংলা reply পড়ার জন্য browser বা Windows-এ বাংলা text-to-speech voice থাকতে হবে; voice লোড/উপলব্ধ না হলে NOVA সতর্ক করে। Settings-এর Installed voice তালিকা পরীক্ষা করো। এটি always-on wake word নয়।
 - Settings-এ JARVIS-style, Mentor বা Custom নির্বাচন করে name ও behaviour save করা যায়। Cloud AI-কে recent conversation, selected personality preference ও explicitly saved memories পাঠানো হয়।
 
 
-Chat-এ latest news বা ভূমিকম্প সম্পর্কে জিজ্ঞেস করলে একই World Monitor-এর BBC headline / USGS feed ব্যবহার করা হয়। AI সংযুক্ত থাকলে feed-এর তথ্য দিয়ে উত্তর দেয়; checked time এবং মূল উৎসের link দেখায়। Feed-এ শুধু headline থাকে, সম্পূর্ণ article বা অন্য website search নয়; না পাওয়া তথ্য AI-এর বানিয়ে বলা উচিত নয় এবং উত্তর যাচাই করতে হবে। Feed সর্বোচ্চ ৫ মিনিট cache হতে পারে। Feed বন্ধ থাকলে সেটি জানানো হয়; AI বন্ধ থাকলেও পাওয়া তথ্য সরাসরি দেখায়। খবর সংক্রান্ত প্রশ্ন ও feed data সংযুক্ত AI provider-এ পাঠানো হয়।
+Chat-এ latest news বা ভূমিকম্প সম্পর্কে জিজ্ঞেস করলে একই World Monitor-এর BBC ও The Guardian headline / USGS feed ব্যবহার করা হয়। AI সংযুক্ত থাকলে feed-এর তথ্য দিয়ে উত্তর দেয়; checked time এবং মূল উৎসের link দেখায়। Feed-এ শুধু headline থাকে, সম্পূর্ণ article বা অন্য website search নয়; না পাওয়া তথ্য AI-এর বানিয়ে বলা উচিত নয় এবং উত্তর যাচাই করতে হবে। Feed সর্বোচ্চ ৫ মিনিট cache হতে পারে। Feed বন্ধ থাকলে সেটি জানানো হয়; AI বন্ধ থাকলেও পাওয়া তথ্য সরাসরি দেখায়। খবর সংক্রান্ত প্রশ্ন ও feed data সংযুক্ত AI provider-এ পাঠানো হয়।
 
 ---
 
@@ -201,7 +201,7 @@ Chat-এ latest news বা ভূমিকম্প সম্পর্কে �
 - Browser/OS voice না থাকলে spoken reply বা Bengali recognition সীমিত হতে পারে।
 - Desktop bridge-কে polling-এর সময় নিজের system info server-এ পাঠাতে হয়; সেটা শুধু সেই workspace-এ দেখা যায়।
 - এটি single-user companion MVP, enterprise multi-tenant product নয়। নিজের server HTTPS, backup ও access control দিয়ে চালাও।
-- Globe-এর hotspot কেবল USGS earthquake; এটি সব global event cover করে না। BBC বা USGS offline/blocked থাকলে পুরনো বা fake headline দেখায় না।
+- Globe-এর hotspot কেবল USGS earthquake; এটি সব global event cover করে না। News sources বা USGS offline/blocked থাকলে পুরনো বা fake headline দেখায় না।
 - Screen viewer-এ আলাদা click suggestion পর্যালোচনা করা যায়। Visual work session-এ একবার অনুমতির পরে সীমিত বহু-step loop চলতে পারে; ঝুঁকি শনাক্তকরণ নিখুঁত নয়। File search, calendar/email data integration ও wake word এই version-এর বাইরে।
 
 ---

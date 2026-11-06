@@ -229,20 +229,20 @@ function prepareWorld(world, kind) {
   const quakes = wantQuakes && world.quakes.ok ? world.quakes.items.slice(0, 8) : [];
   const stamp = Number.isFinite(world.fetchedAt) ? new Date(world.fetchedAt).toISOString() : 'unknown';
   const missing = [];
-  if (wantNews && !world.news.ok) missing.push('BBC World News feed unavailable');
+  if (wantNews && !world.news.ok) missing.push('News feeds unavailable');
   if (wantQuakes && !world.quakes.ok) missing.push('USGS earthquake feed unavailable');
   const records = {
     checkedAtUTC: stamp, note: 'Feed data can be cached for up to five minutes. News entries are headlines only, not full articles.',
-    ...(wantNews ? { news: news.map((n, i) => ({ id: `N${i + 1}`, headline: n.title, publishedUTC: n.time ? new Date(n.time).toISOString() : null })) } : {}),
+    ...(wantNews ? { news: news.map((n, i) => ({ id: `N${i + 1}`, headline: n.title, source: n.source === 'The Guardian' ? 'The Guardian' : 'BBC World', publishedUTC: n.time ? new Date(n.time).toISOString() : null })) } : {}),
     ...(wantQuakes ? { earthquakes: quakes.map((q, i) => ({ id: `Q${i + 1}`, place: q.place, magnitude: q.magnitude, timeUTC: new Date(q.time).toISOString() })) } : {}),
     unavailable: missing,
   };
-  const lines = [`World Monitor · checked ${stamp} (UTC; cache up to 5 minutes).`, wantNews ? 'BBC news is headline-only; feeds may be delayed.' : 'Feed data may be delayed.'];
+  const lines = [`World Monitor · checked ${stamp} (UTC; cache up to 5 minutes).`, wantNews ? 'News is headline-only; feeds may be delayed.' : 'Feed data may be delayed.'];
   if (missing.length) lines.push(missing.join('; ') + '.');
   if (wantNews && world.news.ok) {
-    lines.push('BBC World News:');
+    lines.push('World news · BBC World / The Guardian:');
     if (!news.length) lines.push('No headlines returned by the feed.');
-    news.forEach((n, i) => lines.push(`[N${i + 1}] ${n.title}${n.time ? ' · ' + new Date(n.time).toISOString() : ''}\n${n.url}`));
+    news.forEach((n, i) => lines.push(`[N${i + 1}] ${n.title} · ${n.source === 'The Guardian' ? 'The Guardian' : 'BBC World'}${n.time ? ' · ' + new Date(n.time).toISOString() : ''}\n${n.url}`));
   }
   if (wantQuakes && world.quakes.ok) {
     lines.push('USGS · recent M2.5+ earthquakes:');

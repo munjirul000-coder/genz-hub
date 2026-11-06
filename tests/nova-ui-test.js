@@ -68,7 +68,12 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     // Chat shows only trusted World Monitor links, with all other content escaped.
     await go(page, 'conversation');
     await page.evaluate(() => {
-      const original = window.fetch; window.__worldXss = false;
+      const original = window.fetch; window.__worldXss = false; window.__worldLinkSafe = false;
+      window.__linkObserver = new MutationObserver(() => {
+        const links = [...document.querySelectorAll('#messages a')];
+        if (links.length === 1 && links[0].hostname === 'www.bbc.com' && links[0].rel.includes('noopener') && !window.__worldXss && !document.querySelector('#messages img')) window.__worldLinkSafe = true;
+      });
+      window.__linkObserver.observe(document.querySelector('#messages'), { childList: true, subtree: true });
       window.fetch = (url, opts = {}) => {
         if (String(url).endsWith('/chat') && JSON.parse(opts.body || '{}').message === 'latest news ui fixture') {
           const now = Date.now();
@@ -78,11 +83,8 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       };
     });
     await page.type('#chat-input', 'latest news ui fixture'); await page.keyboard.press('Enter');
-    await page.waitForFunction(() => {
-      const links = [...document.querySelectorAll('#messages a')];
-      return links.length === 1 && links[0].hostname === 'www.bbc.com' && links[0].rel.includes('noopener') && !window.__worldXss && !document.querySelector('#messages img');
-    });
-    ok('world chat shows a clickable sourced link without rendering unsafe content', true);
+    await page.waitForFunction(() => window.__worldLinkSafe);
+    ok('world chat shows a clickable sourced link without rendering unsafe content', await page.evaluate(() => { window.__linkObserver.disconnect(); return window.__worldLinkSafe; }));
 
     // Website generation is explicit; AI output is previewed in an isolated frame.
     await go(page, 'conversation');
@@ -366,15 +368,26 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.evaluate(() => {
       const realFetch = window.fetch; window.__worldOffline = false;
       window.fetch = (url, options) => {
-        if (String(url).endsWith('/world')) {
-          const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000 }] } };
+        if (new URL(String(url), location.href).pathname.endsWith('/world')) {
+          const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, sources: [{ name: 'BBC World', ok: true }, { name: 'The Guardian', ok: false }], items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000, source: 'BBC World', image: 'https://ichef.bbci.co.uk/ace/test.jpg' }, { title: 'Guardian test headline', url: 'https://www.theguardian.com/world/test', time: 1700000000000, source: 'The Guardian', image: '' }] } };
           return Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         }
         return realFetch(url, options);
       };
     });
+    // Supply a tiny test image without contacting publisher hosts in this sandbox.
+    await page.setRequestInterception(true);
+    page.on('request', request => {
+      if (request.url() === 'https://ichef.bbci.co.uk/ace/test.jpg') request.respond({ status: 200, contentType: 'image/png', body: fs.readFileSync(path.join(ROOT, 'public/nova/assets/nova-emblem.png')) });
+      else request.continue();
+    });
     await go(page, 'world'); await page.waitForSelector('.world-event');
     ok('world monitor renders live source events and headlines', (await text(page)).includes('Near Dhaka') && (await text(page)).includes('BBC test headline'));
+    ok('news cards show publisher images, attribution and image fallback', await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.news-card')];
+      return cards.length === 2 && cards[0].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[0].querySelector('img')?.src === 'https://ichef.bbci.co.uk/ace/test.jpg' && cards[0].querySelector('img')?.getAttribute('referrerpolicy') === 'no-referrer' && cards[1].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[1].textContent.includes('IMAGE UNAVAILABLE') && cards[1].textContent.includes('The Guardian') && document.querySelector('#news-source-status').textContent.includes('Unavailable');
+    }));
+    ok('new NOVA brand logo loads in sidebar', await page.$eval('.brand-emblem', e => e.complete && e.naturalWidth > 0));
     await click(page, '[data-world-mode="map"]');
     ok('world monitor switches to 2D map', await page.$eval('[data-world-mode="map"]', el => el.classList.contains('active')));
     await click(page, '.world-event'); ok('world event opens source details', (await text(page)).includes('USGS details'));

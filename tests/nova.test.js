@@ -413,6 +413,11 @@ test('world feeds parse sourced events and reject untrusted links', () => {
   assert.equal(quakeItems({ features: [{ ...features[0], properties: { ...features[0].properties, url: 'https://evil.example/' } }] })[0].url, '');
   const rss = '<rss><channel><item><title><![CDATA[World &amp; News]]></title><link>https://www.bbc.com/news/test</link><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item><item><title>Bad</title><link>https://evil.example/</link></item></channel></rss>';
   const news = newsItems(rss); assert.equal(news.length, 1); assert.equal(news[0].title, 'World & News'); assert.match(news[0].url, /^https:\/\/www\.bbc\.com/);
+  const pictured = newsItems(`<rss><item><title>News with photo</title><link>https://www.bbc.co.uk/news/one</link><media:thumbnail height="135" url="https://ichef.bbci.co.uk/ace/photo.jpg?a=1&amp;b=2" /></item><item><title>Unsafe photo</title><link>https://www.bbc.com/news/two</link><media:thumbnail url="https://ichef.bbci.co.uk.evil.example/image.jpg" /></item><item><title>Wrong article host</title><link>https://www.bbc.co.uk.evil.example/news</link></item></rss>`);
+  assert.equal(pictured.length, 2); assert.equal(pictured[0].image, 'https://ichef.bbci.co.uk/ace/photo.jpg?a=1&b=2'); assert.equal(pictured[1].image, '');
+  const guardian = newsItems(`<rss><item><title>Guardian story</title><link>https://www.theguardian.com/world/test</link><media:content medium='image' url='https://i.guim.co.uk/img/media/test.jpg?width=300&amp;quality=85'/></item><item><title>Unsafe</title><link>https://example.com/test</link></item></rss>`, 'The Guardian');
+  assert.equal(guardian.length, 1); assert.equal(guardian[0].source, 'The Guardian'); assert.equal(guardian[0].image, 'https://i.guim.co.uk/img/media/test.jpg?width=300&quality=85');
+  assert.equal(newsItems(`<rss><item><title>Test</title><link>https://www.bbc.com/news/test</link><media:thumbnail url="https://user@ichef.bbci.co.uk/image.jpg"/></item></rss>`)[0].image, '');
   assert.throws(() => newsItems('not xml')); assert.throws(() => quakeItems({}));
 });
 
@@ -422,7 +427,7 @@ test('world endpoint fetches fixed public sources, reports real source status an
   const realFetch = global.fetch;
   global.fetch = async (url, options) => {
     if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [{ geometry: { coordinates: [90.4, 23.7] }, properties: { mag: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' } }] }), { status: 200 });
-    if (String(url).startsWith('https://feeds.bbci.co.uk/')) throw new Error('offline');
+    if (String(url).startsWith('https://feeds.bbci.co.uk/') || String(url).startsWith('https://www.theguardian.com/world/rss')) throw new Error('offline');
     if (String(url).startsWith('https://api.groq.com/')) {
       assert.match(options.body, /Near Dhaka/);
       return new Response(JSON.stringify({ choices: [{ message: { content: 'An earthquake occurred near Dhaka [Q1].' } }] }), { status: 200 });
@@ -438,6 +443,32 @@ test('world endpoint fetches fixed public sources, reports real source status an
     store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
     const cloudChat = await req('/chat', { method: 'POST', token: existingOwner, body: { message: 'latest earthquake' } });
     assert.equal(cloudChat.data.engine, 'cloud'); assert.match(cloudChat.data.message.content, /earthquake occurred near Dhaka/); assert.match(cloudChat.data.message.content, /earthquake\.usgs\.gov/);
+  } finally { global.fetch = realFetch; }
+});
+
+test('world news falls back to another publisher and manual refresh bypasses cache', async () => {
+  const { getWorldData } = require('../src/nova/world');
+  const realFetch = global.fetch; const calls = [];
+  global.fetch = async (url, options) => {
+    if (String(url).startsWith('http://127.0.0.1:')) return realFetch(url, options);
+    calls.push(String(url));
+    if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [] }), { status: 200 });
+    if (String(url).startsWith('https://feeds.bbci.co.uk/')) throw new Error('bbc unavailable');
+    if (String(url).startsWith('https://www.theguardian.com/world/rss')) return new Response(`<rss><channel><item><title>Guardian headline</title><link>https://www.theguardian.com/world/test</link><pubDate>Fri, 06 Nov 2026 02:00:00 GMT</pubDate><media:content medium="image" url="https://i.guim.co.uk/img/test.jpg"/></item></channel></rss>`, { status: 200 });
+    throw new Error('unexpected URL');
+  };
+  try {
+    const result = await getWorldData({ force: true });
+    assert.equal(result.news.ok, true); assert.deepEqual(result.news.sources, [{ name: 'BBC World', ok: false }, { name: 'The Guardian', ok: true }]);
+    assert.equal(result.news.items[0].source, 'The Guardian'); assert.equal(result.news.items[0].image, 'https://i.guim.co.uk/img/test.jpg');
+    assert.equal(calls.length, 3); await getWorldData(); assert.equal(calls.length, 3);
+    await getWorldData({ force: true }); assert.equal(calls.length, 6);
+    const token = store.createWorkspace().token; const responseRefresh = await req('/world?refresh=1', { token });
+    assert.equal(responseRefresh.status, 200); assert.equal(calls.length, 9);
+    assert.equal(responseRefresh.data.news.items[0].source, 'The Guardian');
+    const { respond } = require('../src/nova/assistant');
+    const response = await respond({ text: 'latest news', settings: {}, memories: [], history: [], timezone: 'UTC', config: { configured: false }, loadWorld: async () => result });
+    assert.match(response.content, /Guardian headline/); assert.match(response.content, /The Guardian/); assert.match(response.content, /https:\/\/www\.theguardian\.com/);
   } finally { global.fetch = realFetch; }
 });
 
@@ -838,9 +869,9 @@ test('world chat handles offline, partial, empty and failed AI cases without inv
   global.fetch = async () => { called++; throw new Error('provider offline'); };
   try {
     let result = await respond({ ...common, text: 'latest news', config: { configured: true, base: 'https://mock.ai', model: 'test' }, loadWorld: async () => offline });
-    assert.equal(called, 0); assert.equal(result.engine, 'local'); assert.match(result.content, /BBC World News feed unavailable/); assert.doesNotMatch(result.content, /Near Dhaka/);
+    assert.equal(called, 0); assert.equal(result.engine, 'local'); assert.match(result.content, /News feeds unavailable/); assert.doesNotMatch(result.content, /Near Dhaka/);
     result = await respond({ ...common, text: 'world monitor', config: { configured: true, base: 'https://mock.ai', model: 'test' }, loadWorld: async () => offline });
-    assert.match(result.content, /AI summary unavailable/); assert.match(result.content, /BBC World News feed unavailable/); assert.match(result.content, /Near Dhaka/);
+    assert.match(result.content, /AI summary unavailable/); assert.match(result.content, /News feeds unavailable/); assert.match(result.content, /Near Dhaka/);
     result = await respond({ ...common, text: 'latest news', config: { configured: false }, loadWorld: async () => ({ ...offline, news: { ok: true, items: [] } }) });
     assert.match(result.content, /No headlines returned/); assert.doesNotMatch(result.content, /Near Dhaka/);
     result = await respond({ ...common, text: 'latest news', config: { configured: false }, loadWorld: async () => { throw new Error('offline'); } });

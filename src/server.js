@@ -45,7 +45,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(self), camera=(self)');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; " +
+    "default-src 'self'; img-src 'self' data: blob: https://ichef.bbci.co.uk https://i.guim.co.uk; media-src 'self' blob:; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; " +
     "script-src 'self'; connect-src 'self'; frame-ancestors *");
   next();

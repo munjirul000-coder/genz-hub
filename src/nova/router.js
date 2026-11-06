@@ -95,7 +95,7 @@ function createNovaRouter({ dataDir, agentFile }) {
     return { messages: store.messages(workspaceId), memories: store.memories(workspaceId), actions: store.actions(workspaceId), bridge: bridgeState(workspaceId),
       ai: aiState(workspaceId), remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
   }
-  router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData())));
+  router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData({ force: req.query.refresh === '1' }))));
   router.get('/sync', auth, (req, res) => { store.expireActions(); res.json(snapshot(req.nova.workspace_id, req.nova)); });
 
   router.patch('/settings', auth, owner, (req, res) => {
