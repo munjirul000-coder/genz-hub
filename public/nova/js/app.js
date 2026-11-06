@@ -46,7 +46,7 @@
   function hydrateIcons(root = document) { $$('[data-icon]', root).forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
   const voiceCompanion = new URLSearchParams(location.search).get('voice') === '1';
   if (voiceCompanion) document.title = 'NOVA · Voice window';
-  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false, chatOnly: false, pendingAction: null, pendingProject: null, projectWork: null, projectGrant: null, projectStatus: null, projectBengali: false, recognitionLanguage: null, monitorTimer: null, monitorAbort: null, monitorEpoch: 0, retryDelay: 800, lastNetworkWarning: 0, alerts: { enabled: false, epoch: 0, timer: null, deliverTimer: null, seen: new Set(), baseline: false, queue: [], inFlight: false } }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
+  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false, chatOnly: false, pendingAction: null, pendingProject: null, projectWork: null, projectGrant: null, projectStatus: null, projectBengali: false, voicePlan: null, recognitionLanguage: null, monitorTimer: null, monitorAbort: null, monitorEpoch: 0, retryDelay: 800, lastNetworkWarning: 0, alerts: { enabled: false, epoch: 0, timer: null, deliverTimer: null, seen: new Set(), baseline: false, queue: [], inFlight: false } }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const fmtDate = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const name = () => S.state?.settings.assistantName || 'NOVA';
@@ -214,7 +214,7 @@
     if ($('#memory-preview-list')) $('#memory-preview-list').innerHTML = s.memories.length ? s.memories.slice(0, 3).map(m => `<div class="memory-mini">${icon('sparkle')}<div><p>${esc(m.content)}</p><small>${esc(m.category)} · ${fmtDate(m.updated_at)}</small></div></div>`).join('') : `<div class="empty-mini">${icon('brain')}<p>A memory worth keeping?</p><small>Say “Remember…” or add one yourself.</small><button class="text-button" data-action="add-memory" style="margin-top:8px">${icon('plus')}Add a memory</button></div>`;
   }
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
-  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${isOwner() && !voiceCompanion ? `<div class="voice-session-row"><button type="button" class="text-button" data-action="native-voice">${icon('mic')}Windows background voice (experimental)</button><span id="native-voice-status" role="status"></span></div>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><label for="voice-language">Recognition language</label> <select id="voice-language" aria-label="Voice recognition language"><option value="bn-BD" ${voiceRecognitionLanguage() === 'bn-BD' ? 'selected' : ''}>বাংলা (Bangladesh)</option><option value="en-US" ${voiceRecognitionLanguage() === 'en-US' ? 'selected' : ''}>English</option></select><p>Choose the language you will speak. Auto does not detect languages reliably.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-chat-only" id="voice-chat-only" aria-pressed="${S.voiceSession.chatOnly}">${S.voiceSession.chatOnly ? 'আড্ডা মোড বন্ধ করো' : 'আড্ডা মোড চালু করো'}</button><p id="voice-chat-status">${S.voiceSession.chatOnly ? 'আড্ডা মোড: এই window-র chat থেকে desktop কাজ বা memory save হবে না। অন্য window ও বোতাম প্রভাবিত নয়।' : 'আড্ডা মোডে এই window-র chat থেকে desktop কাজ বা memory save হয় না। কথার আগে নোভা বলতে হবে।'}</p><p>কথার text এই workspace-এ থাকে। AI যুক্ত থাকলে সাম্প্রতিক আলাপ ও তোমার সংরক্ষিত memory সংযুক্ত AI provider-এ পাঠানো হয়। Microphone browser-এর speech service ব্যবহার করতে পারে।</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div><div id="voice-project-result" role="status" aria-live="polite">${voiceProjectMarkup()}</div></div>` : ''}</div>`; }
+  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${isOwner() && !voiceCompanion ? `<div class="voice-session-row"><button type="button" class="text-button" data-action="native-voice">${icon('mic')}Windows background voice (experimental)</button><span id="native-voice-status" role="status"></span></div>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><label for="voice-language">Recognition language</label> <select id="voice-language" aria-label="Voice recognition language"><option value="bn-BD" ${voiceRecognitionLanguage() === 'bn-BD' ? 'selected' : ''}>বাংলা (Bangladesh)</option><option value="en-US" ${voiceRecognitionLanguage() === 'en-US' ? 'selected' : ''}>English</option></select><p>Choose the language you will speak. Auto does not detect languages reliably.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-chat-only" id="voice-chat-only" aria-pressed="${S.voiceSession.chatOnly}">${S.voiceSession.chatOnly ? 'আড্ডা মোড বন্ধ করো' : 'আড্ডা মোড চালু করো'}</button><p id="voice-chat-status">${S.voiceSession.chatOnly ? 'আড্ডা মোড: এই window-র chat থেকে desktop কাজ বা memory save হবে না। অন্য window ও বোতাম প্রভাবিত নয়।' : 'আড্ডা মোডে এই window-র chat থেকে desktop কাজ বা memory save হয় না। কথার আগে নোভা বলতে হবে।'}</p><p>কথার text এই workspace-এ থাকে। AI যুক্ত থাকলে সাম্প্রতিক আলাপ ও তোমার সংরক্ষিত memory সংযুক্ত AI provider-এ পাঠানো হয়। Microphone browser-এর speech service ব্যবহার করতে পারে।</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div><div id="voice-project-result" role="status" aria-live="polite">${voiceProjectMarkup()}</div><div id="voice-plan-result" role="status" aria-live="polite"></div><p>Voice planning: say “নোভা পরিকল্পনা করো” and your goal. Each request and each fixed action needs separate spoken consent. This window must stay open; voice does not identify you.</p></div>` : ''}</div>`; }
   function renderConversation() {
     $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button> <button class="btn btn-ghost" data-action="project-builder">${icon('folder')}Project builder</button> <button class="btn btn-ghost" data-action="goal-plan">${icon('sparkle')}Plan a goal</button> <button class="btn btn-ghost" data-action="auto-work">${icon('monitor')}Visual work</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
@@ -911,14 +911,14 @@
     const matches = v => String(v.lang || '').toLowerCase().split('-')[0] === lang;
     let chosen = voices.find(v => v.voiceURI === s.voiceURI && (lang !== 'bn' || matches(v))) || voices.find(v => matches(v) && (s.voiceGender === 'auto' || new RegExp(s.voiceGender === 'feminine' ? 'female|samantha|zira|aria|jenny|sonia|ava|google.*english' : 'male|david|daniel|guy|alex|mark', 'i').test(v.name))) || voices.find(matches);
     if (lang === 'bn' && !chosen) { toast('বাংলা voice পাওয়া যায়নি বা লোড হয়নি। Settings-এর Installed voice দেখো; browser বা Windows-এ বাংলা text-to-speech voice লাগবে।', 'info'); return; }
-    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(spoken); u.lang = lang === 'bn' ? (chosen?.lang || 'bn-BD') : 'en-US'; u.rate = s.speechRate || 1;
+    S.voiceSession.finishSpeech?.(false); speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(spoken); u.lang = lang === 'bn' ? (chosen?.lang || 'bn-BD') : 'en-US'; u.rate = s.speechRate || 1;
     if (chosen) u.voice = chosen;
     return new Promise(resolve => {
-      let done = false; const finish = () => { if (done) return; done = true; clearTimeout(timer); if (S.voiceSession.finishSpeech === finish) S.voiceSession.finishSpeech = null; resolve(); };
+      let done = false; const finish = (success = false) => { if (done) return; done = true; clearTimeout(timer); if (S.voiceSession.finishSpeech === finish) S.voiceSession.finishSpeech = null; resolve(success === true); };
       S.voiceSession.finishSpeech = finish;
-      const timer = setTimeout(finish, 45000);
-      u.onend = finish; u.onerror = e => { if (force && !['interrupted', 'canceled'].includes(e.error)) toast('Voice playback failed. Check your browser’s speech settings.', 'error'); finish(); };
-      try { speechSynthesis.speak(u); } catch { finish(); }
+      const timer = setTimeout(() => finish(false), 45000);
+      u.onend = () => finish(true); u.onerror = e => { if (force && !['interrupted', 'canceled'].includes(e.error)) toast('Voice playback failed. Check your browser’s speech settings.', 'error'); finish(false); };
+      try { speechSynthesis.speak(u); } catch { finish(false); }
     });
   }
   function voiceRecognitionLanguage() {
@@ -951,7 +951,7 @@
     S.voiceSession.monitorEpoch++; clearTimeout(S.voiceSession.monitorTimer); S.voiceSession.monitorTimer = null;
     S.voiceSession.monitorAbort?.abort(); S.voiceSession.monitorAbort = null;
     setVoiceAlerts(false);
-    clearPendingProject(); stopVoiceProject();
+    clearPendingProject(); stopVoiceProject(); stopVoicePlan();
     const pending = S.voiceSession.pendingAction; S.voiceSession.pendingAction = null; if (pending) api(`/actions/${encodeURIComponent(pending.id)}/cancel`, { method: 'POST', body: {} }).catch(() => {});
     S.voiceSession.active = false; S.voiceSession.allowAppOpen = false; S.voiceSession.chatOnly = false; const chatButton = $('#voice-chat-only'); if (chatButton) { chatButton.setAttribute('aria-pressed', 'false'); chatButton.textContent = 'আড্ডা মোড চালু করো'; } const chatStatus = $('#voice-chat-status'); if (chatStatus) chatStatus.textContent = 'আড্ডা মোড বন্ধ।'; S.voiceSession.wakeUntil = 0; S.voiceSession.retryDelay = 800; const permission = $('#voice-app-permission'); if (permission) permission.textContent = 'Allow voice app opening for this session'; clearTimeout(S.voiceSession.timer); S.voiceSession.timer = null;
     if (S.listening && S.recognition) { try { S.recognition.abort(); } catch {} }
@@ -1046,7 +1046,7 @@
   async function deliverVoiceAlert(epoch) {
     const a = S.voiceSession.alerts; clearTimeout(a.deliverTimer); a.deliverTimer = null;
     if (!a.enabled || !S.voiceSession.active || a.epoch !== epoch || !a.queue.length) return;
-    if (S.busy || S.modal || S.voiceSession.pendingAction || S.voiceSession.pendingProject) { a.deliverTimer = setTimeout(() => deliverVoiceAlert(epoch), 3000); return; }
+    if (S.busy || S.modal || S.voiceSession.pendingAction || S.voiceSession.pendingProject || S.voiceSession.voicePlan) { a.deliverTimer = setTimeout(() => deliverVoiceAlert(epoch), 3000); return; }
     const item = a.queue.shift(); S.busy = true;
     if (S.listening && S.recognition) { try { S.recognition.stop(); } catch {} }
     const proof = $('#voice-news-proof'); if (proof) proof.innerHTML = `<p><strong>${esc(item.source)}</strong> · ${esc(item.title)}</p><a class="text-button" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">Open source report ↗</a>`;
@@ -1095,14 +1095,171 @@
     clearPendingProject();
     const grant = S.voiceSession.projectGrant; S.voiceSession.projectGrant = null;
     if (grant?.token) fetch('/api/nova/builder/revoke-grant', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': S.token }, body: JSON.stringify({ grant: grant.token }) }).catch(() => {});
-    if (voiceCompanion && S.voiceSession.active) stopVoiceConversation();
+    if (voiceCompanion && S.voiceSession.active) { stopVoicePlan(true); stopVoiceConversation(); }
   });
   async function voiceNotice(message) {
     for (let i = 0; i < 80 && S.voiceSession.active && (S.busy || S.modal); i++) await new Promise(resolve => setTimeout(resolve, 250));
     if (!S.voiceSession.active || S.busy || S.modal) return;
     S.busy = true; if (S.listening && S.recognition) { try { S.recognition.stop(); } catch {} }
-    try { await speak(message, true); } finally { S.busy = false; if (S.voiceSession.active) scheduleVoiceTurn(); }
+    try { return await speak(message, true); } finally { S.busy = false; if (S.voiceSession.active) scheduleVoiceTurn(); }
   }
+  // Voice plans never run model-selected code. The server exposes fixed
+  // actions only; every action is announced and separately approved.
+  function voicePlanCurrent(p) { return S.voiceSession.active && S.voiceSession.voicePlan === p; }
+  function voicePlanBn() { return voiceRecognitionLanguage() === 'bn-BD'; }
+  const voicePlanBnActions = { open_google: 'গুগল সার্চ খুলব', open_google_maps: 'গুগল ম্যাপ খুলব', open_gmail: 'জিমেইল খুলব, কোনো মেইল পাঠাব না', open_google_calendar: 'গুগল ক্যালেন্ডার খুলব', open_github: 'গিটহাব খুলব', open_wikipedia: 'উইকিপিডিয়া খুলব', open_firefox: 'ফায়ারফক্স খুলব', open_chrome: 'ক্রোম খুলব', open_edge: 'মাইক্রোসফট এজ খুলব', open_paint: 'পেইন্ট খুলব', open_task_manager: 'টাস্ক ম্যানেজার খুলব, কোনো প্রক্রিয়া বন্ধ করব না', open_onscreen_keyboard: 'অন স্ক্রিন কিবোর্ড খুলব', open_youtube: 'ইউটিউব খুলব', open_spotify: 'স্পটিফাই খুলব', open_whatsapp: 'হোয়াটসঅ্যাপ ওয়েব খুলব, বার্তা পাঠাব না', open_notepad: 'নোটপ্যাড খুলব', open_calculator: 'ক্যালকুলেটর খুলব', open_explorer: 'ডাউনলোড ফোল্ডার খুলব', system_info: 'কম্পিউটারের সিস্টেম তথ্য নেব' };
+  function voicePlanStatus(message, plan = null) {
+    const el = $('#voice-plan-result'); if (!el) return;
+    el.innerHTML = `<p>${esc(message)}</p>${plan ? `<ol class="goal-plan-list">${plan.steps.map(step => `<li>${esc(step.description)}<p>${step.kind === 'manual' ? 'Your step, not verified by NOVA' : `Actual fixed action: ${esc(step.label)} · ${esc(step.detail)}`}</p><small>${esc(step.status)}${step.result ? ' · ' + esc(step.result) : ''}</small></li>`).join('')}</ol>` : ''}`;
+  }
+  function stopVoicePlan(keepalive = false) {
+    const p = S.voiceSession.voicePlan; if (!p) return;
+    S.voiceSession.voicePlan = null; clearTimeout(p.timer); clearTimeout(p.poll); p.abort?.abort();
+    if (p.plan?.id && p.plan.state === 'active') {
+      const route = '/goal-plans/' + encodeURIComponent(p.plan.id) + '/stop';
+      if (keepalive) fetch('/api/nova' + route, { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': S.token }, body: '{}' }).catch(() => {});
+      else api(route, { method: 'POST', body: {} }).catch(() => {});
+    }
+    voicePlanStatus('Voice plan stopped. An action already running may still finish.', p.plan);
+  }
+  async function planNotice(p, message) {
+    if (!voicePlanCurrent(p)) return false;
+    voicePlanStatus(message, p.plan);
+    const said = await voiceNotice(message);
+    if (!voicePlanCurrent(p)) return false;
+    if (!said) {
+      stopVoicePlan();
+      voicePlanStatus('Voice output was unavailable or interrupted; stop requested without approving another action. An action already running may finish. Use the visible Plan a goal window instead.', p.plan);
+      return false;
+    }
+    return true;
+  }
+  async function prepareVoicePlan(goal) {
+    if (!isOwner()) return voiceNotice(voicePlanBn() ? 'শুধু workspace মালিক পরিকল্পনা করতে পারে।' : 'Only the workspace owner can create a plan.');
+    if (!goal || goal.length > 400 || /(?:gsk_[A-Za-z0-9_-]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|\b(?:password|api[ -]?key|secret|token)\b|পাসওয়ার্ড|পাসওয়ার্ড)/i.test(goal)) return voiceNotice(voicePlanBn() ? 'গোপন তথ্য বাদ দিয়ে ছোট করে লক্ষ্য বলো।' : 'Please give a short goal without passwords or keys.');
+    if (S.voiceSession.pendingAction || S.voiceSession.pendingProject || S.voiceSession.projectWork) return voiceNotice(voicePlanBn() ? 'আগের কাজ বা অনুমতি আগে শেষ বা বাতিল করো।' : 'Finish or cancel the previous work first.');
+    const p = { goal, plan: null, phase: 'announcing', abort: null, poll: null, timer: null, approvalId: null, seq: 0 }; S.voiceSession.voicePlan = p;
+    const message = voicePlanBn()
+      ? `তোমার লক্ষ্য: ${goal}। অনুমতি পেলে এই লক্ষ্য সংযুক্ত AI তে পাঠাব। স্ক্রিন বা আগের আলাপ পাঠাব না। পরিকল্পনা কেবল পরামর্শ, প্রতিটি নির্দিষ্ট কাজের জন্য আলাদা অনুমতি চাইব। কণ্ঠে পরিচয় যাচাই হয় না। পাঠাতে বলো নোভা পরিকল্পনার অনুমতি দিচ্ছি, অথবা বলো নোভা পরিকল্পনা বন্ধ করো।`
+      : `Your goal: ${goal}. With your permission I will send this goal to the connected AI, not your screen or past chat. The plan is only a suggestion. I will ask separately for every fixed action. Voice does not verify identity. Say Nova consent to plan, or Nova stop plan.`;
+    if (!await planNotice(p, message)) return;
+    p.phase = 'consent'; p.timer = setTimeout(() => { if (voicePlanCurrent(p) && p.phase === 'consent') { stopVoicePlan(); voiceNotice(voicePlanBn() ? 'পরিকল্পনার অনুমতির সময় শেষ।' : 'Plan consent expired.'); } }, 60000);
+  }
+  async function voicePlanCreate(p) {
+    if (!voicePlanCurrent(p) || p.phase !== 'consent') return;
+    clearTimeout(p.timer); p.phase = 'creating'; p.abort = new AbortController();
+    voicePlanStatus('Sending the goal to your AI provider. Say Nova stop plan to cancel.');
+    try {
+      const response = await api('/goal-plans', { method: 'POST', body: { goal: p.goal, confirm: true }, signal: p.abort.signal });
+      if (!voicePlanCurrent(p)) { if (response.ok && response.plan?.id) api('/goal-plans/' + encodeURIComponent(response.plan.id) + '/stop', { method: 'POST', body: {} }).catch(() => {}); return; }
+      if (!response.ok || !response.plan?.id) throw new Error(response.error || 'Plan could not be created.');
+      p.plan = response.plan; p.abort = null; await advanceVoicePlan(p);
+    } catch (err) {
+      if (!voicePlanCurrent(p)) return;
+      stopVoicePlan(); voicePlanStatus(err.message); await voiceNotice(voicePlanBn() ? 'পরিকল্পনা তৈরি হয়নি। বিস্তারিত স্ক্রিনে দেখো।' : 'The plan could not be created. Check the screen for details.');
+    }
+  }
+  async function advanceVoicePlan(p) {
+    if (!voicePlanCurrent(p) || !p.plan) return;
+    if (p.plan.state !== 'active') {
+      const failed = p.plan.state !== 'complete';
+      const message = voicePlanBn() ? (failed ? 'পরিকল্পনাটি শেষ হয়নি। বিস্তারিত স্ক্রিনে দেখো।' : 'ধাপগুলো রিপোর্ট বা তোমার দ্বারা নিশ্চিত হয়েছে। পুরো লক্ষ্য স্বাধীনভাবে যাচাই করা হয়নি।') : (failed ? 'The plan did not complete. Check the screen for details.' : 'Steps were reported or confirmed by you. The overall goal was not independently verified.');
+      const finalPlan = p.plan; S.voiceSession.voicePlan = null; clearTimeout(p.poll); voicePlanStatus(message, finalPlan); await voiceNotice(message); return;
+    }
+    let step = p.plan.steps[p.plan.index];
+    if (!step) { stopVoicePlan(); return; }
+    if (step.kind !== 'manual' && !p.plan.action) {
+      p.phase = 'preparing'; p.abort = new AbortController(); voicePlanStatus('Preparing a review only; no action has run.', p.plan);
+      try {
+        const r = await api('/goal-plans/' + encodeURIComponent(p.plan.id) + '/prepare', { method: 'POST', body: {}, signal: p.abort.signal });
+        if (!voicePlanCurrent(p)) return;
+        p.abort = null; if (r.plan) p.plan = r.plan;
+        if (!r.ok) throw new Error(r.error || 'Could not prepare the step.');
+        if (p.plan.state !== 'active') return void await advanceVoicePlan(p);
+        step = p.plan.steps[p.plan.index];
+      } catch (err) {
+        if (!voicePlanCurrent(p)) return;
+        const plan = p.plan; stopVoicePlan(); voicePlanStatus(err.message, plan);
+        await voiceNotice(voicePlanBn() ? 'ধাপ প্রস্তুত করা যায়নি। পরিকল্পনা থামিয়েছে, স্ক্রিনে দেখো।' : 'The step could not be prepared. The plan has stopped; check the screen.'); return;
+      }
+    }
+    if (step.kind === 'manual') {
+      p.phase = 'announcing';
+      const message = voicePlanBn() ? `পরের ধাপের পরামর্শ: ${step.description}। এটি আমাকে দিয়ে করা যাবে না, তুমি যাচাই করে করবে। শেষ করলে বলো নোভা আমি এই ধাপ শেষ করেছি। বন্ধ করতে বলো নোভা পরিকল্পনা বন্ধ করো।` : `Suggested manual step: ${step.description}. I cannot do or verify it. If you complete it, say Nova I completed this step. To stop, say Nova stop plan.`;
+      if (await planNotice(p, message)) { p.phase = 'manual'; schedulePlanPoll(p); }
+    } else if (p.plan.action?.status === 'pending') {
+      p.phase = 'announcing'; p.approvalId = null;
+      // The actual action label and details come from the fixed server catalog,
+      // not from the model's free-form step description.
+      const message = voicePlanBn() ? `ধাপ ${p.plan.index + 1}। নির্দিষ্ট কাজ: ${voicePlanBnActions[step.kind] || step.label}। ${step.label}। ${step.detail}। এটি এখনও চালু হয়নি। কণ্ঠ পরিচয় যাচাই করে না। এই একটি কাজ অনুমোদন করতে বলো নোভা এই ধাপ অনুমোদন করো। বন্ধ করতে বলো নোভা পরিকল্পনা বন্ধ করো।` : `Step ${p.plan.index + 1}. Fixed action: ${step.label}. ${step.detail}. It has not run. Voice does not verify identity. To approve only this action say Nova approve this step. To stop say Nova stop plan.`;
+      if (await planNotice(p, message)) { p.approvalId = p.plan.action.id; p.phase = 'approval'; schedulePlanPoll(p); }
+    } else { p.phase = 'waiting'; schedulePlanPoll(p); }
+  }
+  function schedulePlanPoll(p) {
+    clearTimeout(p.poll); if (!voicePlanCurrent(p)) return;
+    p.poll = setTimeout(() => pollVoicePlan(p), 3000);
+  }
+  async function pollVoicePlan(p) {
+    if (!voicePlanCurrent(p) || !p.plan || !['waiting', 'approval', 'manual'].includes(p.phase)) return;
+    const oldIndex = p.plan.index, oldId = p.plan.action?.id, seq = ++p.seq; p.abort = new AbortController();
+    try {
+      const r = await api('/goal-plans/' + encodeURIComponent(p.plan.id), { signal: p.abort.signal });
+      if (!voicePlanCurrent(p) || p.seq !== seq) return; p.abort = null; p.plan = r.plan;
+      if (p.plan.state !== 'active' || p.plan.index !== oldIndex || (oldId && p.plan.action?.id !== oldId)) {
+        p.approvalId = null; p.phase = 'announcing';
+        if (p.plan.index > oldIndex) {
+          const result = p.plan.steps[oldIndex];
+          const message = voicePlanBn() ? `আগের ধাপের ফল: ${result.result || 'Agent সম্পন্ন বলেছে'}।` : `Previous step result: ${result.result || 'The agent reported completion.'}`;
+          if (!await planNotice(p, message)) return;
+        }
+        await advanceVoicePlan(p); return;
+      }
+      if (p.phase === 'approval' && p.plan.action?.status !== 'pending') { p.phase = 'waiting'; p.approvalId = null; }
+      const hint = p.phase === 'approval' ? 'Say Nova approve this step / নোভা এই ধাপ অনুমোদন করো, or Nova stop plan.' : p.phase === 'manual' ? 'Say Nova I completed this step / নোভা আমি এই ধাপ শেষ করেছি, or Nova stop plan.' : 'Waiting for the agent result. Say Nova stop plan to stop.';
+      voicePlanStatus(hint, p.plan); schedulePlanPoll(p);
+    } catch {
+      if (!voicePlanCurrent(p) || p.seq !== seq) return;
+      const plan = p.plan; stopVoicePlan(); voicePlanStatus('Could not check plan status; plan stopped. A running action may still finish.', plan);
+      await voiceNotice(voicePlanBn() ? 'অবস্থা যাচাই করা যায়নি, পরিকল্পনা থামানোর অনুরোধ দিয়েছি। চলমান কাজ শেষ হতে পারে।' : 'Could not check status, so I requested a stop. An action already running may finish.');
+    }
+  }
+  async function voicePlanOperation(p, op) {
+    if (!voicePlanCurrent(p)) return;
+    const expected = p.phase;
+    if (op === 'approve' && (expected !== 'approval' || !p.approvalId || p.plan.action?.id !== p.approvalId || p.plan.action.status !== 'pending')) return;
+    if (op === 'manual-done' && expected !== 'manual') return;
+    clearTimeout(p.poll); p.seq++; p.abort?.abort(); p.approvalId = null; p.phase = op === 'approve' ? 'approving' : 'confirming'; p.abort = new AbortController();
+    try {
+      const r = await api('/goal-plans/' + encodeURIComponent(p.plan.id) + '/' + op, { method: 'POST', body: { confirm: true }, signal: p.abort.signal });
+      if (!voicePlanCurrent(p)) return; p.abort = null; if (r.plan) p.plan = r.plan;
+      if (!r.ok) throw new Error(r.error || 'Step was not accepted.');
+      if (op === 'approve') {
+        if (p.plan.state !== 'active' || !p.plan.action || !['approved', 'running'].includes(p.plan.action.status)) return void await advanceVoicePlan(p);
+        p.phase = 'waiting';
+        if (await planNotice(p, voicePlanBn() ? 'অনুমোদিত কাজ পাঠানো হয়েছে। Agent এর ফলের অপেক্ষায় আছি; এখনও সম্পন্ন বলছি না।' : 'The approved action is queued. I will wait for the agent result; it is not yet complete.')) schedulePlanPoll(p);
+      } else {
+        p.phase = 'announcing';
+        if (await planNotice(p, voicePlanBn() ? 'তুমি বলেছ ধাপটি শেষ। আমি এটি যাচাই করিনি।' : 'You reported that step done. I did not verify it.')) await advanceVoicePlan(p);
+      }
+    } catch (err) {
+      if (!voicePlanCurrent(p)) return;
+      const plan = p.plan; stopVoicePlan(); voicePlanStatus(err.message, plan);
+      await voiceNotice(voicePlanBn() ? 'ধাপ অনুমোদন বা নিশ্চিত করা যায়নি। পরিকল্পনা থামানোর অনুরোধ দিয়েছি।' : 'The step could not be approved or confirmed. I requested a stop.');
+    }
+  }
+  async function decideVoicePlan(text) {
+    const p = S.voiceSession.voicePlan; if (!p) return;
+    const answer = text.toLowerCase().trim().replace(/[.!?।]+$/g, '').trim();
+    if (p.phase === 'consent' && ['consent to plan', 'পরিকল্পনার অনুমতি দিচ্ছি'].includes(answer)) return void voicePlanCreate(p);
+    if (p.phase === 'approval' && ['approve this step', 'এই ধাপ অনুমোদন করো'].includes(answer)) return void voicePlanOperation(p, 'approve');
+    if (p.phase === 'manual' && ['i completed this step', 'আমি এই ধাপ শেষ করেছি'].includes(answer)) return void voicePlanOperation(p, 'manual-done');
+    if (['plan status', 'পরিকল্পনার অবস্থা'].includes(answer)) {
+      if (p.phase === 'approval' || p.phase === 'manual') { clearTimeout(p.poll); p.seq++; p.abort?.abort(); p.abort = null; return void advanceVoicePlan(p); }
+      return voiceNotice(voicePlanBn() ? 'পরিকল্পনার বর্তমান কাজ চলছে। বন্ধ করতে বলো নোভা পরিকল্পনা বন্ধ করো।' : 'The plan is in progress. Say Nova stop plan to stop.');
+    }
+    return voiceNotice(voicePlanBn() ? 'এই পরিকল্পনার জন্য স্ক্রিনে দেখানো কথাটি বলো, অথবা নোভা পরিকল্পনা বন্ধ করো।' : 'Use the specific plan phrase shown on screen, or say Nova stop plan.');
+  }
+
   async function prepareVoiceProject(brief) {
     if (S.voiceSession.projectWork) return voiceNotice(voiceProjectBengali() ? 'একটি প্রজেক্টের কাজ চলছে। বন্ধ করতে বলো নোভা কাজ বন্ধ করো।' : 'A project is running. Say Nova stop project to stop it.');
     revokeProjectGrant();
@@ -1163,7 +1320,7 @@
     if (!voiceCompanion || !S.voiceSession.active) return toast('Start voice conversation first.', 'info');
     if (S.busy) return toast('Wait for the current reply before changing modes.', 'info');
     const bn = voiceRecognitionLanguage() === 'bn-BD' || S.state.settings.language === 'bn';
-    if (enabled && (S.voiceSession.pendingAction || S.voiceSession.pendingProject || S.voiceSession.projectWork)) {
+    if (enabled && (S.voiceSession.pendingAction || S.voiceSession.pendingProject || S.voiceSession.projectWork || S.voiceSession.voicePlan)) {
       return voiceNotice(bn ? 'আগের কাজ বা অনুমতি আগে শেষ বা বাতিল করো, তারপর আড্ডা মোড চালু হবে।' : 'Finish or cancel the pending work before turning on chat-only mode.');
     }
     S.voiceSession.chatOnly = enabled;
@@ -1222,12 +1379,13 @@
       if (final) {
         rec.stop();
         if (S.voiceSession.active && /^(?:stop listening|stop voice|শোনা বন্ধ করো|শোনা বন্ধ|কথা শোনা বন্ধ করো)[।.!]?$/i.test(transcript)) { stopVoiceConversation(); speak(S.state.settings.language === 'bn' ? 'শোনা বন্ধ করেছি।' : 'Voice listening stopped.', true); }
-        else if (voiceCompanion && S.voiceSession.active && /^(?:stop|stop project|stop work|কাজ বন্ধ করো|কাজ থামাও|প্রজেক্ট বন্ধ করো|থামো)[।.!]?$/i.test(transcript)) { clearPendingProject(); stopVoiceProject(); voiceNotice(S.state.settings.language === 'bn' ? 'কাজ থামানোর অনুরোধ দিয়েছি। সেভ শুরু হলে তা শেষ হতে পারে।' : 'Stop requested. A save already underway may finish.'); }
+        else if (voiceCompanion && S.voiceSession.active && /^(?:stop|stop project|stop work|stop plan|কাজ বন্ধ করো|কাজ থামাও|পরিকল্পনা বন্ধ করো|প্রজেক্ট বন্ধ করো|থামো)[।.!]?$/i.test(transcript)) { clearPendingProject(); stopVoiceProject(); stopVoicePlan(); voiceNotice(voiceRecognitionLanguage() === 'bn-BD' ? 'কাজ বা পরিকল্পনা থামানোর অনুরোধ দিয়েছি। ইতিমধ্যে চলা কাজ শেষ হতে পারে।' : 'Stop requested. An action or save already underway may finish.'); }
         else if (voiceCompanion && S.voiceSession.active && /^(?:(?:আড্ডা|গল্প)(?:\s*মোড)?\s*চালু(?: করো)?|(?:chat|friend) mode on)[।.!]?$/i.test(transcript)) setVoiceChatOnly(true);
         else if (voiceCompanion && S.voiceSession.active && /^(?:(?:আড্ডা|গল্প)(?:\s*মোড)?\s*বন্ধ(?: করো)?|(?:chat|friend) mode off)[।.!]?$/i.test(transcript)) setVoiceChatOnly(false);
+        else if (voiceCompanion && S.voiceSession.active && S.voiceSession.voicePlan) decideVoicePlan(transcript);
         else if (voiceCompanion && S.voiceSession.active && S.voiceSession.pendingProject) decideVoiceProject(transcript);
         else if (voiceCompanion && S.voiceSession.active && S.voiceSession.pendingAction) decideVoiceAction(transcript);
-        else if (voiceCompanion && S.voiceSession.active && !S.voiceSession.chatOnly && /^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i.test(transcript)) goalPlanDialog(transcript.replace(/^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i, '').trim());
+        else if (voiceCompanion && S.voiceSession.active && !S.voiceSession.chatOnly && /^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i.test(transcript)) prepareVoicePlan(transcript.replace(/^(?:plan (?:a goal|this|for)|পরিকল্পনা করো|পরিকল্পনা তৈরি করো)\s+/i, '').trim());
         else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:চালু(?: করো)?|start|on)[।.!]?$/i.test(transcript)) voiceAlertCommand(true);
         else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:বন্ধ(?: করো)?|stop|off)[।.!]?$/i.test(transcript)) voiceAlertCommand(false);
         else sendMessage(transcript, true);

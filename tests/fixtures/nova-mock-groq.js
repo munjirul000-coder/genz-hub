@@ -5,6 +5,17 @@ global.fetch = async (url, options = {}) => {
   if (!String(url).startsWith('https://api.groq.com/openai/v1/chat/completions')) return realFetch(url, options);
   const messages = JSON.parse(options.body).messages;
   if (messages.length === 1) return Response.json({ choices: [{ message: { content: 'OK' }, finish_reason: 'stop' }] });
+  if (String(messages[0].content).startsWith('Create a short, honest suggested plan')) {
+    if (String(messages[1]?.content).includes('SLOW_PLAN_FIXTURE')) await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 20000);
+      options.signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('aborted')); }, { once: true });
+    });
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ summary: 'Prepare a workspace', steps: [
+      { description: 'Open Notepad', kind: 'open_notepad' },
+      { description: 'Check system details', kind: 'system_info' },
+      { description: 'Write your own notes', kind: 'manual' },
+    ] }) }, finish_reason: 'stop' }] });
+  }
   if (String(messages[0].content).startsWith('Classify only')) return Response.json({ choices: [{ message: { content: 'NO' }, finish_reason: 'stop' }] });
   if (String(messages[0].content).includes('friendly, respectful AI companion')) {
     const last = String(messages.at(-1).content);
