@@ -40,6 +40,12 @@ async function freePort() { const s = net.createServer(); await new Promise(r =>
       speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 1); };
     });
     await page.click('[data-action="continuous-voice"]');
+    await page.waitForFunction(() => window.__listen && window.__rec.lang === 'bn-BD');
+    let starts = await page.evaluate(() => window.__starts); await page.select('#voice-language', 'en-US');
+    await page.waitForFunction(n => window.__listen && window.__starts > n && window.__rec.lang === 'en-US', {}, starts);
+    starts = await page.evaluate(() => window.__starts); await page.select('#voice-language', 'bn-BD');
+    await page.waitForFunction(n => window.__listen && window.__starts > n && window.__rec.lang === 'bn-BD', {}, starts);
+    console.log('Bengali and English recognition language selection works');
     const say = async text => {
       await page.waitForFunction(() => window.__listen, { timeout: 15000 }); const count = await page.evaluate(() => window.__starts);
       await page.evaluate(t => window.__rec.say(t), text);
@@ -64,7 +70,13 @@ async function freePort() { const s = net.createServer(); await new Promise(r =>
     await say('নোভা কাজ বন্ধ করো');
     await page.waitForFunction(() => document.querySelector('#voice-project-result')?.textContent.includes('save already in progress'));
     assert.equal((await list()).length, 2);
-    console.log('PASS real server: Bengali spoken approval, saved three-file project, sandbox preview, spoken revision and cancellable work (mocked speech + Groq)');
+    await page.waitForFunction(() => window.__listen);
+    await page.evaluate(() => { speechSynthesis.speak = () => { window.__blockedSpeech = true; }; window.__rec.say('নোভা হ্যালো'); });
+    await page.waitForFunction(() => window.__blockedSpeech === true, { timeout: 15000 });
+    server.kill('SIGTERM');
+    await page.waitForFunction(() => document.querySelector('[data-action="continuous-voice"]')?.getAttribute('aria-pressed') === 'false' && window.__listen === false, { timeout: 15000 });
+    assert.match(await page.$eval('#voice-handsfree-status', el => el.textContent), /disconnected; microphone stopped/i);
+    console.log('PASS real server: Bengali/English selection, voice project, preview, revision, cancellation, and microphone stops on server loss (mocked speech + Groq)');
   } finally {
     if (browser) await browser.close();
     server.kill('SIGTERM'); await new Promise(r => { if (server.exitCode !== null) return r(); server.once('exit', r); setTimeout(r, 3000); });

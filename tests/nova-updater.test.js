@@ -14,7 +14,7 @@ const string = value => Buffer.from(value);
 function fixtureFiles(lock = 'old-lock') {
   return {
     'package.json': string('{"name":"example"}'), 'package-lock.json': string(lock),
-    'src/server.js': string('// new server'), 'src/nova/router.js': string('// new router'),
+    'src/server.js': string('// new server'), 'src/nova/router.js': string('// new router'), 'src/nova/desktop-companion.js': string('// new desktop companion'),
     'public/nova/index.html': string('new page'), 'desktop/nova-updater.js': string('// new updater'),
     'desktop/nova-launch.bat': string('new launch'),
     'desktop/nova-agent.js': string('new bridge'),
@@ -58,6 +58,7 @@ test('updater applies once, keeps private files and saves a consistent database 
   try {
     await updater.update(root, options(downloads));
     assert.equal(read(root, 'src/nova/router.js'), '// new router');
+    assert.equal(read(root, 'src/nova/desktop-companion.js'), '// new desktop companion');
     assert.equal(read(root, 'public/nova/index.html'), 'new page');
     assert.equal(read(root, 'desktop/nova-bridge.token'), 'private bridge token');
     assert.equal(read(root, 'data/nova/nova-vault.key'), 'my vault key');

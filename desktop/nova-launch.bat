@@ -16,7 +16,12 @@ if errorlevel 1 (
 )
 
 echo NOVA start hocche: http://localhost:3000/nova
-echo Ei window open thakle NOVA cholbe. Bondho korte Ctrl+C.
-start "" /b cmd /c "timeout /t 4 /nobreak >nul & start http://localhost:3000/nova"
-call npm run nova
-pause
+echo Tray icon diye NOVA ba voice page khulun, ebong Stop NOVA diye bondho korun.
+echo Ei window khola rakhun. Tray na thakle Ctrl+C diye bondho korun.
+node src\nova\desktop-companion.js
+if errorlevel 1 (
+  echo NOVA bondho hoyeche ba shuru kora jayni. Upore message dekhun.
+  pause
+  exit /b 1
+)
+exit /b 0

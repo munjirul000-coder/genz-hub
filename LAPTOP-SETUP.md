@@ -152,6 +152,12 @@ Connected bridge থাকলে action review-এ **Approve by voice** চে�
 বাইরের network থেকে ফোনে চালাতে আলাদা private VPN বা HTTPS endpoint setup দরকার; শুধু laptop চালু রাখলে সরাসরি internet access তৈরি হয় না। `localhost` ফোনে দিলে laptop নয়, ফোনকেই বোঝায়। নিরাপত্তার জন্য router-এ সরাসরি port খুলবে না।
 
 
+### Windows tray companion (প্রথম ধাপ, পরীক্ষামূলক)
+
+আপডেটের পর আগের `START-NOVA.bat` থেকেই NOVA চালু করো। Windows notification area-তে NOVA-র tray icon আসার কথা (hidden icons-এর তীরের ভেতরেও থাকতে পারে)। Icon-এর menu থেকে **Open NOVA**, **Open voice page** বা **Stop NOVA** বেছে নেওয়া যায়। এটি শুধু server/window-এর control; tray নিজে microphone বা screen ব্যবহার করে না। চালু থাকা terminal window বন্ধ করো না। Tray তৈরি ব্যর্থ হলে আগের মতো browser ও terminal দিয়েই চালানোর চেষ্টা হবে; terminal-এ Ctrl+C দিয়ে বন্ধ করা যাবে।
+
+**Open voice page** default browser-এ একটি tab বা window খোলে। এটি করলে voice নিজে চালু হয় না: সেখানে **Start voice conversation** ও browser microphone permission প্রয়োজন। Voice window-তে বাংলা বা English recognition language বেছে নেওয়া যায়; auto setting থাকলে এখানে বাংলা প্রথম পছন্দ। Language বদলাতে শুনতে থাকা turn পুনরায় শুরু হয়; recognition browser ও OS-এর ওপর নির্ভর করে এবং ভুল শুনতে পারে। Server হারালে voice window microphone বন্ধ করার চেষ্টা করে, কিন্তু browser suspend হলে তা দেরি হতে পারে। Main tab বন্ধ করলেও server/tray চলতে পারে, **voice window বা browser বন্ধ করলে শোনা বন্ধ হবে**। এই ধাপে native সবসময়-চালু voice, Windows startup-এ নিজে চালু হওয়া বা স্বয়ংক্রিয় screen access যোগ করা হয়নি। Tray ও microphone বাস্তব Windows-এ পরীক্ষা এখনও বাকি।
+
 ### আলাদা voice window (পরীক্ষামূলক)
 
 Conversation বা Overview-এ **Open separate voice window → Open window** চাপো। নতুন window-তে **Start voice conversation** চাপো, microphone permission দাও এবং NOVA বা নোভা বলে অনুরোধ শুরু করো। মূল NOVA tab বন্ধ করা যায়, কিন্তু আলাদা voice window, Chrome এবং NOVA server চালু থাকতে হবে; voice window minimize করা যায়। এটি browser-এর speech recognition-এর ওপর নির্ভর করে, তাই background-এ থেমে যেতে পারে এবং Windows sleep/Chrome বন্ধ থাকলে কাজ করে না। Listening চলাকালে browser-এর speech service-এ audio যেতে পারে, এমনকি wake word না থাকলেও। যে কেউ বা recording নোভা বলতে পারে; কণ্ঠ দিয়ে পরিচয় যাচাই হয় না।

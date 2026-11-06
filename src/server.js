@@ -258,13 +258,20 @@ try { require('./video-jobs').resumePending(); } catch (e) { console.error('[vid
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Gen-Z Hub running on http://0.0.0.0:${PORT} (${PROD ? 'production' : 'development'})`);
   nova.resumeLocalBridges(server.address().port);
+  if (process.argv.includes('--desktop-companion') && process.connected && process.send) process.send({ type: 'nova-server-ready', port: server.address().port }, () => {});
 });
 
+let shuttingDown = false;
 function shutdown(sig) {
+  if (shuttingDown) return; shuttingDown = true;
   console.log(`[${sig}] shutting down…`);
   nova.close();
   server.close(() => { try { nova.store.close(); db.close(); } catch (e) {} process.exit(0); });
   setTimeout(() => process.exit(1), 8000).unref();
 }
 ['SIGTERM', 'SIGINT'].forEach((s) => process.on(s, () => shutdown(s)));
+if (process.argv.includes('--desktop-companion')) {
+  process.on('message', message => { if (message?.type === 'nova-companion-stop') shutdown('desktop'); });
+  process.on('disconnect', () => shutdown('desktop disconnected'));
+}
 process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));

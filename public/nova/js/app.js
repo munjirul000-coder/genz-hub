@@ -46,7 +46,7 @@
   function hydrateIcons(root = document) { $$('[data-icon]', root).forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
   const voiceCompanion = new URLSearchParams(location.search).get('voice') === '1';
   if (voiceCompanion) document.title = 'NOVA · Voice window';
-  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false, pendingAction: null, pendingProject: null, projectWork: null, projectGrant: null, projectStatus: null, projectBengali: false, retryDelay: 800, lastNetworkWarning: 0, alerts: { enabled: false, epoch: 0, timer: null, deliverTimer: null, seen: new Set(), baseline: false, queue: [], inFlight: false } }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
+  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false, pendingAction: null, pendingProject: null, projectWork: null, projectGrant: null, projectStatus: null, projectBengali: false, recognitionLanguage: null, monitorTimer: null, monitorAbort: null, monitorEpoch: 0, retryDelay: 800, lastNetworkWarning: 0, alerts: { enabled: false, epoch: 0, timer: null, deliverTimer: null, seen: new Set(), baseline: false, queue: [], inFlight: false } }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const fmtDate = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const name = () => S.state?.settings.assistantName || 'NOVA';
@@ -213,7 +213,7 @@
     if ($('#memory-preview-list')) $('#memory-preview-list').innerHTML = s.memories.length ? s.memories.slice(0, 3).map(m => `<div class="memory-mini">${icon('sparkle')}<div><p>${esc(m.content)}</p><small>${esc(m.category)} · ${fmtDate(m.updated_at)}</small></div></div>`).join('') : `<div class="empty-mini">${icon('brain')}<p>A memory worth keeping?</p><small>Say “Remember…” or add one yourself.</small><button class="text-button" data-action="add-memory" style="margin-top:8px">${icon('plus')}Add a memory</button></div>`;
   }
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
-  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div><div id="voice-project-result" role="status" aria-live="polite">${voiceProjectMarkup()}</div></div>` : ''}</div>`; }
+  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><label for="voice-language">Recognition language</label> <select id="voice-language" aria-label="Voice recognition language"><option value="bn-BD" ${voiceRecognitionLanguage() === 'bn-BD' ? 'selected' : ''}>বাংলা (Bangladesh)</option><option value="en-US" ${voiceRecognitionLanguage() === 'en-US' ? 'selected' : ''}>English</option></select><p>Choose the language you will speak. Auto does not detect languages reliably.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div><div id="voice-project-result" role="status" aria-live="polite">${voiceProjectMarkup()}</div></div>` : ''}</div>`; }
   function renderConversation() {
     $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button> <button class="btn btn-ghost" data-action="project-builder">${icon('folder')}Project builder</button> <button class="btn btn-ghost" data-action="auto-work">${icon('monitor')}Visual work</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
@@ -482,6 +482,10 @@
     form.onsubmit = e => { e.preventDefault(); sendMessage(input.value); };
     input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(input.value); } };
     input.oninput = () => { input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; };
+    const lang = $('#voice-language'); if (lang) lang.onchange = () => {
+      S.voiceSession.recognitionLanguage = lang.value === 'en-US' ? 'en-US' : 'bn-BD';
+      if (S.voiceSession.active && S.listening && S.recognition) { try { S.recognition.stop(); } catch {} }
+    };
   }
   async function sendMessage(text, fromVoice = false) {
     text = text.trim();
@@ -842,7 +846,35 @@
       try { speechSynthesis.speak(u); } catch { finish(); }
     });
   }
+  function voiceRecognitionLanguage() {
+    return S.voiceSession.recognitionLanguage || (S.state?.settings.language === 'en' ? 'en-US' : 'bn-BD');
+  }
+  // The browser owns the microphone. Stop it if this voice companion loses its
+  // authenticated NOVA server; do not leave a silent, orphaned listener.
+  function monitorVoiceServer() {
+    if (!voiceCompanion || !S.voiceSession.active) return;
+    const epoch = ++S.voiceSession.monitorEpoch;
+    const check = async () => {
+      if (!S.voiceSession.active || epoch !== S.voiceSession.monitorEpoch) return;
+      const controller = new AbortController(); S.voiceSession.monitorAbort = controller;
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        await api('/sync', { signal: controller.signal });
+      } catch {
+        if (S.voiceSession.active && epoch === S.voiceSession.monitorEpoch) {
+          stopVoiceConversation();
+          const status = $('#voice-handsfree-status'); if (status) status.textContent = 'NOVA disconnected; microphone stopped. Restart voice when NOVA is available.';
+          toast('NOVA disconnected; the voice microphone was stopped.', 'error');
+        }
+        return;
+      } finally { clearTimeout(timeout); if (S.voiceSession.monitorAbort === controller) S.voiceSession.monitorAbort = null; }
+      if (S.voiceSession.active && epoch === S.voiceSession.monitorEpoch) S.voiceSession.monitorTimer = setTimeout(check, 4000);
+    };
+    S.voiceSession.monitorTimer = setTimeout(check, 4000);
+  }
   function stopVoiceConversation() {
+    S.voiceSession.monitorEpoch++; clearTimeout(S.voiceSession.monitorTimer); S.voiceSession.monitorTimer = null;
+    S.voiceSession.monitorAbort?.abort(); S.voiceSession.monitorAbort = null;
     setVoiceAlerts(false);
     clearPendingProject(); stopVoiceProject();
     const pending = S.voiceSession.pendingAction; S.voiceSession.pendingAction = null; if (pending) api(`/actions/${encodeURIComponent(pending.id)}/cancel`, { method: 'POST', body: {} }).catch(() => {});
@@ -879,7 +911,7 @@
     if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) { startVoice(); return; }
     if (S.listening) { toast('Stop the current microphone session first.', 'info'); return; }
     S.voiceSession.active = true; if (!['overview', 'conversation'].includes(S.view)) navigate('conversation');
-    renderShell(); toast('Voice conversation is on. Use Stop voice conversation to end it.', 'info'); startVoice();
+    monitorVoiceServer(); renderShell(); toast('Voice conversation is on. Use Stop voice conversation to end it.', 'info'); startVoice();
   }
   // Optional, conservative headline monitoring. The publishers' own links are
   // shown as evidence of what they reported, not proof an emergency occurred.
@@ -970,6 +1002,7 @@
     clearPendingProject();
     const grant = S.voiceSession.projectGrant; S.voiceSession.projectGrant = null;
     if (grant?.token) fetch('/api/nova/builder/revoke-grant', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-GenZ-Client': '1', 'X-Nova-Session': S.token }, body: JSON.stringify({ grant: grant.token }) }).catch(() => {});
+    if (voiceCompanion && S.voiceSession.active) stopVoiceConversation();
   });
   async function voiceNotice(message) {
     for (let i = 0; i < 80 && S.voiceSession.active && (S.busy || S.modal); i++) await new Promise(resolve => setTimeout(resolve, 250));
@@ -1064,7 +1097,7 @@
     if (S.listening) { if (S.voiceSession.active) stopVoiceConversation(); else S.recognition?.stop(); return; }
     if (S.view !== 'overview' && S.view !== 'conversation') navigate('conversation');
     const rec = new Recognition(); S.recognition = rec; S.listening = true;
-    rec.lang = S.state.settings.language === 'bn' ? 'bn-BD' : /[\u0980-\u09FF]/.test($('#chat-input')?.value || '') ? 'bn-BD' : 'en-US';
+    rec.lang = voiceCompanion ? voiceRecognitionLanguage() : S.state.settings.language === 'bn' ? 'bn-BD' : /[\u0980-\u09FF]/.test($('#chat-input')?.value || '') ? 'bn-BD' : 'en-US';
     rec.interimResults = true; rec.continuous = false;
     $$('.mic-button').forEach(b => b.classList.add('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'LISTENING…';
     rec.onresult = e => {
