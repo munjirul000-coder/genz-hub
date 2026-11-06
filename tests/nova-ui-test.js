@@ -21,7 +21,16 @@ async function launchBrowser() {
   process.env.LD_LIBRARY_PATH = '/tmp/al2023/lib:' + (process.env.LD_LIBRARY_PATH || '');
   return puppeteer.launch({ headless: true, executablePath: await chromium.executablePath(), args: chromium.args.filter(a => !['--disable-web-security', '--allow-running-insecure-content', '--single-process'].includes(a)) });
 }
-async function click(page, selector) { await page.waitForSelector(selector, { visible: true }); await page.click(selector); }
+async function click(page, selector) {
+  await page.waitForSelector(selector, { visible: true });
+  // Don't click a moving modal while its entrance animation is still running.
+  await page.evaluate(async s => {
+    const el = document.querySelector(s); const animations = [];
+    for (let node = el; node; node = node.parentElement) animations.push(...node.getAnimations().filter(a => a.playState === 'running' && a.effect.getTiming().iterations !== Infinity));
+    await Promise.all(animations.map(a => a.finished.catch(() => {})));
+  }, selector);
+  await page.click(selector);
+}
 async function text(page) { return page.evaluate(() => document.body.innerText); }
 async function go(page, view) { await page.evaluate(v => { location.hash = v; }, view); await sleep(350); }
 async function noOverflow(page, label) { const r = await page.evaluate(() => ({ s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth })); ok('no horizontal overflow · ' + label, r.s <= r.c + 1, `${r.s}/${r.c}`); }
@@ -69,11 +78,11 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       };
     });
     await page.type('#chat-input', 'latest news ui fixture'); await page.keyboard.press('Enter');
-    await page.waitForSelector('#messages a[href="https://www.bbc.com/news/test"]');
-    ok('world chat shows a clickable sourced link without rendering unsafe content', await page.evaluate(() => {
+    await page.waitForFunction(() => {
       const links = [...document.querySelectorAll('#messages a')];
       return links.length === 1 && links[0].hostname === 'www.bbc.com' && links[0].rel.includes('noopener') && !window.__worldXss && !document.querySelector('#messages img');
-    }));
+    });
+    ok('world chat shows a clickable sourced link without rendering unsafe content', true);
 
     // Website generation is explicit; AI output is previewed in an isolated frame.
     await go(page, 'conversation');
@@ -184,23 +193,55 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     // Explicit continuous voice session, using a mocked browser speech engine.
     await go(page, 'conversation');
     await page.evaluate(() => {
-      window.__voiceStarts = 0;
+      window.__voiceStarts = 0; window.__spoken = [];
+      const voiceFetch = window.fetch;
+      window.fetch = (url, options = {}) => {
+        if (String(url).endsWith('/chat') && JSON.parse(options.body || '{}').message === 'latest news voice test') {
+          const now = Date.now(); return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'voice-news-u', role: 'user', content: 'latest news voice test', created_at: now }, message: { id: 'voice-news-a', role: 'assistant', created_at: now, content: '| ID | বাংলা সংবাদ |\n|---|---|\n| N1 | প্রথম খবর বাংলায়। |\n| N2 | দ্বিতীয় খবর বাংলায়। |\n\nWorld Monitor · checked 2026-11-06 UTC\n[N1] https://www.bbc.com/news/test' }, engine: 'cloud' }), { status: 200 }));
+        }
+        if (String(url).endsWith('/chat') && JSON.parse(options.body || '{}').message === 'local news voice test') {
+          const now = Date.now(); return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'local-voice-u', role: 'user', content: 'local news voice test', created_at: now }, message: { id: 'local-voice-a', role: 'assistant', created_at: now, content: 'World Monitor · checked 2026-11-06 UTC\n[N1] প্রথম খবর। · 2026-11-06T00:00:00.000Z\nhttps://www.bbc.com/news/first\n[N2] দ্বিতীয় খবর।\n[N3] তৃতীয় খবর।\n[N4] চতুর্থ খবর।' }, engine: 'local' }), { status: 200 }));
+        }
+        return voiceFetch(url, options);
+      };
       window.SpeechRecognition = class {
         constructor() { window.__voiceRec = this; }
         start() { window.__voiceStarts++; } stop() { this.onend?.(); } abort() { this.onend?.(); }
         say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); }
       };
       window.__realSpeak = speechSynthesis.speak.bind(speechSynthesis);
-      speechSynthesis.speak = utterance => setTimeout(() => utterance.onend?.(), 10);
+      window.__realGetVoices = speechSynthesis.getVoices.bind(speechSynthesis);
+      window.__RealUtterance = window.SpeechSynthesisUtterance; window.__hasBanglaVoice = true;
+      window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+      speechSynthesis.getVoices = () => window.__hasBanglaVoice ? [{ voiceURI: 'bn-test', lang: 'bn-BD', name: 'Bangla test' }] : [{ voiceURI: 'en-test', lang: 'en-US', name: 'English test' }];
+      speechSynthesis.speak = utterance => { window.__spoken.push(utterance.text); setTimeout(() => utterance.onend?.(), 10); };
     });
     await click(page, '[data-action="continuous-voice"]');
     ok('continuous voice starts only on explicit opt-in', await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'true');
     await page.evaluate(() => window.__voiceRec.say('what is 2 + 2?'));
     await page.waitForFunction(() => document.querySelector('#messages')?.innerText.includes('what is 2 + 2') && window.__voiceStarts >= 2, { timeout: 10000 });
     ok('continuous voice resumes after the assistant reply', await page.evaluate(() => window.__voiceStarts >= 2));
+    await page.evaluate(() => window.__voiceRec.say('latest news voice test'));
+    await page.waitForFunction(() => window.__spoken.some(t => t.includes('প্রথম খবর বাংলায়')), { timeout: 10000 });
+    ok('spoken news removes source numbers, tables and URLs but keeps the Bengali news', await page.evaluate(() => {
+      const t = window.__spoken.find(x => x.includes('প্রথম খবর বাংলায়'));
+      return t.includes('দ্বিতীয় খবর বাংলায়') && !/N1|N2|\||https?:/i.test(t);
+    }));
+    await page.waitForFunction(() => window.__voiceStarts >= 3, { timeout: 10000 });
+    await page.evaluate(() => window.__voiceRec.say('local news voice test'));
+    await page.waitForFunction(() => window.__spoken.some(t => t.includes('তৃতীয় খবর')), { timeout: 10000 });
+    ok('local news fallback speaks three headlines without IDs or links', await page.evaluate(() => {
+      const t = window.__spoken.find(x => x.includes('তৃতীয় খবর'));
+      return t.includes('প্রথম খবর') && t.includes('দ্বিতীয় খবর') && !/N1|N2|N3|https?:|চতুর্থ/.test(t);
+    }));
+    await page.waitForFunction(() => window.__voiceStarts >= 4, { timeout: 10000 });
+    await page.evaluate(() => { window.__hasBanglaVoice = false; window.__spokenBeforeNoBangla = window.__spoken.length; window.__voiceRec.say('latest news voice test'); });
+    await page.waitForFunction(() => document.body.innerText.includes('বাংলা voice পাওয়া যায়নি'), { timeout: 10000 });
+    ok('missing Bengali voice is reported instead of reading only English source IDs', await page.evaluate(() => window.__spoken.length === window.__spokenBeforeNoBangla));
+
     await click(page, '[data-action="continuous-voice"]'); const voiceCount = await page.evaluate(() => window.__voiceStarts); await sleep(1100);
     ok('continuous voice stops on request', await page.evaluate(() => window.__voiceStarts) === voiceCount && await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'false');
-    await page.evaluate(() => { speechSynthesis.speak = window.__realSpeak; delete window.SpeechRecognition; });
+    await page.evaluate(() => { speechSynthesis.speak = window.__realSpeak; speechSynthesis.getVoices = window.__realGetVoices; window.SpeechSynthesisUtterance = window.__RealUtterance; delete window.SpeechRecognition; });
 
     // One voice approval starts exactly one isolated multi-file project build.
     const builtId = '00000000-0000-4000-8000-000000000002';
@@ -270,7 +311,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await click(page, '#screen-review-click'); await page.waitForSelector('.approval-detail');
     ok('screen click requires separate approval and displays the target', (await text(page)).includes('Primary screen point: 25%, 75%') && await page.$('#approve-action') === null);
     ok('closing screen viewer stops sharing', await page.evaluate(() => window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
-    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action');
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));
 
     // A single spoken grant drives a multi-step visual loop (all OS/provider calls mocked).
     await page.evaluate((builtId) => {
@@ -339,6 +380,15 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await click(page, '.world-event'); ok('world event opens source details', (await text(page)).includes('USGS details'));
     await noOverflow(page, 'world monitor');
     await page.screenshot({ path: path.join(SHOTS, 'nova-world.png'), fullPage: true });
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await go(page, 'overview'); await go(page, 'world'); await page.waitForSelector('.world-event');
+    await click(page, '[data-world-mode="map"]'); await sleep(500);
+    const mapBox = await page.$eval('#world-canvas', el => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; });
+    await page.mouse.click(mapBox.x + (90.4 + 180) * mapBox.w / 360, mapBox.y + (90 - 23.7) * mapBox.h / 180);
+    ok('reduced-motion map still draws and selects the real feed marker', (await text(page)).includes('USGS details'));
+    await click(page, '[data-world-mode="globe"]');
+    ok('globe keyboard rotation remains available with reduced motion', await page.$eval('#world-canvas', el => !el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))));
+    await page.emulateMediaFeatures([]);
     await page.evaluate(() => window.__worldOffline = true); await click(page, '#world-refresh');
     await page.waitForFunction(() => document.querySelector('#world-quakes')?.innerText.includes('Feed unavailable'));
     ok('world monitor shows source failure without fake events', await page.$('.world-event') === null && (await text(page)).includes('Feed unavailable'));
@@ -360,23 +410,23 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('quick action opens approval review', (await text(page)).includes('A quick check before we act'));
     ok('offline bridge blocks approval', (await text(page)).includes('Desktop bridge is offline') && await page.$('#approve-action') === null);
     await page.screenshot({ path: path.join(SHOTS, 'nova-approval.png') });
-    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));  await sleep(300);
     await go(page, 'activity'); ok('cancelled action appears in activity', (await text(page)).includes('Cancelled'));
     await go(page, 'desktop'); ok('desktop setup instructions render', (await text(page)).includes('Download nova-agent.js'));
     await page.type('#mouse-x', '500'); await page.type('#mouse-y', '300');
     await click(page, '#mouse-form button[value="mouse_click"]'); await page.waitForSelector('.approval-detail');
     ok('mouse click review displays coordinates and deletion warning', (await text(page)).includes('Screen coordinates: X 500, Y 300') && (await text(page)).includes('A click may delete files'));
     ok('mouse click cannot run while bridge offline', await page.$('#approve-action') === null);
-    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));  await sleep(300);
     await page.type('#keyboard-text', 'Hello NOVA');
     await click(page, '#keyboard-form button[type="submit"]'); await page.waitForSelector('.approval-detail');
     ok('keyboard action review shows text and requires Notepad', (await text(page)).includes('Hello NOVA') && (await text(page)).includes('focus Notepad within 5 seconds'));
     ok('keyboard action cannot run while bridge offline', await page.$('#approve-action') === null);
-    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));  await sleep(300);
     await page.select('#keyboard-target', 'code');
     await click(page, '#keyboard-form button[type="submit"]'); await page.waitForSelector('.approval-detail');
     ok('keyboard review targets the selected supported app', (await text(page)).includes('focus code and the intended text field within 5 seconds'));
-    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await sleep(300);
+    await click(page, '[data-action-cancel]'); await click(page, '#confirm-action'); await page.waitForFunction(() => document.body.innerText.includes('Action cancelled.'));  await sleep(300);
     await page.select('#keyboard-target', 'notepad');
     // Simulate a connected bridge and browser speech recognition; no OS inputs are executed.
     const onlineResult = await page.evaluate(async () => {
@@ -437,7 +487,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.setViewport({ width: 768, height: 1024 }); await noOverflow(page, 'tablet');
     ok('no uncaught browser errors', errors.length === 0, errors.join(' | '));
   } finally {
-    if (browser) await browser.close();
+    if (browser) { const child = browser.process(); await Promise.race([browser.close().catch(() => {}), sleep(5000).then(() => child?.kill('SIGKILL'))]); }
     server.kill('SIGTERM'); await new Promise(r => { if (server.exitCode !== null) return r(); server.once('exit', r); setTimeout(r, 3000); });
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -805,6 +805,8 @@ test('world chat intents recognize Bengali, Banglish, English and referential fo
   assert.equal(worldIntent('world monitor দেখাও'), 'both');
   const history = [{ role: 'user', content: 'latest news bolo' }, { role: 'assistant', content: 'BBC headlines' }];
   assert.equal(worldIntent('প্রথমটা বিস্তারিত বলো', history), 'news');
+  assert.equal(worldIntent('amake voice e bolo banglay', history), 'news');
+  assert.equal(worldIntent('voice settings', history), null);
   assert.equal(worldIntent('ওটা আরও বলো', [...history, { role: 'user', content: 'প্রথমটা বিস্তারিত বলো' }]), 'news');
   assert.equal(worldIntent('ওটা বলো', [...history, { role: 'user', content: 'unrelated topic' }]), null);
   assert.equal(worldIntent('tell me a joke', history), null);
@@ -821,7 +823,7 @@ test('world chat sends only requested feed data to the AI and includes checked, 
     const result = await respond({ ...base, text: 'latest news bolo' });
     assert.equal(result.engine, 'cloud'); assert.match(result.content, /Headline summary \[N1\]/); assert.match(result.content, /https:\/\/www\.bbc\.com\/news\/test/); assert.doesNotMatch(result.content, /wrong\.example/); assert.match(result.content, /unverified item/);
     assert.match(result.content, /2023-11-14T22:13:20.000Z/); assert.match(result.content, /headline-only/);
-    assert.match(request.messages[0].content, /untrusted data/); assert.match(JSON.stringify(request.messages), /World event headline/); assert.doesNotMatch(JSON.stringify(request.messages), /Near Dhaka/);
+    assert.match(request.messages[0].content, /untrusted data/); assert.match(request.messages[0].content, /Avoid Markdown tables/); assert.match(request.messages[0].content, /speech synthesis/); assert.match(JSON.stringify(request.messages), /World event headline/); assert.doesNotMatch(JSON.stringify(request.messages), /Near Dhaka/);
     const quake = await respond({ ...base, text: 'what time was the latest earthquake?' });
     assert.equal(quake.engine, 'cloud'); assert.match(quake.content, /Near Dhaka/); assert.match(quake.content, /earthquake\.usgs\.gov/); assert.doesNotMatch(quake.content, /World event headline/);
     assert.match(JSON.stringify(request.messages), /Near Dhaka/); assert.doesNotMatch(JSON.stringify(request.messages), /World event headline/);

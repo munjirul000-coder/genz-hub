@@ -185,8 +185,8 @@ NOVA screenshot দেখে পরের step নির্বাচন কর�
 
 ## World monitor ও voice conversation
 
-- Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World RSS থেকে আসে। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; কোনো feed বন্ধ থাকলে error দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)।
-- Conversation-এর **Start voice conversation** চাপলে microphone turn-by-turn চালু থাকে এবং response browser voice-এ পড়ে। **Stop voice conversation** চাপলে বন্ধ হয়; অন্য page-এ গেলে session বন্ধ হয়। Browser mic permission লাগে; browser vendor speech process করতে পারে, এবং Bengali recognition/voice availability browser ও OS-এর ওপর নির্ভর করে। এটি always-on wake word নয়।
+- Sidebar-এর **World monitor**-এ 3D globe drag করা যায়; **2D map**-এ switch করা যায়। Marker-গুলো USGS M2.5+ গত ২৪ ঘণ্টার earthquake feed, headline BBC World RSS থেকে আসে। Server প্রতি পাঁচ মিনিট পর্যন্ত cache করে; কোনো feed বন্ধ থাকলে error দেখায়। সব conflict, fire বা অন্য hotspot দেখায় না। Map outline Natural Earth/world-atlas (লাইসেন্স `public/nova/world/`)। নীল grid, তারা, orbit ও জমির বিন্দু সাজসজ্জা; শুধু USGS feed-এর কমলা marker ভূমিকম্পের তথ্য।
+- Conversation-এর **Start voice conversation** চাপলে microphone turn-by-turn চালু থাকে এবং response browser voice-এ পড়ে। **Stop voice conversation** চাপলে বন্ধ হয়; অন্য page-এ গেলে session বন্ধ হয়। Browser mic permission লাগে; browser vendor speech process করতে পারে, এবং Bengali recognition/voice availability browser ও OS-এর ওপর নির্ভর করে। বাংলা reply পড়ার জন্য browser বা Windows-এ বাংলা text-to-speech voice থাকতে হবে; voice লোড/উপলব্ধ না হলে NOVA সতর্ক করে। Settings-এর Installed voice তালিকা পরীক্ষা করো। এটি always-on wake word নয়।
 - Settings-এ JARVIS-style, Mentor বা Custom নির্বাচন করে name ও behaviour save করা যায়। Cloud AI-কে recent conversation, selected personality preference ও explicitly saved memories পাঠানো হয়।
 
 

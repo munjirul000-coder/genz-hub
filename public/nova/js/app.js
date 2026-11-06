@@ -504,12 +504,8 @@
       if (data.action) S.state.actions.unshift(data.action);
       if (data.website) showWebsite(data.website);
       if (data.uiAction?.type === 'focus') startFocus(data.uiAction.minutes);
-      // Speak the AI summary, not a long list of source URLs; keep links visible in chat.
-      const isWorldReply = data.message.content.includes('World Monitor · checked ');
-      const spoken = !isWorldReply ? data.message.content : data.engine === 'cloud' && data.message.content.includes('\n\nWorld Monitor · checked ')
-        ? data.message.content.split('\n\nWorld Monitor · checked ')[0]
-        : data.message.content.replace(/^https:\/\/[^\s]+$/gm, '');
-      await speak(spoken, S.voiceSession.active);
+      // Voice speaks the summary, not source IDs, table dividers or URLs.
+      await speak(data.message.content, S.voiceSession.active, data.engine);
     } catch (err) { S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); toast(err.message, 'error'); if (input) input.value = text; }
     finally { S.busy = false; if (send) send.disabled = false; renderMessages(); renderShell(); renderOverviewDynamic(); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; $('#chat-input')?.focus(); if (S.voiceSession.active) scheduleVoiceTurn(); }
   }
@@ -544,7 +540,7 @@
   /* Live world monitor. All markers and headlines come from named sources;
      no sample events are displayed when feeds are unavailable. */
   function renderWorld() {
-    $('#view').innerHTML = `${remoteBanner()}${heading('World monitor.', 'A wider view, grounded in real sources.', `<button class="btn btn-ghost" id="world-refresh">${icon('refresh')}Refresh</button>`)}<div class="world-layout"><section class="card world-stage"><div class="world-stage-head"><div><span class="world-eyebrow">LIVE DATA / LAST 24 HOURS</span><h2>Earthquake monitor</h2><p>USGS earthquakes M2.5+ · Drag globe to rotate</p></div><div class="world-modes"><button class="chip active" data-world-mode="globe">3D globe</button><button class="chip" data-world-mode="map">2D map</button></div></div><canvas id="world-canvas" tabindex="0" aria-label="Interactive earthquake globe. Use left and right arrow keys to rotate."></canvas><div class="world-stage-foot"><span><i class="world-dot"></i>USGS earthquake · M2.5+</span><span id="world-time">Loading live sources…</span></div><div id="world-selected" class="world-selection">Select a marker or an event below for details.</div></section><div class="world-side"><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">USGS / RECENT EVENTS</span><h2>Earthquakes</h2></div>${icon('activity')}</div><div id="world-quakes" class="world-list"><p class="world-empty">Loading…</p></div></section><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">BBC / WORLD NEWS</span><h2>Latest headlines</h2></div>${icon('globe')}</div><div id="world-news" class="world-list"><p class="world-empty">Loading…</p></div></section></div></div><p class="world-disclaimer">Public feeds can be delayed or unavailable. Earthquakes are not a complete picture of global events. Map outlines: Natural Earth / world-atlas.</p>`;
+    $('#view').innerHTML = `${remoteBanner()}${heading('World monitor.', 'A wider view, grounded in real sources.', `<button class="btn btn-ghost" id="world-refresh">${icon('refresh')}Refresh</button>`)}<div class="world-layout"><section class="card world-stage"><div class="world-stage-head"><div><span class="world-eyebrow"><i class="world-signal"></i> GLOBAL ACTIVITY / LAST 24 HOURS</span><h2>Earthquake monitor</h2><p>USGS earthquakes M2.5+ · Drag globe to rotate</p></div><div class="world-modes"><button class="chip active" data-world-mode="globe">3D globe</button><button class="chip" data-world-mode="map">2D map</button></div></div><div class="world-viewport"><div class="world-display-label world-display-label-left"><span>GLOBAL VIEW</span><strong>EARTH / 01</strong></div><div class="world-display-label world-display-label-right"><span>DATA SOURCE</span><strong>USGS + BBC</strong></div><canvas id="world-canvas" tabindex="0" aria-label="Interactive earthquake globe. Use left and right arrow keys to rotate."></canvas><div class="world-crosshair" aria-hidden="true"></div></div><div class="world-stage-foot"><span><i class="world-dot"></i>USGS earthquake · M2.5+</span><span id="world-time">Loading live sources…</span></div><div id="world-selected" class="world-selection">Select a marker or an event below for details.</div></section><div class="world-side"><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">USGS / RECENT EVENTS</span><h2>Earthquakes</h2></div>${icon('activity')}</div><div id="world-quakes" class="world-list"><p class="world-empty">Loading…</p></div></section><section class="card world-list-card"><div class="world-list-title"><div><span class="world-eyebrow">BBC / WORLD NEWS</span><h2>Latest headlines</h2></div>${icon('globe')}</div><div id="world-news" class="world-list"><p class="world-empty">Loading…</p></div></section></div></div><p class="world-disclaimer">Public feeds can be delayed or unavailable. Earthquakes are not a complete picture of global events. Map outlines: Natural Earth / world-atlas.</p>`;
     const canvas = $('#world-canvas'), frame = $('#view');
     const visual = window.NovaWorld.create(canvas, event => {
       if (!frame.contains(canvas)) return;
@@ -735,14 +731,49 @@
     const fill = () => { if (!select.isConnected) return; const voices = speechSynthesis.getVoices(); const current = S.state.settings.voiceURI; select.innerHTML = '<option value="">Choose automatically</option>' + voices.map(v => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === current ? 'selected' : ''}>${esc(v.name)} · ${esc(v.lang)}</option>`).join(''); };
     fill(); speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
   }
-  function speak(text, force = false) {
-    if (!('speechSynthesis' in window)) { if (force) toast('Speech output is not supported in this browser.', 'info'); return Promise.resolve(); }
+  function voiceText(text, engine) {
+    let value = String(text || '');
+    const marker = 'World Monitor · checked ';
+    if (value.includes(marker)) {
+      if (engine === 'cloud' && value.includes('\n\n' + marker)) value = value.split('\n\n' + marker)[0];
+      else {
+        const records = value.split('\n').filter(line => /^\s*\[(?:N|Q)\d+\]/i.test(line)).slice(0, 3);
+        if (records.length) value = records.join('\n').replace(/\s*·\s*\d{4}-\d\d-\d\dT[^\s]+/g, '');
+        else value = value.replace(/^https?:\/\/\S+$/gm, '');
+      }
+    }
+    value = value.replace(/^\s*\|?\s*:?-{2,}[-:|\s]*\|?\s*$/gm, '')
+      .replace(/^\s*\|\s*(?:আইডি|id)\s*\|[^\n]*$/gim, '')
+      .replace(/\|\s*[NQ]\d+\s*\|/gi, '|')
+      .replace(/\[(?:N|Q)\d+\]/gi, '')
+      .replace(/^\s*(?:N|Q)\d+\s*[:|]\s*/gim, '')
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/[|*#•]/g, ' ').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    if (value.length > 1200) {
+      const excerpt = value.slice(0, 1200); const end = Math.max(excerpt.lastIndexOf('।'), excerpt.lastIndexOf('.'), excerpt.lastIndexOf('?'), excerpt.lastIndexOf('!'));
+      value = end > 450 ? excerpt.slice(0, end + 1) : excerpt.slice(0, Math.max(1, excerpt.lastIndexOf(' '))) + '…';
+    }
+    return value;
+  }
+  function availableVoices() {
+    const voices = speechSynthesis.getVoices(); if (voices.length) return Promise.resolve(voices);
+    return new Promise(resolve => {
+      let done = false; const finish = () => { if (done) return; done = true; clearTimeout(timer); speechSynthesis.removeEventListener?.('voiceschanged', finish); resolve(speechSynthesis.getVoices()); };
+      const timer = setTimeout(finish, 1500); speechSynthesis.addEventListener?.('voiceschanged', finish, { once: true });
+    });
+  }
+  async function speak(text, force = false, engine = null) {
+    if (!('speechSynthesis' in window)) { if (force) toast('Speech output is not supported in this browser.', 'info'); return; }
     const s = { ...S.state.settings, ...(S.view === 'settings' && $('#setting-voice-uri') ? { voiceURI: $('#setting-voice-uri').value, voiceGender: $('#setting-gender').value, speechRate: Number($('#setting-rate').value), voiceEnabled: $('#setting-voice').checked } : {}) };
-    if (!s.voiceEnabled && !force) return Promise.resolve();
-    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\*\*/g, '').replace(/[•#]/g, '').slice(0, 1200));
-    const voices = speechSynthesis.getVoices(); const lang = /[\u0980-\u09FF]/.test(text) ? 'bn' : 'en';
-    u.lang = lang === 'bn' ? 'bn-BD' : 'en-US'; u.rate = s.speechRate || 1;
-    const chosen = voices.find(v => v.voiceURI === s.voiceURI) || voices.find(v => v.lang.startsWith(lang) && (s.voiceGender === 'auto' || new RegExp(s.voiceGender === 'feminine' ? 'female|samantha|zira|aria|jenny|sonia|ava|google.*english' : 'male|david|daniel|guy|alex|mark', 'i').test(v.name))) || voices.find(v => v.lang.startsWith(lang));
+    if (!s.voiceEnabled && !force) return;
+    const spoken = voiceText(text, engine); if (!spoken) return;
+    const activeSession = S.voiceSession.active; const voices = await availableVoices();
+    if (activeSession && !S.voiceSession.active) return;
+    const lang = /[\u0980-\u09FF]/.test(spoken) ? 'bn' : 'en';
+    const matches = v => String(v.lang || '').toLowerCase().split('-')[0] === lang;
+    let chosen = voices.find(v => v.voiceURI === s.voiceURI && (lang !== 'bn' || matches(v))) || voices.find(v => matches(v) && (s.voiceGender === 'auto' || new RegExp(s.voiceGender === 'feminine' ? 'female|samantha|zira|aria|jenny|sonia|ava|google.*english' : 'male|david|daniel|guy|alex|mark', 'i').test(v.name))) || voices.find(matches);
+    if (lang === 'bn' && !chosen) { toast('বাংলা voice পাওয়া যায়নি বা লোড হয়নি। Settings-এর Installed voice দেখো; browser বা Windows-এ বাংলা text-to-speech voice লাগবে।', 'info'); return; }
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(spoken); u.lang = lang === 'bn' ? (chosen?.lang || 'bn-BD') : 'en-US'; u.rate = s.speechRate || 1;
     if (chosen) u.voice = chosen;
     return new Promise(resolve => {
       let done = false; const finish = () => { if (done) return; done = true; clearTimeout(timer); if (S.voiceSession.finishSpeech === finish) S.voiceSession.finishSpeech = null; resolve(); };
