@@ -462,7 +462,11 @@
     } else {
       box.innerHTML = messages.map(m => {
         const action = m.action_id && S.state.actions.find(a => a.id === m.action_id);
-        const content = esc(m.content).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Only link the fixed, validated World Monitor sources; all message text remains escaped.
+        const sourceUrl = /(https:\/\/(?:[a-z0-9-]+\.)*(?:bbc\.com|bbc\.co\.uk)\/[^\s<>"']+|https:\/\/earthquake\.usgs\.gov\/[^\s<>"']+)/gi;
+        const content = String(m.content).split(sourceUrl).map((part, i) => i % 2 && m.role === 'assistant'
+          ? `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer">${esc(part)}</a>`
+          : esc(part).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')).join('');
         return `<div class="message ${m.role === 'user' ? 'user' : ''}"><span class="message-avatar">${icon(m.role === 'user' ? 'user' : 'sparkle')}</span><div class="message-body"><div class="message-meta">${esc(m.role === 'user' ? 'You' : name())}<time>${fmtTime(m.created_at)}</time>${m.engine === 'cloud' ? '<span class="subtle">· AI</span>' : ''}</div><div class="message-content">${content}</div>${action ? `<div class="action-attachment">${icon('shield')}<div><strong>${esc(action.label)}</strong><small>${esc(action.status === 'pending' ? 'Needs your approval' : action.status)}</small></div>${['pending', 'approved'].includes(action.status) ? `<button class="btn btn-sm btn-ghost" data-action-review="${action.id}">${action.status === 'pending' ? 'Review' : 'Cancel'}</button>` : statusPill(action.status)}</div>` : ''}</div></div>`;
       }).join('');
     }
@@ -500,7 +504,12 @@
       if (data.action) S.state.actions.unshift(data.action);
       if (data.website) showWebsite(data.website);
       if (data.uiAction?.type === 'focus') startFocus(data.uiAction.minutes);
-      await speak(data.message.content, S.voiceSession.active);
+      // Speak the AI summary, not a long list of source URLs; keep links visible in chat.
+      const isWorldReply = data.message.content.includes('World Monitor · checked ');
+      const spoken = !isWorldReply ? data.message.content : data.engine === 'cloud' && data.message.content.includes('\n\nWorld Monitor · checked ')
+        ? data.message.content.split('\n\nWorld Monitor · checked ')[0]
+        : data.message.content.replace(/^https:\/\/[^\s]+$/gm, '');
+      await speak(spoken, S.voiceSession.active);
     } catch (err) { S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); toast(err.message, 'error'); if (input) input.value = text; }
     finally { S.busy = false; if (send) send.disabled = false; renderMessages(); renderShell(); renderOverviewDynamic(); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; $('#chat-input')?.focus(); if (S.voiceSession.active) scheduleVoiceTurn(); }
   }

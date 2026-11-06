@@ -417,18 +417,27 @@ test('world feeds parse sourced events and reject untrusted links', () => {
 });
 
 test('world endpoint fetches fixed public sources, reports real source status and requires a session', async () => {
-  const existingOwner = store.createWorkspace().token;
+  const w = store.createWorkspace(), existingOwner = w.token;
   assert.equal((await req('/world')).status, 401);
   const realFetch = global.fetch;
   global.fetch = async (url, options) => {
     if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [{ geometry: { coordinates: [90.4, 23.7] }, properties: { mag: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' } }] }), { status: 200 });
     if (String(url).startsWith('https://feeds.bbci.co.uk/')) throw new Error('offline');
+    if (String(url).startsWith('https://api.groq.com/')) {
+      assert.match(options.body, /Near Dhaka/);
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'An earthquake occurred near Dhaka [Q1].' } }] }), { status: 200 });
+    }
     return realFetch(url, options);
   };
   try {
     const response = await req('/world', { token: existingOwner });
     assert.equal(response.status, 200); assert.equal(response.data.quakes.ok, true); assert.equal(response.data.quakes.items.length, 1);
     assert.equal(response.data.news.ok, false); assert.deepEqual(response.data.news.items, []);
+    const chat = await req('/chat', { method: 'POST', token: existingOwner, body: { message: 'latest earthquake' } });
+    assert.equal(chat.status, 200); assert.match(chat.data.message.content, /Near Dhaka/); assert.match(chat.data.message.content, /earthquake\.usgs\.gov/);
+    store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+    const cloudChat = await req('/chat', { method: 'POST', token: existingOwner, body: { message: 'latest earthquake' } });
+    assert.equal(cloudChat.data.engine, 'cloud'); assert.match(cloudChat.data.message.content, /earthquake occurred near Dhaka/); assert.match(cloudChat.data.message.content, /earthquake\.usgs\.gov/);
   } finally { global.fetch = realFetch; }
 });
 
@@ -782,5 +791,63 @@ test('visual session cannot claim a website was completed before a project is sa
     const result = (await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.session;
     assert.equal(result.state, 'stopped'); assert.match(result.message, /No website project was saved/);
     assert.deepEqual((await req('/builder/projects', { token: owner })).data.projects, []);
+  } finally { global.fetch = realFetch; }
+});
+
+test('world chat intents recognize Bengali, Banglish, English and referential follow-ups only', () => {
+  const { worldIntent } = require('../src/nova/assistant');
+  assert.equal(worldIntent('latest news bolo'), 'news');
+  assert.equal(worldIntent('আজকের খবর কী?'), 'news');
+  assert.equal(worldIntent('আজ পৃথিবীতে কী হচ্ছে?'), 'news');
+  assert.equal(worldIntent('ajker khobor ki'), 'news');
+  assert.equal(worldIntent('ভূমিকম্প কোথায় হয়েছে?'), 'quakes');
+  assert.equal(worldIntent('what time was the latest earthquake?'), 'quakes');
+  assert.equal(worldIntent('world monitor দেখাও'), 'both');
+  const history = [{ role: 'user', content: 'latest news bolo' }, { role: 'assistant', content: 'BBC headlines' }];
+  assert.equal(worldIntent('প্রথমটা বিস্তারিত বলো', history), 'news');
+  assert.equal(worldIntent('ওটা আরও বলো', [...history, { role: 'user', content: 'প্রথমটা বিস্তারিত বলো' }]), 'news');
+  assert.equal(worldIntent('ওটা বলো', [...history, { role: 'user', content: 'unrelated topic' }]), null);
+  assert.equal(worldIntent('tell me a joke', history), null);
+  assert.equal(worldIntent('explain quantum physics', history), null);
+});
+
+test('world chat sends only requested feed data to the AI and includes checked, source-linked records', async () => {
+  const { respond } = require('../src/nova/assistant');
+  const data = { fetchedAt: 1700000000000, news: { ok: true, items: [{ title: 'World event headline', url: 'https://www.bbc.com/news/test', time: 1699999999000 }] }, quakes: { ok: true, items: [{ place: 'Near Dhaka', magnitude: 4.2, time: 1699999998000, url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] } };
+  const base = { settings: { language: 'auto', assistantName: 'NOVA' }, memories: [], history: [], timezone: 'Asia/Dhaka', config: { configured: true, base: 'https://mock.ai', key: 'private', model: 'test' }, loadWorld: async () => data };
+  const realFetch = global.fetch; let request;
+  global.fetch = async (url, opts) => { assert.equal(url, 'https://mock.ai/chat/completions'); request = JSON.parse(opts.body); return new Response(JSON.stringify({ choices: [{ message: { content: 'Headline summary [N1] [N99]. Invented link: https://wrong.example/story' } }] }), { status: 200 }); };
+  try {
+    const result = await respond({ ...base, text: 'latest news bolo' });
+    assert.equal(result.engine, 'cloud'); assert.match(result.content, /Headline summary \[N1\]/); assert.match(result.content, /https:\/\/www\.bbc\.com\/news\/test/); assert.doesNotMatch(result.content, /wrong\.example/); assert.match(result.content, /unverified item/);
+    assert.match(result.content, /2023-11-14T22:13:20.000Z/); assert.match(result.content, /headline-only/);
+    assert.match(request.messages[0].content, /untrusted data/); assert.match(JSON.stringify(request.messages), /World event headline/); assert.doesNotMatch(JSON.stringify(request.messages), /Near Dhaka/);
+    const quake = await respond({ ...base, text: 'what time was the latest earthquake?' });
+    assert.equal(quake.engine, 'cloud'); assert.match(quake.content, /Near Dhaka/); assert.match(quake.content, /earthquake\.usgs\.gov/); assert.doesNotMatch(quake.content, /World event headline/);
+    assert.match(JSON.stringify(request.messages), /Near Dhaka/); assert.doesNotMatch(JSON.stringify(request.messages), /World event headline/);
+  } finally { global.fetch = realFetch; }
+});
+
+test('world chat handles offline, partial, empty and failed AI cases without invented events', async () => {
+  const { respond } = require('../src/nova/assistant');
+  const now = Date.now(), common = { settings: { language: 'auto', assistantName: 'NOVA' }, memories: [], history: [], timezone: 'Asia/Dhaka' };
+  const offline = { fetchedAt: now, news: { ok: false, items: [] }, quakes: { ok: true, items: [{ place: 'Near Dhaka', magnitude: 4, time: now, url: '' }] } };
+  const realFetch = global.fetch; let called = 0;
+  global.fetch = async () => { called++; throw new Error('provider offline'); };
+  try {
+    let result = await respond({ ...common, text: 'latest news', config: { configured: true, base: 'https://mock.ai', model: 'test' }, loadWorld: async () => offline });
+    assert.equal(called, 0); assert.equal(result.engine, 'local'); assert.match(result.content, /BBC World News feed unavailable/); assert.doesNotMatch(result.content, /Near Dhaka/);
+    result = await respond({ ...common, text: 'world monitor', config: { configured: true, base: 'https://mock.ai', model: 'test' }, loadWorld: async () => offline });
+    assert.match(result.content, /AI summary unavailable/); assert.match(result.content, /BBC World News feed unavailable/); assert.match(result.content, /Near Dhaka/);
+    result = await respond({ ...common, text: 'latest news', config: { configured: false }, loadWorld: async () => ({ ...offline, news: { ok: true, items: [] } }) });
+    assert.match(result.content, /No headlines returned/); assert.doesNotMatch(result.content, /Near Dhaka/);
+    result = await respond({ ...common, text: 'latest news', config: { configured: false }, loadWorld: async () => { throw new Error('offline'); } });
+    assert.match(result.content, /unavailable/);
+    const callsBeforeLocal = called;
+    result = await respond({ ...common, text: 'latest news', config: { configured: false }, loadWorld: async () => ({ ...offline, news: { ok: true, items: [{ title: 'Source headline', url: 'https://www.bbc.com/news/test', time: now }] } }) });
+    assert.equal(called, callsBeforeLocal); assert.equal(result.engine, 'local'); assert.match(result.content, /Source headline/); assert.match(result.content, /bbc\.com/);
+    let feedCalls = 0;
+    result = await respond({ ...common, text: 'Hello', config: { configured: false }, loadWorld: async () => { feedCalls++; return offline; } });
+    assert.equal(feedCalls, 0); assert.match(result.content, /NOVA/);
   } finally { global.fetch = realFetch; }
 });

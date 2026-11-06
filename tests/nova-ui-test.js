@@ -56,6 +56,25 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.reload({ waitUntil: 'networkidle0' }); await page.waitForSelector('#messages');
     ok('conversation survives reload', (await text(page)).includes('512'));
 
+    // Chat shows only trusted World Monitor links, with all other content escaped.
+    await go(page, 'conversation');
+    await page.evaluate(() => {
+      const original = window.fetch; window.__worldXss = false;
+      window.fetch = (url, opts = {}) => {
+        if (String(url).endsWith('/chat') && JSON.parse(opts.body || '{}').message === 'latest news ui fixture') {
+          const now = Date.now();
+          return Promise.resolve(new Response(JSON.stringify({ userMessage: { id: 'world-u', role: 'user', content: 'latest news ui fixture', created_at: now }, message: { id: 'world-a', role: 'assistant', created_at: now, content: 'BBC World News\nhttps://www.bbc.com/news/test\nhttps://www.bbc.com.evil.example/test\n<img src=x onerror=\"window.__worldXss=true\">' }, engine: 'local' }), { status: 200 }));
+        }
+        return original(url, opts);
+      };
+    });
+    await page.type('#chat-input', 'latest news ui fixture'); await page.keyboard.press('Enter');
+    await page.waitForSelector('#messages a[href="https://www.bbc.com/news/test"]');
+    ok('world chat shows a clickable sourced link without rendering unsafe content', await page.evaluate(() => {
+      const links = [...document.querySelectorAll('#messages a')];
+      return links.length === 1 && links[0].hostname === 'www.bbc.com' && links[0].rel.includes('noopener') && !window.__worldXss && !document.querySelector('#messages img');
+    }));
+
     // Website generation is explicit; AI output is previewed in an isolated frame.
     await go(page, 'conversation');
     const workspaceId = await page.evaluate(async () => (await (await fetch('/api/nova/state', { headers: { 'X-Nova-Session': sessionStorage.getItem('nova.token') } })).json()).workspace.id);

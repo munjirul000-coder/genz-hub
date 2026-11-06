@@ -177,6 +177,9 @@ NOVA screenshot দেখে পরের step নির্বাচন কর�
 - Conversation-এর **Start voice conversation** চাপলে microphone turn-by-turn চালু থাকে এবং response browser voice-এ পড়ে। **Stop voice conversation** চাপলে বন্ধ হয়; অন্য page-এ গেলে session বন্ধ হয়। Browser mic permission লাগে; browser vendor speech process করতে পারে, এবং Bengali recognition/voice availability browser ও OS-এর ওপর নির্ভর করে। এটি always-on wake word নয়।
 - Settings-এ JARVIS-style, Mentor বা Custom নির্বাচন করে name ও behaviour save করা যায়। Cloud AI-কে recent conversation, selected personality preference ও explicitly saved memories পাঠানো হয়।
 
+
+Chat-এ latest news বা ভূমিকম্প সম্পর্কে জিজ্ঞেস করলে একই World Monitor-এর BBC headline / USGS feed ব্যবহার করা হয়। AI সংযুক্ত থাকলে feed-এর তথ্য দিয়ে উত্তর দেয়; checked time এবং মূল উৎসের link দেখায়। Feed-এ শুধু headline থাকে, সম্পূর্ণ article বা অন্য website search নয়; না পাওয়া তথ্য AI-এর বানিয়ে বলা উচিত নয় এবং উত্তর যাচাই করতে হবে। Feed সর্বোচ্চ ৫ মিনিট cache হতে পারে। Feed বন্ধ থাকলে সেটি জানানো হয়; AI বন্ধ থাকলেও পাওয়া তথ্য সরাসরি দেখায়। খবর সংক্রান্ত প্রশ্ন ও feed data সংযুক্ত AI provider-এ পাঠানো হয়।
+
 ---
 
 ## Privacy ও বাস্তব সীমা
