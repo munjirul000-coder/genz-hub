@@ -11,12 +11,13 @@ const { createLocalBridge, isLocalRequest } = require('./local-bridge');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip } = require('./project-builder');
 const { createAutonomy } = require('./autonomy');
+const { createNativeVoice } = require('./native-voice');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
 const COOKIE = 'nova_session';
 
-function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
+function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeVoiceOptions = {} }) {
   const store = new NovaStore(dataDir);
   const vault = new Vault(dataDir);
   const router = express.Router();
@@ -78,6 +79,22 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
     return aiConfig();
   }
   const autonomy = createAutonomy({ store, workspaceAi, dataDir, bridgeOnline });
+  const nativeVoice = createNativeVoice({
+    ...nativeVoiceOptions,
+    sessionActive: (workspace, hash) => store.ownerSessionActive(workspace, hash),
+    onUtterance: async ({ workspace, language, text, isActive }) => {
+      if (!isActive()) return '';
+      const settings = { ...settingsOf(workspace), language: language === 'bn-BD' ? 'bn' : 'en' };
+      const result = await respond({ text, settings, memories: store.memories(workspace), history: store.messages(workspace, 14), timezone: settings.timezone, config: workspaceAi(workspace), chatOnly: true, voice: true, nativeVoice: true });
+      if (!isActive()) return '';
+      // Deliberately ignore all action, memory and UI fields even if a future
+      // assistant change accidentally returns one in conversation-only mode.
+      const content = result.content.replace('কাজটি করতে চাইলে আগে বলো, নোভা আড্ডা মোড বন্ধ করো।', 'কাজের জন্য NOVA-র browser window ব্যবহার করো।').replace('Turn off chat-only mode if you want me to do that.', 'Use the NOVA browser window for tasks.');
+      store.addMessage(workspace, 'user', text);
+      store.addMessage(workspace, 'assistant', content, result.engine);
+      return content;
+    },
+  });
   const aiState = (workspaceId) => {
     const c = workspaceAi(workspaceId);
     return { configured: c.configured, provider: c.provider, model: c.configured ? c.model : null, source: c.configured ? c.source : 'none', hasKey: c.configured && c.source === 'workspace' };
@@ -97,7 +114,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
   });
   function snapshot(workspaceId, session) {
     return { messages: store.messages(workspaceId), memories: store.memories(workspaceId), actions: store.actions(workspaceId), bridge: bridgeState(workspaceId),
-      ai: aiState(workspaceId), remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
+      ai: aiState(workspaceId), nativeVoice: session.role === 'owner' ? { ...nativeVoice.status(workspaceId), supported: nativeVoice.supported() } : { state: 'off', supported: false }, remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
   }
   router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData({ force: req.query.refresh === '1' }))));
   router.get('/sync', auth, (req, res) => { store.expireActions(); res.json(snapshot(req.nova.workspace_id, req.nova)); });
@@ -406,6 +423,15 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
     if (!isLocalRequest(req)) return res.status(403).json({ error: 'Open NOVA on this Windows PC using localhost to connect its bridge.' });
     next();
   }
+  // This controls a microphone on the machine running the server, so a paired
+  // phone, reverse proxy, or non-owner can never turn it on or off.
+  router.post('/native-voice/start', auth, owner, localOnly, U.rateLimit({ max: 6, windowMs: 60000, key: 'nova-native-start' }), U.wrap(async (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Explicit microphone consent is required.' });
+    res.json(await nativeVoice.start(req.nova.workspace_id, req.nova.token_hash, req.body?.language));
+  }));
+  router.post('/native-voice/stop', auth, owner, localOnly, (req, res) => {
+    res.json({ ok: nativeVoice.stop(req.nova.workspace_id) });
+  });
   router.post('/local-bridge/start', auth, owner, localOnly, U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-local-bridge-start' }), U.wrap(async (req, res) => {
     if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm local desktop bridge access first.' });
     const result = await localBridge.start(req.nova.workspace_id, req.socket.localPort);
@@ -460,10 +486,10 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
   });
   router.delete('/workspace', auth, owner, (req, res) => {
     if (req.body?.confirmation !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm workspace deletion.' });
-    localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
+    nativeVoice.stop(req.nova.workspace_id); localBridge.stop(req.nova.workspace_id); store.deleteWorkspace(req.nova.workspace_id); res.clearCookie(COOKIE, { path: '/api/nova' }); res.json({ ok: true });
   });
   router.use((req, res) => res.status(404).json({ error: 'NOVA endpoint not found.' }));
   router.use((err, req, res, next) => { console.error('[nova]', err.message); res.status(err.status || 500).json({ error: err.status ? err.message : 'NOVA could not complete that request. Please try again.' }); });
-  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); localBridge.close(); } };
+  return { router, store, resumeLocalBridges: port => { if (localBridge.supported()) for (const workspace of store.enabledLocalBridges()) localBridge.start(workspace, port).catch(() => {}); }, close: () => { clearInterval(timer); projectGrants.clear(); nativeVoice.close(); localBridge.close(); } };
 }
 module.exports = { createNovaRouter, DEFAULT_SETTINGS };

@@ -53,6 +53,13 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.setViewport({ width: 1440, height: 1000 });
     await page.goto(base + '/', { waitUntil: 'networkidle0' });
     await page.waitForSelector('.core-card');
+    await click(page, '[data-action="native-voice"]');
+    ok('background voice requires explicit consent and explains privacy', (await text(page)).includes('I agree · start microphone') && (await text(page)).includes('Do not speak passwords') && (await text(page)).includes('not yet been tested on Windows hardware'));
+    ok('background voice offers Bengali and English', await page.$$eval('#native-language option', options => options.map(o => o.value).join(',') === 'bn-BD,en-US'));
+    await click(page, '#native-confirm'); await sleep(300);
+    ok('non-Windows start reports an honest error', (await text(page)).includes('available only on this Windows PC'));
+    await click(page, '.modal [data-close]');
+
     ok('root opens NOVA when NOVA_HOME=1', page.url().endsWith('/nova#overview'));
     ok('animated core renders', await page.$('#orb-canvas') !== null);
     await noOverflow(page, 'desktop overview');

@@ -85,6 +85,9 @@ class NovaStore {
     return this.db.prepare(`SELECT s.*, w.name, w.settings FROM sessions s JOIN workspaces w ON w.id=s.workspace_id
       WHERE s.token_hash=? AND s.revoked=0 AND s.expires_at>?`).get(hash(raw), Date.now()) || null;
   }
+  ownerSessionActive(workspaceId, tokenHash) {
+    return !!this.db.prepare("SELECT 1 FROM sessions s JOIN workspaces w ON w.id=s.workspace_id WHERE s.workspace_id=? AND s.token_hash=? AND s.role='owner' AND s.revoked=0 AND s.expires_at>?").get(workspaceId, tokenHash, Date.now());
+  }
   revokeSession(tokenHash) { this.db.prepare('UPDATE sessions SET revoked=1 WHERE token_hash=?').run(tokenHash); }
   revokeRemotes(workspaceId) { this.db.prepare("UPDATE sessions SET revoked=1 WHERE workspace_id=? AND role='remote'").run(workspaceId); }
   remotes(workspaceId) {
