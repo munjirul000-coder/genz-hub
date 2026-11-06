@@ -253,6 +253,14 @@ Conversation বা Overview-এ **Open separate voice window → Open window** 
 ইচ্ছা করলে আলাদা নিশ্চিতকরণ দিয়ে শুধু Firefox, Chrome, Edge, Notepad ও Calculator এই session-এ স্পষ্ট ও local-recognized নির্দেশে review ছাড়া খুলতে দিতে পারো; AI দিয়ে বোঝা নির্দেশ ও অন্য action review লাগে, voice বন্ধ করলে অনুমতি মুছে যায়। অন্য action review লাগে; চলমান কাজ stop-এর পরেও শেষ হতে পারে। বাস্তব Windows-এ minimized microphone ও wake word যাচাই বাকি। বাংলাদেশ সংবাদ Jago News 24 থেকে সর্বশেষ national/country/politics/economy headlines হিসেবে আসে; feed পুরোনো বা unavailable হলে জানানো হয়। BBC/Guardian বিশ্ব সংবাদ অপরিবর্তিত।
 
 
+### আড্ডা ও বন্ধুর মতো কথা
+
+Groq বা সংযুক্ত AI চালু থাকলে NOVA-কে যেমন “নোভা চলো গল্প করি”, “নোভা আজ আমার মন ভালো নেই” বা “নোভা তোমার কী খবর” বলতে পারো। এটি আগের কয়েকটি বার্তার context ব্যবহার করে স্বাভাবিকভাবে উত্তর দেওয়ার চেষ্টা করে; AI ভুল বুঝতে বা ভুল উত্তর দিতে পারে। বাংলায় বলার জন্য voice page-এ বাংলা recognition নির্বাচন করো। Audio ও বাংলা voice browser/Windows-এর ওপর নির্ভরশীল।
+
+চাইলে “নোভা আড্ডা মোড চালু করো” বলে বা voice page-এর বোতামে আড্ডা মোড চালু করতে পারো। এই window-র chat দিয়ে desktop action, website build, timer বা নতুন memory তৈরি হবে না; অন্য window ও বোতামের কাজ বন্ধ হয় না। আগে থেকে অনুমতির অপেক্ষায় বা চলমান কাজ থাকলে আগে সেটি শেষ/বাতিল করতে হবে। আড্ডা চালু করলে স্বয়ংক্রিয় app-opening permission ও project-revision permission বাতিল হয়। কাজের জন্য “নোভা আড্ডা মোড বন্ধ করো” বলো। Voice বন্ধ বা window বন্ধ করলে মোডও বন্ধ হয়। **প্রতিবার নোভা বলে ডাকতে হবে**; কাছের ব্যক্তি বা recording-ও ডাকতে পারে, কণ্ঠে পরিচয় যাচাই হয় না।
+
+আড্ডার লেখা অন্য chat-এর মতো workspace-এ সংরক্ষিত হয়; সংযুক্ত AI ব্যবহার করলে সাম্প্রতিক আলাপ ও তোমার সংরক্ষিত memories সেই provider-এ পাঠানো হয়। Browser-এর speech service-এ microphone audio যেতে পারে। Memory কেবল স্পষ্টভাবে রাখতে বললে সাধারণ মোডে সংরক্ষিত হয়; আড্ডা মোডে নতুন memory save হয় না। AI সংযুক্ত না থাকলে মাত্র কিছু পূর্বনির্ধারিত আড্ডার উত্তর পাওয়া যাবে; এটি পূর্ণ offline AI নয়।
+
 ### Voice দিয়ে একটি static website কাজ (পরীক্ষামূলক)
 
 আলাদা voice window-তে listening চালু থাকলে বলো: “নোভা একটা bakery ওয়েবসাইট তৈরি করো”। NOVA জানাবে বর্ণনা AI provider-এ যাবে এবং তিনটি নতুন static file তৈরি হবে; ৬০ সেকেন্ডের মধ্যে “নোভা অনুমতি দিচ্ছি” বললে কাজ শুরু হবে, অথবা “নোভা বাতিল” বললে হবে না। কাজ চলার সময় “নোভা কাজ বন্ধ করো” বলে থামানোর অনুরোধ দেওয়া যায়। আগেই save শুরু হয়ে গেলে সেটি শেষ হয়ে থাকতে পারে—Saved projects-এ যাচাই করো। সফল হলে sandboxed preview আসে; AI তৈরি code ব্যবহারের আগে যাচাই করো।

@@ -122,7 +122,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
 
   const websiteChatLimit = U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-website-chat' });
   router.post('/chat', auth, U.rateLimit({ max: 30, windowMs: 60000, key: 'nova-chat' }), (req, res, next) => {
-    if (!websiteIntent(clean(req.body?.message, 4000)) && !websiteEditIntent(clean(req.body?.message, 4000))) return next();
+    if (req.body?.conversationMode === 'chat' || (!websiteIntent(clean(req.body?.message, 4000)) && !websiteEditIntent(clean(req.body?.message, 4000)))) return next();
     if (req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can create website projects.' });
     return websiteChatLimit(req, res, next);
   }, U.wrap(async (req, res) => {
@@ -132,8 +132,9 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
     const workspaceId = req.nova.workspace_id; const settings = settingsOf(workspaceId);
     const history = store.messages(workspaceId, 14); const memories = store.memories(workspaceId);
     let website = null, result;
-    const isEdit = websiteEditIntent(text);
-    if (isEdit || websiteIntent(text)) {
+    const chatOnly = req.body?.conversationMode === 'chat';
+    const isEdit = !chatOnly && websiteEditIntent(text);
+    if (!chatOnly && (isEdit || websiteIntent(text))) {
       let previous = null, generated;
       if (isEdit) {
         const requestedId = clean(req.body?.websiteProjectId, 50);
@@ -151,7 +152,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {} }) {
           ? `আমি “${previous.project.name}” website-এর নতুন version তৈরি করেছি। আগের version অপরিবর্তিত আছে। Preview খুলেছি।`
           : 'আমি একটি static website তৈরি করে save করেছি। Preview খুলেছি; পরে Build website → Saved websites থেকেও পাবে। এটি live website বা backend নয়।' };
       } else result = { engine: 'local', content: `Website তৈরি বা পরিবর্তন করা যায়নি: ${generated.error} কোনো নতুন project তৈরি হয়নি।` };
-    } else result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId) });
+    } else result = await respond({ text, settings, memories, history, timezone: settings.timezone, config: workspaceAi(workspaceId), chatOnly, voice: req.body?.inputMode === 'voice' });
     if ((result.action?.kind?.startsWith('mouse_') || result.action?.kind?.startsWith('keyboard_')) && req.nova.role !== 'owner') return res.status(403).json({ error: 'Only the workspace owner can prepare mouse and keyboard actions.' });
     // A workspace may be deleted while a cloud request is in flight.
     if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });

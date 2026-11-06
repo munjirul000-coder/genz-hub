@@ -536,7 +536,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       window.__voiceFetch = window.fetch; window.__voiceMessages = []; window.__voiceApprovals = 0; window.__voiceCancels = 0; window.__voiceStartCount = 0; window.__alertCalls = 0; window.__voiceSpoken = [];
       window.fetch = async (url, opts = {}) => {
         const target = String(url);
-        if (target.endsWith('/chat')) { window.__voiceMessages.push(JSON.parse(opts.body).message); const now = Date.now(); const mouse = window.__voiceMessages.at(-1).includes('mouse'); const action = { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'pending', created_at: now }; return new Response(JSON.stringify({ userMessage: { id: 'mock-user-' + now, role: 'user', content: window.__voiceMessages.at(-1), created_at: now }, message: { id: 'mock-assistant-' + now, role: 'assistant', content: 'Review Open Firefox', action_id: action.id, created_at: now }, action, engine: 'local' }), { status: 200 }); }
+        if (target.endsWith('/chat')) { window.__lastChatBody = JSON.parse(opts.body); window.__voiceMessages.push(window.__lastChatBody.message); const now = Date.now(); const mouse = window.__voiceMessages.at(-1).includes('mouse'); const action = { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'pending', created_at: now }; return new Response(JSON.stringify({ userMessage: { id: 'mock-user-' + now, role: 'user', content: window.__voiceMessages.at(-1), created_at: now }, message: { id: 'mock-assistant-' + now, role: 'assistant', content: 'Review Open Firefox', action_id: action.id, created_at: now }, action, engine: 'local' }), { status: 200 }); }
         if (/\/actions\/mock-(?:app|mouse)\/approve$/.test(target)) { window.__voiceApprovals++; const mouse = target.includes('mock-mouse'); return new Response(JSON.stringify({ action: { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'approved', created_at: Date.now() } }), { status: 200 }); }
         if (target.endsWith('/actions/mock-app/cancel')) { window.__voiceCancels++; return new Response(JSON.stringify({ action: { id: 'mock-app', kind: 'open_firefox', label: 'Open Firefox', params: {}, status: 'cancelled', created_at: Date.now() } }), { status: 200 }); }
         if (target.endsWith('/world')) { const items = ++window.__alertCalls < 2 ? [] : [{ source: 'BBC World', title: 'World war fears in test report', url: 'https://www.bbc.com/news/alert-test', time: Date.now() }]; return new Response(JSON.stringify({ fetchedAt: Date.now(), news: { ok: true, sources: [{ name: 'BBC World', ok: true }], items }, bangladesh: { ok: true, items: [] }, quakes: { ok: true, items: [] } }), { status: 200 }); }
@@ -609,9 +609,20 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       await voice.evaluate(c => window.__voiceRecognition.say(c), command);
       await voice.waitForFunction(n => window.__voiceStartCount > n && window.__voiceListening === true, { timeout: 15000 }, starts);
     }
+    await sayProject('Nova chat mode on');
+    ok('chat-only mode turns off app-opening consent', await voice.$eval('#voice-chat-only', e => e.getAttribute('aria-pressed')) === 'true' && (await text(voice)).includes('Allow voice app opening for this session'));
+    await sayProject('Nova open firefox');
+    ok('chat-only speech is marked and cannot auto-approve even if a response contains an action', await voice.evaluate(() => window.__lastChatBody?.conversationMode === 'chat' && window.__lastChatBody?.inputMode === 'voice' && window.__voiceApprovals === 2));
+    await sayProject('Nova chat mode off');
+    ok('chat-only mode can be ended by voice', await voice.$eval('#voice-chat-only', e => e.getAttribute('aria-pressed')) === 'false');
+    const beforeAmbient = await voice.evaluate(() => window.__voiceMessages.length);
+    await sayProject('আমি নোভাকে নিয়ে গল্প করছি');
+    ok('a mid-sentence mention or Bengali name suffix does not trigger voice', await voice.evaluate(n => window.__voiceMessages.length === n, beforeAmbient));
     await sayProject('নোভা একটা bakery ওয়েবসাইট তৈরি করো');
     const projectPrompt = await text(voice);
     ok('Bengali website voice request asks scoped permission without stopping continuous voice', (projectPrompt.includes('two requested revisions') || projectPrompt.includes('দুটি পরিবর্তন')) && await voice.evaluate(() => window.__buildRequests.length === 0));
+    await sayProject('Nova chat mode on');
+    ok('chat-only mode refuses to start while project permission is pending', await voice.$eval('#voice-chat-only', e => e.getAttribute('aria-pressed')) === 'false' && await voice.evaluate(() => window.__buildRequests.length === 0));
     await sayProject('approve');
     ok('project approval without wake word cannot start work', await voice.evaluate(() => window.__buildRequests.length === 0));
     await sayProject('Nova do not approve');
