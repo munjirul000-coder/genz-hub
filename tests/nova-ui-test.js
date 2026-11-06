@@ -220,24 +220,24 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     });
     await click(page, '[data-action="continuous-voice"]');
     ok('continuous voice starts only on explicit opt-in', await page.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed')) === 'true');
-    await page.evaluate(() => window.__voiceRec.say('what is 2 + 2?'));
+    await page.evaluate(() => window.__voiceRec.say('Nova what is 2 + 2?'));
     await page.waitForFunction(() => document.querySelector('#messages')?.innerText.includes('what is 2 + 2') && window.__voiceStarts >= 2, { timeout: 10000 });
     ok('continuous voice resumes after the assistant reply', await page.evaluate(() => window.__voiceStarts >= 2));
-    await page.evaluate(() => window.__voiceRec.say('latest news voice test'));
+    await page.evaluate(() => window.__voiceRec.say('Nova latest news voice test'));
     await page.waitForFunction(() => window.__spoken.some(t => t.includes('প্রথম খবর বাংলায়')), { timeout: 10000 });
     ok('spoken news removes source numbers, tables and URLs but keeps the Bengali news', await page.evaluate(() => {
       const t = window.__spoken.find(x => x.includes('প্রথম খবর বাংলায়'));
       return t.includes('দ্বিতীয় খবর বাংলায়') && !/N1|N2|\||https?:/i.test(t);
     }));
     await page.waitForFunction(() => window.__voiceStarts >= 3, { timeout: 10000 });
-    await page.evaluate(() => window.__voiceRec.say('local news voice test'));
+    await page.evaluate(() => window.__voiceRec.say('Nova local news voice test'));
     await page.waitForFunction(() => window.__spoken.some(t => t.includes('তৃতীয় খবর')), { timeout: 10000 });
     ok('local news fallback speaks three headlines without IDs or links', await page.evaluate(() => {
       const t = window.__spoken.find(x => x.includes('তৃতীয় খবর'));
       return t.includes('প্রথম খবর') && t.includes('দ্বিতীয় খবর') && !/N1|N2|N3|https?:|চতুর্থ/.test(t);
     }));
     await page.waitForFunction(() => window.__voiceStarts >= 4, { timeout: 10000 });
-    await page.evaluate(() => { window.__hasBanglaVoice = false; window.__spokenBeforeNoBangla = window.__spoken.length; window.__voiceRec.say('latest news voice test'); });
+    await page.evaluate(() => { window.__hasBanglaVoice = false; window.__spokenBeforeNoBangla = window.__spoken.length; window.__voiceRec.say('Nova latest news voice test'); });
     await page.waitForFunction(() => document.body.innerText.includes('বাংলা voice পাওয়া যায়নি'), { timeout: 10000 });
     ok('missing Bengali voice is reported instead of reading only English source IDs', await page.evaluate(() => window.__spoken.length === window.__spokenBeforeNoBangla));
 
@@ -533,22 +533,28 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('voice window opens independently with explicit start and safety note', (await text(voice)).includes('say “নোভা” or “Nova”') && (await text(voice)).includes('Anyone nearby'));
     await parent.close(); ok('voice window remains after the main tab closes', !voice.isClosed());
     await voice.evaluate(() => {
-      window.__voiceFetch = window.fetch; window.__voiceMessages = []; window.__voiceApprovals = 0; window.__voiceStartCount = 0;
+      window.__voiceFetch = window.fetch; window.__voiceMessages = []; window.__voiceApprovals = 0; window.__voiceCancels = 0; window.__voiceStartCount = 0; window.__alertCalls = 0; window.__voiceSpoken = [];
       window.fetch = async (url, opts = {}) => {
         const target = String(url);
         if (target.endsWith('/chat')) { window.__voiceMessages.push(JSON.parse(opts.body).message); const now = Date.now(); const mouse = window.__voiceMessages.at(-1).includes('mouse'); const action = { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'pending', created_at: now }; return new Response(JSON.stringify({ userMessage: { id: 'mock-user-' + now, role: 'user', content: window.__voiceMessages.at(-1), created_at: now }, message: { id: 'mock-assistant-' + now, role: 'assistant', content: 'Review Open Firefox', action_id: action.id, created_at: now }, action, engine: 'local' }), { status: 200 }); }
-        if (target.endsWith('/actions/mock-app/approve')) { window.__voiceApprovals++; return new Response(JSON.stringify({ action: { id: 'mock-app', kind: 'open_firefox', label: 'Open Firefox', params: {}, status: 'approved', created_at: Date.now() } }), { status: 200 }); }
+        if (/\/actions\/mock-(?:app|mouse)\/approve$/.test(target)) { window.__voiceApprovals++; const mouse = target.includes('mock-mouse'); return new Response(JSON.stringify({ action: { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'approved', created_at: Date.now() } }), { status: 200 }); }
+        if (target.endsWith('/actions/mock-app/cancel')) { window.__voiceCancels++; return new Response(JSON.stringify({ action: { id: 'mock-app', kind: 'open_firefox', label: 'Open Firefox', params: {}, status: 'cancelled', created_at: Date.now() } }), { status: 200 }); }
+        if (target.endsWith('/world')) { const items = ++window.__alertCalls < 2 ? [] : [{ source: 'BBC World', title: 'World war fears in test report', url: 'https://www.bbc.com/news/alert-test', time: Date.now() }]; return new Response(JSON.stringify({ fetchedAt: Date.now(), news: { ok: true, sources: [{ name: 'BBC World', ok: true }], items }, bangladesh: { ok: true, items: [] }, quakes: { ok: true, items: [] } }), { status: 200 }); }
         const response = await window.__voiceFetch(url, opts);
         if (target.endsWith('/sync')) { const data = await response.json(); data.bridge = { ...data.bridge, online: true, managed: true }; return new Response(JSON.stringify(data), { status: 200 }); }
         return response;
       };
       window.SpeechRecognition = class {
-        start() { window.__voiceRecognition = this; window.__voiceStartCount++; }
-        stop() { setTimeout(() => this.onend?.(), 0); }
-        abort() { setTimeout(() => this.onend?.(), 0); }
+        start() { window.__voiceRecognition = this; window.__voiceListening = true; window.__voiceStartCount++; }
+        stop() { window.__voiceListening = false; setTimeout(() => this.onend?.(), 0); }
+        abort() { window.__voiceListening = false; setTimeout(() => this.onend?.(), 0); }
         say(value) { this.onresult?.({ results: [Object.assign([{ transcript: value }], { isFinal: true })] }); }
       };
-      speechSynthesis.speak = utterance => setTimeout(() => utterance.onend?.(), 1);
+      window.__voiceRealSetTimeout = window.setTimeout;
+      window.setTimeout = (fn, ms, ...args) => window.__voiceRealSetTimeout(fn, ms === 180000 ? 100 : ms, ...args);
+      window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+      speechSynthesis.getVoices = () => [{ voiceURI: 'test-en', lang: 'en-US', name: 'Test' }, { voiceURI: 'test-bn', lang: 'bn-BD', name: 'Test' }];
+      speechSynthesis.speak = utterance => { window.__voiceSpoken.push(utterance.text); setTimeout(() => utterance.onend?.(), 1); };
     });
     await voice.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await voice.waitForFunction(() => document.querySelector('#sidebar-bridge-status')?.textContent.includes('Connected'), { timeout: 10000 });
@@ -558,17 +564,34 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await voice.evaluate(() => window.__voiceRecognition.say('নোভা open firefox'));
     await voice.waitForFunction(() => window.__voiceMessages.length === 1); await voice.waitForFunction(() => window.__voiceStartCount >= 3);
     ok('wake phrase sends request but does not auto approve by default', await voice.evaluate(() => window.__voiceMessages[0] === 'open firefox' && window.__voiceApprovals === 0));
+    ok('voice explicitly asks for approval of the prepared action', (await text(voice)).includes('Nova approve') || (await text(voice)).includes('নোভা অনুমতি দিচ্ছি'));
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova cancel')); await voice.waitForFunction(() => window.__voiceCancels === 1 && window.__voiceStartCount >= 4);
+    ok('wake-word voice cancellation does not approve the action', await voice.evaluate(() => window.__voiceApprovals === 0));
     await click(voice, '#voice-app-permission'); await voice.waitForSelector('#confirm-action');
     ok('automatic opening requires separate informed session consent', (await text(voice)).includes('Anyone nearby or a recording'));
     await click(voice, '#confirm-action');
     await voice.evaluate(() => window.__voiceRecognition.say('Nova open firefox'));
-    await voice.waitForFunction(() => window.__voiceApprovals === 1);
+    await voice.waitForFunction(() => window.__voiceApprovals === 1 && window.__voiceStartCount >= 5);
     ok('only after consent can a supported voice app request be approved', await voice.evaluate(() => window.__voiceMessages.length === 2 && window.__voiceApprovals === 1));
-    await voice.waitForFunction(() => window.__voiceStartCount >= 4); await voice.evaluate(() => window.__voiceRecognition.say('Nova mouse click'));
-    await voice.waitForFunction(() => window.__voiceMessages.length === 3); await sleep(300);
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova mouse click'));
+    await voice.waitForFunction(() => window.__voiceMessages.length === 3 && window.__voiceStartCount >= 6);
     ok('mouse clicks are not auto-approved by app-only voice consent', await voice.evaluate(() => window.__voiceApprovals === 1));
-    await click(voice, '[data-action="continuous-voice"]');
-    ok('stopping voice clears session app-opening permission', (await text(voice)).includes('Allow voice app opening for this session'));
+    await voice.evaluate(() => window.__voiceRecognition.say('approve')); await voice.waitForFunction(() => window.__voiceStartCount >= 7);
+    ok('approval without the wake word is ignored', await voice.evaluate(() => window.__voiceApprovals === 1));
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova approve')); await voice.waitForFunction(() => window.__voiceApprovals === 2 && window.__voiceStartCount >= 8);
+    ok('a pending action can be approved by voice without a mouse', await voice.evaluate(() => window.__voiceApprovals === 2));
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova news alerts on'));
+    await voice.waitForFunction(() => document.querySelector('#voice-news-proof a')?.href === 'https://www.bbc.com/news/alert-test', { timeout: 15000 });
+    ok('new relevant report is announced with its source link and emergency disclaimer', await voice.evaluate(() => window.__voiceSpoken.some(t => t.includes('World war fears in test report') && /not an official emergency alert/i.test(t))));
+    await sleep(400); ok('unchanged news is not announced repeatedly', await voice.evaluate(() => window.__voiceSpoken.filter(t => t.includes('World war fears in test report')).length === 1));
+    await voice.waitForFunction(() => window.__voiceListening === true, { timeout: 10000 });
+    const beforeRetry = await voice.evaluate(() => window.__voiceStartCount);
+    await voice.evaluate(() => { window.__voiceRecognition.onerror?.({ error: 'network' }); window.__voiceRecognition.stop(); });
+    await voice.waitForFunction(count => window.__voiceStartCount > count && window.__voiceListening, { timeout: 10000 }, beforeRetry);
+    ok('temporary speech network failure retries without turning off the voice session', await voice.$eval('[data-action="continuous-voice"]', el => el.getAttribute('aria-pressed') === 'true'));
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova stop listening'));
+    await voice.waitForFunction(() => document.querySelector('[data-action="continuous-voice"]')?.getAttribute('aria-pressed') === 'false');
+    ok('voice stop clears session app-opening permission and news monitoring', (await text(voice)).includes('Allow voice app opening for this session') && (await text(voice)).includes('News alerts are off'));
     await voice.close();
     ok('no uncaught browser errors', errors.length === 0, errors.join(' | '));
   } finally {

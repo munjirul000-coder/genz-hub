@@ -46,7 +46,7 @@
   function hydrateIcons(root = document) { $$('[data-icon]', root).forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
   const voiceCompanion = new URLSearchParams(location.search).get('voice') === '1';
   if (voiceCompanion) document.title = 'NOVA · Voice window';
-  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
+  const S = { state: null, view: 'overview', token: sessionStorage.getItem('nova.token') || '', busy: false, memoryFilter: 'all', memorySearch: '', modal: null, websiteProjectId: null, focus: { minutes: 25, remaining: 1500, running: false, endAt: 0 }, orb: null, recognition: null, listening: false, voiceSession: { active: false, timer: null, wakeUntil: 0, allowAppOpen: false, pendingAction: null, retryDelay: 800, lastNetworkWarning: 0, alerts: { enabled: false, epoch: 0, timer: null, deliverTimer: null, seen: new Set(), baseline: false, queue: [], inFlight: false } }, lastSnapshot: '', paletteIndex: 0, paletteItems: [] };
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const fmtDate = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const name = () => S.state?.settings.assistantName || 'NOVA';
@@ -171,7 +171,7 @@
     $('#user-avatar').textContent = initial; $('.top-avatar').textContent = initial;
     $('#profile-name').textContent = s.settings.userName || 'Your workspace';
     $('#profile-role').textContent = isOwner() ? 'Owner · Local session' : 'Remote · Paired phone';
-    $$('[data-action="continuous-voice"]').forEach(b => { b.setAttribute('aria-pressed', String(S.voiceSession.active)); b.innerHTML = `${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}`; const label = b.parentElement?.querySelector('span'); if (label) label.textContent = S.voiceSession.active ? 'Microphone session active' : 'Optional · uses browser speech service'; });
+    $$('[data-action="continuous-voice"]').forEach(b => { b.setAttribute('aria-pressed', String(S.voiceSession.active)); b.innerHTML = `${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}`; const label = b.parentElement?.querySelector('span'); if (label) label.textContent = S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'; });
     $('#sidebar-bridge-status').innerHTML = `<i class="status-dot" style="color:${online() ? 'var(--mint)' : 'var(--subtle)'}"></i>${online() ? 'Connected' : 'Not connected'}`;
     const engineLabel = s.ai.configured ? (s.ai.provider === 'groq' ? 'Groq + local' : 'AI + local') : 'Local engine';
     $('#engine-pill').innerHTML = `<i class="status-dot"></i>${engineLabel}`;
@@ -213,7 +213,7 @@
     if ($('#memory-preview-list')) $('#memory-preview-list').innerHTML = s.memories.length ? s.memories.slice(0, 3).map(m => `<div class="memory-mini">${icon('sparkle')}<div><p>${esc(m.content)}</p><small>${esc(m.category)} · ${fmtDate(m.updated_at)}</small></div></div>`).join('') : `<div class="empty-mini">${icon('brain')}<p>A memory worth keeping?</p><small>Say “Remember…” or add one yourself.</small><button class="text-button" data-action="add-memory" style="margin-top:8px">${icon('plus')}Add a memory</button></div>`;
   }
   function chatHeader() { return `<div class="card-header"><h2>${icon('sparkle')}Conversation</h2><div class="chat-header-meta"><span class="pill pill-violet" id="chat-engine">${S.state.ai.configured ? 'AI + LOCAL' : 'LOCAL MODE'}</span>${S.view === 'conversation' && isOwner() ? `<button class="icon-button" data-action="clear-chat" aria-label="Clear conversation">${icon('trash')}</button>` : ''}</div></div>`; }
-  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Microphone session active' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p></div>` : ''}</div>`; }
+  function composer() { return `<div class="composer-wrap"><form class="composer" id="chat-form"><label class="sr-only" for="chat-input">Message ${esc(name())}</label><textarea id="chat-input" rows="1" name="message" placeholder="Ask ${esc(name())}, or tell me what to do…" maxlength="4000" autocomplete="off"></textarea><button type="button" class="icon-button mic-button" data-action="voice" aria-label="Start voice input">${icon('mic')}</button><button type="submit" class="icon-button send-button" aria-label="Send message">${icon('send')}</button></form><div class="composer-note"><span>${icon('lock')}Private workspace · you approve desktop actions</span><span>Enter to send · Shift + Enter for a new line</span></div><div class="voice-session-row"><button type="button" class="text-button" data-action="continuous-voice" aria-pressed="${S.voiceSession.active}">${icon('mic')}${S.voiceSession.active ? 'Stop voice conversation' : 'Start voice conversation'}</button><span>${S.voiceSession.active ? 'Say NOVA before each request' : 'Optional · uses browser speech service'}</span></div>${isOwner() && !voiceCompanion ? `<button type="button" class="text-button" data-action="voice-window">${icon('mic')}Open separate voice window</button>` : ''}${voiceCompanion ? `<div class="voice-window-note"><strong>Separate voice window</strong><p id="voice-handsfree-status" role="status" aria-live="polite">Say Nova before each request. Spoken approvals do not verify identity.</p><p>Start voice conversation here and say “নোভা” or “Nova” before each request. You may close the other NOVA tab and minimize this window; keep this window, Chrome and NOVA running. Audio may be sent to your browser’s speech service while listening. Anyone nearby or a recording can trigger it; it does not verify your identity. Listening may stop if the browser suspends it.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-app-permission" id="voice-app-permission">${S.voiceSession.allowAppOpen ? 'Turn off voice app opening' : 'Allow voice app opening for this session'}</button><p>Optional: direct, locally recognized requests to open Firefox, Chrome, Edge, Notepad and Calculator may run without another review. AI-interpreted requests and other desktop actions still need review.</p><button type="button" class="btn btn-sm btn-ghost" data-action="voice-news-alerts" id="voice-news-alerts">${S.voiceSession.alerts.enabled ? 'Turn off news alerts' : 'Enable news alerts for this session'}</button><div id="voice-news-status" role="status" aria-live="polite">Optional headlines, not an official emergency alert. Sources can be delayed or unavailable.</div><div id="voice-news-proof"></div></div>` : ''}</div>`; }
   function renderConversation() {
     $('#view').innerHTML = `${remoteBanner()}${heading('A conversation, not a command line.', `Think out loud. ${esc(name())} is listening.`, `${isOwner() ? `<button class="btn btn-primary" data-action="build-website">${icon('globe')}Build website</button> <button class="btn btn-ghost" data-action="project-builder">${icon('folder')}Project builder</button> <button class="btn btn-ghost" data-action="auto-work">${icon('monitor')}Visual work</button>` : ''}`)}<div class="conversation-layout"><section class="card chat-card">${chatHeader()}<div class="messages" id="messages" role="log" aria-live="polite"></div><div id="chat-suggestions"></div>${composer()}</section></div>`;
     renderMessages(); bindComposer();
@@ -509,10 +509,24 @@
         try { const approved = await api(`/actions/${data.action.id}/approve`, { method: 'POST', body: {} }); updateAction(approved.action); autoOpened = true; }
         catch { toast('Could not approve the app request; review it in this window.', 'error'); }
       }
+      if (voiceCompanion && isOwner() && fromVoice && S.voiceSession.active && data.action && !autoOpened && online()) {
+        const a = data.action;
+        S.voiceSession.pendingAction = { id: a.id, expiresAt: Math.min(Number(a.expires_at) || Date.now() + 60000, Date.now() + 60000) };
+        const label = ({ open_firefox: 'ফায়ারফক্স খোলা', open_chrome: 'ক্রোম খোলা', open_edge: 'এজ খোলা', open_notepad: 'নোটপ্যাড খোলা', open_calculator: 'ক্যালকুলেটর খোলা', mouse_click: 'মাউস ক্লিক', mouse_move: 'মাউস সরানো', mouse_click_primary: 'স্ক্রিনে ক্লিক', keyboard_type: 'নোটপ্যাডে লেখা', keyboard_type_app: 'অ্যাপে লেখা', whatsapp_draft: 'হোয়াটসঅ্যাপ খসড়া খোলা' })[a.kind] || a.label;
+        const coords = a.kind === 'mouse_click_primary' ? `${a.params?.x / 100}%, ${a.params?.y / 100}%` : `${a.params?.x}, ${a.params?.y}`;
+        const target = a.params?.target || 'Notepad';
+        const detail = a.kind.startsWith('mouse_') ? ` স্থানাঙ্ক ${coords}। ভুল ক্লিকে তথ্য মুছে যেতে পারে, স্ক্রিন দেখে নিশ্চিত হও।` : a.kind.startsWith('keyboard_') ? ` অ্যাপ ${target}। লেখাটি: ${String(a.params?.text || '').slice(0, 300)}।` : a.kind === 'whatsapp_draft' ? ` নম্বর ${a.params?.phone}। খসড়া ${String(a.params?.text || '').slice(0, 500)}। বার্তা নিজে পাঠাবে না।` : '';
+        const englishDetail = a.kind.startsWith('mouse_') ? `Coordinates ${coords}. A wrong click can delete data; check the screen. ` : a.kind.startsWith('keyboard_') ? `Target ${target}. The text is ${String(a.params?.text || '').slice(0, 300)}. ` : a.kind === 'whatsapp_draft' ? `Number ${a.params?.phone}. Draft ${String(a.params?.text || '').slice(0, 500)}. The message will not be sent. ` : '';
+        const prompt = S.state.settings.language === 'bn' ? `${label} করতে চাই।${detail} অনুমতি দিতে বলো, নোভা অনুমতি দিচ্ছি। বাতিল করতে বলো, নোভা বাতিল।` : `I prepared ${a.label}. ${englishDetail}Say Nova approve, or Nova cancel.`;
+        const status = $('#voice-handsfree-status'); if (status) status.textContent = prompt;
+        await speak(prompt, true);
+      } else {
+        // Voice speaks the summary, not source IDs, table dividers or URLs.
+        await speak(autoOpened ? (S.state.settings.language === 'bn' ? 'অনুমতি দেওয়া অ্যাপ খোলার অনুরোধ পাঠিয়েছি।' : 'The permitted app request was sent to your PC.') : data.message.content, S.voiceSession.active, data.engine);
+      }
       if (data.website) showWebsite(data.website);
       if (data.uiAction?.type === 'focus') startFocus(data.uiAction.minutes);
-      // Voice speaks the summary, not source IDs, table dividers or URLs.
-      await speak(autoOpened ? (S.state.settings.language === 'bn' ? 'অনুমতি দেওয়া অ্যাপ খোলার অনুরোধ পাঠিয়েছি।' : 'The permitted app request was sent to your PC.') : data.message.content, S.voiceSession.active, data.engine);
+
     } catch (err) { S.state.messages = S.state.messages.filter(m => m.id !== 'temp-user'); if (voiceCompanion && S.voiceSession.active && /Cannot reach NOVA/.test(err.message)) { stopVoiceConversation(); toast('NOVA disconnected; the voice microphone was stopped.', 'error'); } else toast(err.message, 'error'); if (input) input.value = text; }
     finally { S.busy = false; if (send) send.disabled = false; renderMessages(); renderShell(); renderOverviewDynamic(); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; $('#chat-input')?.focus(); if (S.voiceSession.active) scheduleVoiceTurn(); }
   }
@@ -822,7 +836,9 @@
     });
   }
   function stopVoiceConversation() {
-    S.voiceSession.active = false; S.voiceSession.allowAppOpen = false; S.voiceSession.wakeUntil = 0; const permission = $('#voice-app-permission'); if (permission) permission.textContent = 'Allow voice app opening for this session'; clearTimeout(S.voiceSession.timer); S.voiceSession.timer = null;
+    setVoiceAlerts(false);
+    const pending = S.voiceSession.pendingAction; S.voiceSession.pendingAction = null; if (pending) api(`/actions/${encodeURIComponent(pending.id)}/cancel`, { method: 'POST', body: {} }).catch(() => {});
+    S.voiceSession.active = false; S.voiceSession.allowAppOpen = false; S.voiceSession.wakeUntil = 0; S.voiceSession.retryDelay = 800; const permission = $('#voice-app-permission'); if (permission) permission.textContent = 'Allow voice app opening for this session'; clearTimeout(S.voiceSession.timer); S.voiceSession.timer = null;
     if (S.listening && S.recognition) { try { S.recognition.abort(); } catch {} }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     S.voiceSession.finishSpeech?.();
@@ -831,7 +847,11 @@
   function scheduleVoiceTurn() {
     clearTimeout(S.voiceSession.timer);
     if (!S.voiceSession.active) return;
-    S.voiceSession.timer = setTimeout(() => { if (S.voiceSession.active && !S.busy && !S.listening && !S.modal) startVoice(); }, 800);
+    S.voiceSession.timer = setTimeout(() => {
+      if (!S.voiceSession.active) return;
+      if (!S.busy && !S.listening && !S.modal) startVoice();
+      else scheduleVoiceTurn();
+    }, S.voiceSession.retryDelay || 800);
   }
   function openVoiceWindow() {
     confirmDialog('Open separate voice window?', 'A separate Chrome window can keep listening when you close the main NOVA tab, but must remain open (you may minimize it). Start its microphone yourself. While listening, audio may be sent to your browser’s speech service; a voice or recording cannot prove identity. Keep NOVA and Chrome running. This is experimental and can stop listening unexpectedly.', 'Open window', () => {
@@ -853,6 +873,93 @@
     S.voiceSession.active = true; if (!['overview', 'conversation'].includes(S.view)) navigate('conversation');
     renderShell(); toast('Voice conversation is on. Use Stop voice conversation to end it.', 'info'); startVoice();
   }
+  // Optional, conservative headline monitoring. The publishers' own links are
+  // shown as evidence of what they reported, not proof an emergency occurred.
+  function setVoiceAlerts(enabled) {
+    const a = S.voiceSession.alerts;
+    a.enabled = enabled; a.epoch++; clearTimeout(a.timer); clearTimeout(a.deliverTimer);
+    a.timer = a.deliverTimer = null; a.seen = new Set(); a.baseline = false; a.queue = [];
+    const button = $('#voice-news-alerts'); if (button) button.textContent = enabled ? 'Turn off news alerts' : 'Enable news alerts for this session';
+    const status = $('#voice-news-status'); if (status) status.textContent = enabled ? 'Checking sources. This is not an official emergency alert.' : 'News alerts are off. Sources can be delayed or unavailable.';
+    if (enabled) pollVoiceAlerts(a.epoch);
+  }
+  async function pollVoiceAlerts(epoch) {
+    const a = S.voiceSession.alerts;
+    if (!a.enabled || !S.voiceSession.active || a.epoch !== epoch || a.inFlight) return;
+    a.inFlight = true;
+    try {
+      const data = await api('/world', { signal: AbortSignal.timeout(15000) });
+      if (!a.enabled || !S.voiceSession.active || a.epoch !== epoch) return;
+      const sourcesOk = !!data.news?.ok || !!data.bangladesh?.ok || !!data.quakes?.ok;
+      const current = window.NovaVoiceAlerts.collect(data);
+      const status = $('#voice-news-status');
+      const recent = Number.isFinite(data.fetchedAt) && data.fetchedAt <= Date.now() + 60000 && data.fetchedAt >= Date.now() - 600000;
+      if (!sourcesOk || !recent) { if (status) status.textContent = 'News alert sources unavailable or stale. Do not rely on NOVA for emergencies.'; return; }
+      if (!a.baseline) { current.forEach(item => a.seen.add(item.key)); a.baseline = true; }
+      else for (const item of current) if (!a.seen.has(item.key)) {
+        a.seen.add(item.key); if (a.queue.length < 3) a.queue.push(item);
+      }
+      if (a.seen.size > 500) a.seen = new Set([...a.seen].slice(-300));
+      const partial = !data.news?.ok || !data.bangladesh?.ok || !data.quakes?.ok || data.news?.sources?.some(source => !source.ok);
+      if (status) status.textContent = partial ? 'Monitoring with some sources unavailable. Reports can be delayed or missed; follow official alerts.' : 'Monitoring selected headlines and major USGS earthquakes. Reports can be delayed or missed; follow official alerts.';
+      deliverVoiceAlert(epoch);
+    } catch {
+      if (a.enabled && a.epoch === epoch) { const status = $('#voice-news-status'); if (status) status.textContent = 'News alert sources unavailable. Do not rely on NOVA for emergencies.'; }
+    } finally {
+      a.inFlight = false;
+      if (a.enabled && S.voiceSession.active) { clearTimeout(a.timer); const next = a.epoch; a.timer = setTimeout(() => pollVoiceAlerts(next), next === epoch ? 180000 : 0); }
+    }
+  }
+  async function deliverVoiceAlert(epoch) {
+    const a = S.voiceSession.alerts; clearTimeout(a.deliverTimer); a.deliverTimer = null;
+    if (!a.enabled || !S.voiceSession.active || a.epoch !== epoch || !a.queue.length) return;
+    if (S.busy || S.modal || S.voiceSession.pendingAction) { a.deliverTimer = setTimeout(() => deliverVoiceAlert(epoch), 3000); return; }
+    const item = a.queue.shift(); S.busy = true;
+    if (S.listening && S.recognition) { try { S.recognition.stop(); } catch {} }
+    const proof = $('#voice-news-proof'); if (proof) proof.innerHTML = `<p><strong>${esc(item.source)}</strong> · ${esc(item.title)}</p><a class="text-button" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">Open source report ↗</a>`;
+    const user = String(S.state.settings.userName || '').trim();
+    const intro = S.state.settings.language === 'bn'
+      ? `${user ? user + ', ' : ''}${item.source} থেকে একটি নতুন প্রতিবেদন: ${item.title}। এটি সরকারি জরুরি সতর্কবার্তা নয়। বিস্তারিত মূল সূত্রে দেখো এবং স্থানীয় কর্তৃপক্ষের নির্দেশ অনুসরণ করো।`
+      : `${user ? user + ', ' : ''}${item.source} has a new report: ${item.title}. This is not an official emergency alert. Check the source and follow local authorities.`;
+    try { await speak(intro, true); }
+    finally { S.busy = false; if (a.enabled && a.epoch === epoch) { if (a.queue.length) a.deliverTimer = setTimeout(() => deliverVoiceAlert(epoch), 3000); if (S.voiceSession.active) scheduleVoiceTurn(); } }
+  }
+  function voiceNewsAlerts() {
+    if (!voiceCompanion || !isOwner()) return;
+    if (S.voiceSession.alerts.enabled) { setVoiceAlerts(false); return; }
+    if (!S.voiceSession.active) return toast('Start voice conversation first.', 'info');
+    confirmDialog('Enable news alerts?', 'While this voice window is open, NOVA checks selected publisher headlines and major USGS earthquakes about every three minutes; data may be cached for five minutes. It can miss, delay or misinterpret news, is not an official emergency warning, and cannot confirm an attack or provide location-specific safety instructions. Follow official local alerts. Stop voice or turn this off to stop monitoring.', 'Enable alerts', () => setVoiceAlerts(true));
+  }
+  async function voiceAlertCommand(enabled) {
+    S.busy = true;
+    try { setVoiceAlerts(enabled); await speak(S.state.settings.language === 'bn' ? (enabled ? 'খবর সতর্কতা চালু করেছি। এটি সরকারি জরুরি সতর্কতা নয়, সংবাদ বাদ পড়তে বা দেরি হতে পারে।' : 'খবর সতর্কতা বন্ধ করেছি।') : (enabled ? 'News alerts enabled. These are not official emergency alerts and may miss or delay reports.' : 'News alerts are off.'), true); }
+    finally { S.busy = false; if (S.voiceSession.active) scheduleVoiceTurn(); }
+  }
+  async function decideVoiceAction(text) {
+    const pending = S.voiceSession.pendingAction;
+    if (!pending) return false;
+    const cleaned = text.toLowerCase().trim().replace(/[.!?।]+$/g, '').trim();
+    const approve = ['approve', 'অনুমতি দিচ্ছি', 'অনুমতি দিলাম'].includes(cleaned);
+    const cancel = ['cancel', 'বাতিল', 'বাতিল করো', 'না'].includes(cleaned);
+    S.busy = true;
+    try {
+      if (Date.now() >= pending.expiresAt) {
+        S.voiceSession.pendingAction = null;
+        await api(`/actions/${encodeURIComponent(pending.id)}/cancel`, { method: 'POST', body: {} }).catch(() => {});
+        await speak(S.state.settings.language === 'bn' ? 'অনুমতির সময় শেষ। আবার অনুরোধ করো।' : 'The approval expired. Please request it again.', true);
+      } else if (approve || cancel) {
+        S.voiceSession.pendingAction = null;
+        const result = await api(`/actions/${encodeURIComponent(pending.id)}/${approve ? 'approve' : 'cancel'}`, { method: 'POST', body: {} });
+        if (result.action) updateAction(result.action);
+        const status = $('#voice-handsfree-status'); if (status) status.textContent = approve ? 'Approved and queued; check Activity for the result.' : 'Request cancelled.';
+        await speak(S.state.settings.language === 'bn' ? (approve ? 'অনুমতি পেয়েছি, কাজটি পাঠিয়েছি। ফলাফল Activity-তে দেখো।' : 'অনুরোধ বাতিল করেছি।') : (approve ? 'Approved and queued. Check Activity for the result.' : 'Request cancelled.'), true);
+      } else {
+        await speak(S.state.settings.language === 'bn' ? 'আগের অনুরোধের জন্য নোভা অনুমতি দিচ্ছি অথবা নোভা বাতিল বলো।' : 'For the pending request, say Nova approve or Nova cancel.', true);
+      }
+    } catch (err) { S.voiceSession.pendingAction = null; toast(err.message, 'error'); await speak(S.state.settings.language === 'bn' ? 'কাজটি অনুমোদন করা যায়নি। Activity দেখো।' : 'The action could not be approved. Check Activity.', true); }
+    finally { S.busy = false; if (S.voiceSession.active) scheduleVoiceTurn(); }
+    return true;
+  }
   function startVoice() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) return modal('Voice input isn’t available here', `<div class="modal-icon">${icon('mic')}</div><p>This browser doesn’t support speech recognition. Try Chrome or Edge on HTTPS, or use the text box. Voice input may use your browser vendor’s speech service; it is not a local wake-word listener.</p><div class="modal-footer"><button class="btn btn-primary" data-close>Got it</button></div>`);
@@ -863,9 +970,10 @@
     rec.interimResults = true; rec.continuous = false;
     $$('.mic-button').forEach(b => b.classList.add('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'LISTENING…';
     rec.onresult = e => {
+      S.voiceSession.retryDelay = 800;
       let transcript = [...e.results].map(r => r[0].transcript).join('').trim();
       const final = e.results[e.results.length - 1].isFinal;
-      if (voiceCompanion && S.voiceSession.active) {
+      if (S.voiceSession.active) {
         if (!final) return;
         const wake = transcript.match(/(?:^|[\s,।.!?])(?:hey\s+|হেই\s+)?(?:nova\b|নোভা|নভা)(?:[\s,।.!?:-]*)([\s\S]*)$/i);
         if (wake) { transcript = wake[1].trim(); S.voiceSession.wakeUntil = transcript ? 0 : Date.now() + 12000; }
@@ -873,11 +981,34 @@
         else { rec.stop(); return; }
         if (!transcript) { toast('NOVA is listening for your request.', 'info'); rec.stop(); return; }
       } else if ($('#chat-input')) $('#chat-input').value = transcript;
-      if (final) { rec.stop(); sendMessage(transcript, true); }
+      if (final) {
+        rec.stop();
+        if (S.voiceSession.active && /^(?:stop listening|stop voice|শোনা বন্ধ করো|শোনা বন্ধ|কথা শোনা বন্ধ করো)[।.!]?$/i.test(transcript)) { stopVoiceConversation(); speak(S.state.settings.language === 'bn' ? 'শোনা বন্ধ করেছি।' : 'Voice listening stopped.', true); }
+        else if (voiceCompanion && S.voiceSession.active && S.voiceSession.pendingAction) decideVoiceAction(transcript);
+        else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:চালু(?: করো)?|start|on)[।.!]?$/i.test(transcript)) voiceAlertCommand(true);
+        else if (voiceCompanion && S.voiceSession.active && /^(?:খবর|নিউজ|news)\s*(?:সতর্কতা|alert|alerts)\s*(?:বন্ধ(?: করো)?|stop|off)[।.!]?$/i.test(transcript)) voiceAlertCommand(false);
+        else sendMessage(transcript, true);
+      }
     };
-    rec.onerror = e => { const messages = { 'not-allowed': 'Microphone permission was denied. Allow it in your browser settings.', 'no-speech': 'I didn’t catch that. Try again when you’re ready.', 'audio-capture': 'No microphone was found.', network: 'The browser speech service is unavailable. You can still type.' }; if (e.error !== 'aborted' && (e.error !== 'no-speech' || !S.voiceSession.active)) toast(messages[e.error] || 'Voice input stopped. Please try again.', 'info'); if (['not-allowed', 'audio-capture', 'network', 'service-not-allowed'].includes(e.error)) stopVoiceConversation(); };
-    rec.onend = () => { if (S.recognition === rec) S.recognition = null; S.listening = false; $$('.mic-button').forEach(b => b.classList.remove('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; if (S.voiceSession.active && !S.busy) scheduleVoiceTurn(); };
-    try { rec.start(); if (!S.voiceSession.active) toast('Listening. Speak now; tap the microphone again to stop.', 'info'); } catch { S.listening = false; if (S.voiceSession.active) stopVoiceConversation(); toast('Could not start the microphone.', 'error'); }
+    rec.onerror = e => {
+      const messages = { 'not-allowed': 'Microphone permission was denied. Allow it in your browser settings.', 'no-speech': 'I didn’t catch that. Try again when you’re ready.', 'audio-capture': 'No microphone was found.', network: 'Speech service unavailable; retrying while voice is on.' };
+      if (e.error === 'network' && S.voiceSession.active) {
+        S.voiceSession.retryDelay = Math.min(30000, Math.max(2000, S.voiceSession.retryDelay * 2));
+        if (Date.now() - S.voiceSession.lastNetworkWarning > 30000) { toast(messages.network, 'info'); S.voiceSession.lastNetworkWarning = Date.now(); }
+        const status = $('#voice-handsfree-status'); if (status) status.textContent = messages.network;
+      } else {
+        if (e.error === 'no-speech') S.voiceSession.retryDelay = 800;
+        if (e.error !== 'aborted' && (e.error !== 'no-speech' || !S.voiceSession.active)) toast(messages[e.error] || 'Voice input stopped. Please try again.', 'info');
+        if (['not-allowed', 'audio-capture', 'service-not-allowed'].includes(e.error)) stopVoiceConversation();
+      }
+    };
+    rec.onend = () => { if (S.recognition !== rec) return; S.recognition = null; S.listening = false; $$('.mic-button').forEach(b => b.classList.remove('listening')); if ($('#core-state-text')) $('#core-state-text').textContent = 'READY WHEN YOU ARE'; if (S.voiceSession.active && !S.busy) scheduleVoiceTurn(); };
+    try { rec.start(); if (!S.voiceSession.active) toast('Listening. Speak now; tap the microphone again to stop.', 'info'); }
+    catch {
+      if (S.recognition === rec) S.recognition = null; S.listening = false;
+      if (S.voiceSession.active) { S.voiceSession.retryDelay = Math.min(30000, Math.max(2000, S.voiceSession.retryDelay * 2)); const status = $('#voice-handsfree-status'); if (status) status.textContent = 'Microphone could not start; retrying. Check browser permissions if it continues.'; scheduleVoiceTurn(); }
+      else toast('Could not start the microphone.', 'error');
+    }
   }
 
   /* Command palette */
@@ -929,7 +1060,7 @@
     const handlers = {
       workspace: () => navigate('settings'), palette: openPalette, help: helpModal, remote: remoteModal,
       'connect-desktop': () => navigate('desktop'), 'local-bridge': () => localBridgeModal(), 'local-bridge-disable': () => localBridgeModal(true), 'start-chat': () => { navigate('conversation'); $('#chat-input')?.focus(); },
-      voice: startVoice, 'continuous-voice': toggleVoiceConversation, 'voice-window': openVoiceWindow, 'voice-app-permission': voiceAppPermission, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder, 'project-builder': projectBuilder, 'screen-viewer': screenShareModal, 'auto-work': autonomousWorkModal,
+      voice: startVoice, 'continuous-voice': toggleVoiceConversation, 'voice-window': openVoiceWindow, 'voice-app-permission': voiceAppPermission, 'voice-news-alerts': voiceNewsAlerts, 'connect-ai': () => connectAiModal(), 'build-website': websiteBuilder, 'project-builder': projectBuilder, 'screen-viewer': screenShareModal, 'auto-work': autonomousWorkModal,
       'disconnect-ai': () => confirmDialog('Disconnect Groq?', 'NOVA will remove the encrypted key from this workspace and return to local command mode (unless a server environment key is configured).', 'Disconnect', async () => {
         const data = await api('/ai/disconnect', { method: 'POST', body: {} });
         S.state.ai = data.ai; renderShell(); if (S.view === 'settings') renderSettings();
