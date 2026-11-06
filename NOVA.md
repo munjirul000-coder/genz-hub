@@ -159,6 +159,18 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 
 ---
 
+## Automatic updates (Windows, opt-in)
+
+একবার single-file `SETUP-NOVA-AUTO-UPDATE.bat` ব্যবহার করে (বা archive-এর `SETUP-AUTO-UPDATE.bat` দিয়ে) এই laptop-এর পূর্বে থাকা NOVA folder-এ updater বসানোর পর, `START-NOVA.bat` প্রতিবার চালুর আগে নির্দিষ্ট GitHub branch-এ update পরীক্ষা করে। নতুন commit থাকলে সেটি HTTPS-এর মাধ্যমে নির্দিষ্ট commit ID দিয়ে download করে, তারপর app file update করে। পুরোনো server পুরোপুরি বন্ধ করতে হবে; bridge চালু থাকলে bridge-এর নতুন code নিতে সেটিও restart করতে হবে। একই সময়ে দ্বিতীয়বার NOVA চালানো বন্ধ রাখতে updater lock ব্যবহার করে।
+
+Updater `data`, project, `nova-bridge.token`, vault key এবং ব্যবহারকারীর অন্যান্য file overwrite করে না। Update-এর আগে NOVA ও Gen-Z Hub SQLite database-এর consistent snapshot এবং vault key স্থানীয় `data/nova-updater/backup-*` folder-এ রাখে; পরিবর্তিত application file-এর পুরোনো copy-ও সেখানে থাকে। এই backup-এ **ব্যক্তিগত তথ্য ও vault key আছে**, তাই folder ব্যক্তিগত রাখো। Backup স্বয়ংক্রিয়ভাবে মুছে ফেলা হয় না এবং সময়ের সঙ্গে storage বাড়তে পারে; আগে আলাদা backup রাখাও জরুরি। Project file-গুলোর সম্পূর্ণ backup এই updater করে না।
+
+Internet বা GitHub বন্ধ থাকলে আগে থেকে সঠিকভাবে install থাকা version চালানোর চেষ্টা করে। Dependency update আলাদা folder-এ তৈরি হয়; failure বা মাঝপথে update থামলে আগের code/dependencies restore করার ব্যবস্থা আছে। সফলভাবে install হওয়ার পরে নতুন app-এর runtime bug বা database migration থেকে automatic rollback-এর নিশ্চয়তা নেই; Windows-এ বাস্তব পরীক্ষা দরকার। এটি signed commercial updater নয়: **repository/branch-এর maintainer বা GitHub account compromise হলে ক্ষতিকর code চলতে পারে**। কেবল নির্ভরযোগ্য update source ব্যবহার করো। Updater কেবল `arena/549dbb1e-genz-hub` branch ব্যবহার করে; branch মুছে গেলে বা repository unavailable হলে নতুন update আর আসবে না।
+
+বন্ধ করতে `desktop/STOP-AUTO-UPDATE.bat`, আবার চালু করতে `desktop/START-AUTO-UPDATE.bat` ব্যবহার করো। স্থির startup bootstrap নিজে update হয় না; ভবিষ্যতে এর format বদলাতে হলে আবার একবার manual installation লাগতে পারে।
+
+---
+
 ## Experimental visual work session
 
 Conversation বা Desktop control → **Visual work**। প্রথমে পুরো primary monitor share করো, goal লেখো, তারপর **Approve & start** বা **Approve by voice** (`অনুমতি দিচ্ছি`)। এটি সর্বোচ্চ ১২ step / ৪ মিনিটের অনুমতি। Window খোলা ও screen sharing চালু থাকতে হবে। প্রতিবার একটি frame ও goal সংযুক্ত cloud vision provider-এ যায়; কাজের label ও টাইপ করা text activity history-তে থাকে। আগে গোপন window বন্ধ করো। Voice বক্তার পরিচয় যাচাই করে না।

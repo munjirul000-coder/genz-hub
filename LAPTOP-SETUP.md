@@ -2,6 +2,12 @@
 
 এই গাইডটা তোমার নিজের Windows laptop-এ NOVA চালানোর জন্য। Public preview তোমার PC control করতে পারে না; desktop action চালাতে হলে NOVA server + bridge agent দুটোই তোমার laptop-এ চালানো সবচেয়ে সহজ।
 
+## একবারের automatic updater setup
+
+এই নির্দিষ্ট laptop-এর আগের NOVA ও bridge terminal বন্ধ করে `SETUP-NOVA-AUTO-UPDATE.bat` একবার download করে double-click করো; `Y` চাপলে installer-এর প্রয়োজনীয় file নিজে download করবে। ZIP নিজে download বা extract করতে হবে না। বিকল্প হিসেবে পুরো ZIP আলাদা folder-এ extract করে তার `SETUP-AUTO-UPDATE.bat` চালানো যায়। এটি `Documents\genz-hub-arena-549dbb1e-genz-hub\genz-hub-arena-549dbb1e-genz-hub`-এ থাকা আগের NOVA-তে শুধু updater bootstrap বসায়, data বা key overwrite করে না। ওই পুরোনো folder অন্য জায়গায় থাকলে installer থামবে; তখন screenshot নিয়ে সাহায্য নাও। এরপর আগের `START-NOVA.bat` বা তার desktop shortcut দিয়ে চালাও। Internet থাকলে প্রতিবার startup-এ update check হয়। Bridge-এর code পরিবর্তন হলে bridge terminal-ও restart করতে হবে।
+
+Update নির্দিষ্ট GitHub branch থেকে আসে এবং code signature নেই: branch-এর লেখকদের বিশ্বাস করতে হবে। SQLite এবং vault key-এর backup `data/nova-updater`-এ জমে, সেগুলোও ব্যক্তিগত রাখতে হবে। Project-এর আলাদা backup রাখো। Offline থাকলে আগে থেকে install থাকা version চালানোর চেষ্টা করে। সফল update-এর পর runtime bug হলেও স্বয়ংক্রিয় rollback নিশ্চিত নয়। বিস্তারিত `NOVA.md`।
+
 ## 1) Node.js install করো
 
 1. https://nodejs.org থেকে **LTS (20 বা নতুন)** install করো।
