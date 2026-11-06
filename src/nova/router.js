@@ -8,6 +8,7 @@ const { Vault } = require('./vault');
 const { getWorldData } = require('./world');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
 const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip } = require('./project-builder');
+const { createAutonomy } = require('./autonomy');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
@@ -72,6 +73,7 @@ function createNovaRouter({ dataDir, agentFile }) {
     }
     return aiConfig();
   }
+  const autonomy = createAutonomy({ store, workspaceAi, dataDir, bridgeOnline });
   const aiState = (workspaceId) => {
     const c = workspaceAi(workspaceId);
     return { configured: c.configured, provider: c.provider, model: c.configured ? c.model : null, source: c.configured ? c.source : 'none', hasKey: c.configured && c.source === 'workspace' };
@@ -260,6 +262,31 @@ function createNovaRouter({ dataDir, agentFile }) {
       res.json({ ok: true, answer: answer.trim().slice(0, 4000) });
     } catch { res.json({ ok: false, error: 'Could not reach the vision model. Check your connection and model.' }); }
   }));
+  // One project-scoped grant: visual steps continue only while the owner keeps
+  // the sharing page open. High-risk/uncertain steps pause for separate consent.
+  router.post('/autonomy/start', auth, owner, U.rateLimit({ max: 10, windowMs: 60000, key: 'nova-auto-start' }), (req, res) => {
+    const goal = clean(req.body?.goal, 1000), model = clean(req.body?.model, 100);
+    if (req.body?.confirm !== true || req.body?.primary !== true) return res.status(400).json({ error: 'Confirm the session scope and primary monitor before starting.' });
+    try { res.json({ ok: true, session: autonomy.start(req.nova.workspace_id, goal, model) }); }
+    catch (err) { res.json({ ok: false, error: err.message }); }
+  });
+  function autoSession(req, res, next) {
+    const g = autonomy.find(req.nova.workspace_id, req.params.id);
+    if (!g) return res.status(404).json({ error: 'Visual session not found.' });
+    req.autoSession = g; next();
+  }
+  router.get('/autonomy/:id', auth, owner, autoSession, (req, res) => res.json({ session: autonomy.snapshot(req.autoSession) }));
+  router.post('/autonomy/:id/step', auth, owner, autoSession, U.rateLimit({ max: 60, windowMs: 60000, key: 'nova-auto-step' }), U.wrap(async (req, res) => {
+    res.on('close', () => { if (!res.writableEnded) autonomy.stop(req.autoSession); });
+    const result = await autonomy.step(req.autoSession, req.body?.image);
+    if (!res.destroyed) res.json(result);
+  }));
+  router.post('/autonomy/:id/approve', auth, owner, autoSession, (req, res) => {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Explicit approval is required.' });
+    try { res.json({ ok: true, session: autonomy.approve(req.autoSession) }); }
+    catch (err) { res.json({ ok: false, error: err.message, session: autonomy.snapshot(req.autoSession) }); }
+  });
+  router.post('/autonomy/:id/stop', auth, owner, autoSession, (req, res) => res.json({ ok: true, session: autonomy.stop(req.autoSession) }));
   router.post('/ai/test', auth, owner, U.rateLimit({ max: 6, windowMs: 60000, key: 'nova-ai-test' }), U.wrap(async (req, res) => {
     const result = await testAiConnection(workspaceAi(req.nova.workspace_id));
     res.json(result);

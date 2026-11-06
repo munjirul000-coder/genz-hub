@@ -234,7 +234,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.evaluate(() => {
       const realFetch = window.fetch; window.__screenRequests = 0;
       const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 250; canvas.getContext('2d').fillRect(0, 0, 400, 250);
-      const draw = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (source.id === 'screen-video') return this.fillRect(0, 0, 400, 250); return draw.call(this, source, ...args); };
+      const draw = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (['screen-video', 'auto-video'].includes(source.id)) return this.fillRect(0, 0, 400, 250); return draw.call(this, source, ...args); };
       navigator.mediaDevices.getDisplayMedia = async () => { window.__screenStream = canvas.captureStream(2); window.__screenStream.getVideoTracks()[0].getSettings = () => ({ displaySurface: 'monitor' }); return window.__screenStream; };
       window.fetch = (url, options) => { if (String(url).endsWith('/screen/analyze')) { window.__screenRequests++; const payload = JSON.parse(options.body); const result = payload.mode === 'suggest-click' ? { ok: true, proposal: { x: 2500, y: 7500, reason: 'The button' } } : { ok: true, answer: 'A test screen.' }; return Promise.resolve(new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })); } return realFetch(url, options); };
     });
@@ -252,6 +252,55 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('screen click requires separate approval and displays the target', (await text(page)).includes('Primary screen point: 25%, 75%') && await page.$('#approve-action') === null);
     ok('closing screen viewer stops sharing', await page.evaluate(() => window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
     await click(page, '[data-action-cancel]'); await click(page, '#confirm-action');
+
+    // A single spoken grant drives a multi-step visual loop (all OS/provider calls mocked).
+    await page.evaluate((builtId) => {
+      const realFetch = window.fetch; window.__autoStepCount = 0; window.__autoStartCount = 0; window.__autoStopCount = 0; window.__autoMode = 'normal'; window.__autoApprovals = 0;
+      const state = (state = 'active', action = null) => ({ id: 'test-session', state, message: 'Working', steps: window.__autoStepCount, maxSteps: 12, expiresAt: Date.now() + 100000, action, project: state === 'complete' && window.__autoMode === 'normal' ? { id: builtId, name: 'Bakery project' } : null });
+      window.fetch = (url, options = {}) => {
+        const u = String(url);
+        if (u.endsWith('/autonomy/start')) { window.__autoStartCount++; window.__autoStartBody = JSON.parse(options.body); return Promise.resolve(new Response(JSON.stringify({ ok: true, session: state() }), { status: 200 })); }
+        if (u.endsWith('/autonomy/test-session/step')) {
+          window.__autoStepCount++;
+          if (window.__autoMode === 'hold') return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => { window.__autoAborted = true; reject(new DOMException('Aborted', 'AbortError')); }, { once: true }));
+          const action = { id: 'action', label: 'Review deletion', status: 'pending', kind: 'mouse_click_primary', params: { x: 2000, y: 2000 } };
+          const s = window.__autoMode === 'review' && window.__autoStepCount === 1 ? state('review', action) : window.__autoStepCount === 1 ? state('active', { ...action, status: 'approved' }) : state('complete');
+          return Promise.resolve(new Response(JSON.stringify({ ok: true, session: s }), { status: 200 }));
+        }
+        if (u.endsWith('/autonomy/test-session/approve')) { window.__autoApprovals++; return Promise.resolve(new Response(JSON.stringify({ ok: true, session: state() }), { status: 200 })); }
+        if (u.endsWith('/autonomy/test-session/stop')) { window.__autoStopCount++; return Promise.resolve(new Response(JSON.stringify({ ok: true, session: state('stopped') }), { status: 200 })); }
+        if (u.endsWith('/autonomy/test-session')) return Promise.resolve(new Response(JSON.stringify({ session: state() }), { status: 200 }));
+        return realFetch(url, options);
+      };
+      window.SpeechRecognition = class { constructor() { window.__autoRec = this; } start() {} stop() { this.onend?.(); } abort() { this.onend?.(); } say(text) { this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: true })] }); } };
+    }, builtId);
+    await click(page, '[data-action="auto-work"]'); await page.type('#auto-goal', 'Build a bakery website');
+    await page.setViewport({ width: 390, height: 844 }); await noOverflow(page, 'mobile visual work consent'); await page.setViewport({ width: 1440, height: 1000 });
+    await click(page, '#auto-share'); await page.evaluate(() => { const v = document.querySelector('#auto-video'); Object.defineProperty(v, 'videoWidth', { value: 400 }); Object.defineProperty(v, 'videoHeight', { value: 250 }); });
+    await click(page, '#auto-primary'); await click(page, '#auto-voice'); await page.evaluate(() => window.__autoRec.say('do not approve'));
+    ok('visual work does not start on unrecognised speech', await page.evaluate(() => window.__autoStartCount === 0));
+    await click(page, '#auto-voice'); await page.evaluate(() => window.__autoRec.say('অনুমতি দিচ্ছি'));
+    await page.waitForFunction(() => document.querySelector('#auto-status')?.textContent.includes('COMPLETE'), { timeout: 20000 });
+    ok('one spoken grant drives multiple visual loop steps', await page.evaluate(() => window.__autoStartCount === 1 && window.__autoStartBody.confirm && window.__autoStartBody.primary && window.__autoStepCount === 2));
+    const autoPreview = await (await page.$('#auto-project-preview')).contentFrame(); await autoPreview.waitForFunction(() => document.querySelector('h1')?.textContent === 'Built');
+    ok('visual work shows a sandboxed project preview and download', await page.$eval('#auto-project-preview', e => e.getAttribute('sandbox')) === 'allow-scripts' && await page.$('#auto-project-download') !== null);
+    await click(page, '.modal [data-close]');
+    ok('visual work stops screen sharing on close', await page.evaluate(() => window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
+    await page.evaluate(() => { window.__autoMode = 'review'; window.__autoStepCount = 0; });
+    await click(page, '[data-action="auto-work"]'); await page.type('#auto-goal', 'Work on my project'); await click(page, '#auto-share');
+    await page.evaluate(() => { const v = document.querySelector('#auto-video'); Object.defineProperty(v, 'videoWidth', { value: 400 }); Object.defineProperty(v, 'videoHeight', { value: 250 }); });
+    await click(page, '#auto-primary'); await click(page, '#auto-start'); await page.waitForSelector('#auto-approve-risk');
+    ok('visual loop pauses for a risky step', await page.evaluate(() => window.__autoStepCount === 1 && window.__autoApprovals === 0));
+    await click(page, '#auto-approve-risk'); await page.waitForFunction(() => document.querySelector('#auto-status')?.textContent.includes('COMPLETE'), { timeout: 20000 });
+    ok('visual loop resumes only after separate approval', await page.evaluate(() => window.__autoApprovals === 1 && window.__autoStepCount === 2));
+    await click(page, '.modal [data-close]');
+    await page.evaluate(() => { window.__autoMode = 'hold'; window.__autoStepCount = 0; window.__autoAborted = false; });
+    await click(page, '[data-action="auto-work"]'); await page.type('#auto-goal', 'Work on my project'); await click(page, '#auto-share');
+    await page.evaluate(() => { const v = document.querySelector('#auto-video'); Object.defineProperty(v, 'videoWidth', { value: 400 }); Object.defineProperty(v, 'videoHeight', { value: 250 }); });
+    await click(page, '#auto-primary'); await click(page, '#auto-start'); await page.waitForFunction(() => window.__autoStepCount === 1);
+    await click(page, '#auto-stop'); await page.waitForFunction(() => window.__autoAborted === true);
+    ok('visual work Stop aborts the current request and stops sharing', await page.evaluate(() => window.__autoAborted && window.__screenStream.getTracks().every(t => t.readyState === 'ended')));
+    await click(page, '.modal [data-close]'); await page.evaluate(() => delete window.SpeechRecognition);
 
     // World monitor uses sourced data and never invents events on failure.
     await page.evaluate(() => {

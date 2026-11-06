@@ -2,7 +2,7 @@
 
 **Your mind, amplified.** একটি Stonic-অনুপ্রাণিত, কিন্তু সম্পূর্ণ original desktop-companion MVP। এটি Gen-Z Hub repo-র ভেতরে আলাদা route, আলাদা SQLite database এবং আলাদা session দিয়ে চলে; existing social platform অপরিবর্তিত থাকে।
 
-> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; automatic screen-driven desktop control, always-on wake word এবং arbitrary desktop automation এই build-এ নেই। World monitor শুধু নিচের উল্লিখিত public feed দেখায়।
+> এটি Stonic AI-এর copy বা affiliated product নয়। এখানে যা কাজ করে তা নিচে সৎভাবে লেখা আছে; always-on wake word এবং unrestricted desktop automation এই build-এ নেই। Experimental visual-work session-এর সুনির্দিষ্ট সীমা নিচে আছে। World monitor শুধু নিচের উল্লিখিত public feed দেখায়।
 
 ---
 
@@ -24,7 +24,7 @@ Windows laptop-এ সবচেয়ে সহজ পথ: repo root-এর **`S
 
 - **Conversation** — English/বাংলা local commands, হিসাব, সময়/তারিখ, help, focus timer। Optional cloud AI configure করলে open-ended প্রশ্নোত্তর।
 - **Memory vault** — শুধু তুমি explicitly বললে বা add করলে save হয়। Search, category, edit, delete, export।
-- **Desktop control** — Windows agent-এর মাধ্যমে allowlisted action। প্রতিটি action-এ আলাদা approval লাগে।
+- **Desktop control** — Windows agent-এর allowlisted action; manual action-এ আলাদা approval লাগে। Experimental visual-work session-এ একবার অনুমতির পরে সাধারণ step স্বয়ংক্রিয়ভাবে চলতে পারে।
 - **Voice** — push-to-talk অথবা স্পষ্টভাবে চালু/বন্ধ করা যায় এমন continuous conversation; browser speech recognition ও spoken replies-এর জন্য browser/OS-এর ওপর নির্ভর করে। Browser vendor speech process করতে পারে।
 - **Phone remote** — one-time pairing code, shared workspace, owner settings protected, revoke anytime।
 - **Focus timer** — start/pause/reset, 15/25/50 min presets, page বদলালেও চলে।
@@ -154,8 +154,20 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 - **Conversation → Project builder**-এ website-এর বিবরণ লিখে **Approve & build** অথবা **Approve by voice** চাপো। Voice-এ `অনুমতি দিচ্ছি` বললে একটি project build-এর অনুমতি দেওয়া হয়। পরিচয় voice দিয়ে যাচাই হয় না। Voice input দিয়ে স্পষ্ট website তৈরির অনুরোধ করলেও এই অনুমতির window খোলে।
 - এটি connected AI-কে তিনবার অনুরোধ করে নতুন `index.html`, `styles.css`, `app.js` বানায়; JavaScript syntax check করে এবং syntax ভুল হলে একবার repair করার চেষ্টা করে, code execute করে না। সব সফল হলে আলাদা folder `data/nova/built-projects/`-এ রাখে। **Saved projects** থেকে দেখা ও **Download project ZIP** করা যায়। Preview-তে network ও forms বন্ধ। Generated code ভুল হতে পারে—ব্যবহারের আগে review করো।
 - এই অনুমতি **শুধু নতুন static website files** তৈরি করতে প্রযোজ্য। Screen দেখে নিজে desktop operate করা, existing project edit, app/backend বানানো, package install, test run, deploy বা file delete করে না। Stop দিলে চলমান AI request বন্ধের চেষ্টা করে; save শুরু হয়ে গেলে project থেকে যেতে পারে।
-- **Desktop control → Share screen**-এ browser picker দিয়ে screen/window বেছে নিতে হয়। Preview নিজ browser-এ থাকে। **Analyze screen** বা **Suggest click** না চাপা পর্যন্ত AI-তে পাঠানো হয় না; চাপলে একটি frame ও প্রশ্ন connected AI provider-এ যায়, তাই private content আগে বন্ধ করো। Compatible vision model ও internet দরকার; model availability বদলাতে পারে। Screen frame NOVA database-এ রাখা হয় না। Sharing বন্ধ করতে **Stop sharing** বা window বন্ধ করো। **Suggest click**-এ AI একটি point প্রস্তাব করতে পারে: পুরো primary monitor share করে checkbox confirm করতে হবে। চিহ্নিত ছবি ও বাস্তব screen মিলিয়ে প্রতিটি click আলাদাভাবে অনুমতি দিতে হবে; click ভুল বা ধ্বংসাত্মক হতে পারে। AI নিজে একাধিক step চালায় না।
+- **Desktop control → Share screen**-এ browser picker দিয়ে screen/window বেছে নিতে হয়। Preview নিজ browser-এ থাকে। **Analyze screen** বা **Suggest click** না চাপা পর্যন্ত AI-তে পাঠানো হয় না; চাপলে একটি frame ও প্রশ্ন connected AI provider-এ যায়, তাই private content আগে বন্ধ করো। Compatible vision model ও internet দরকার; model availability বদলাতে পারে। Screen frame NOVA database-এ রাখা হয় না। Sharing বন্ধ করতে **Stop sharing** বা window বন্ধ করো। **Suggest click**-এ AI একটি point প্রস্তাব করতে পারে: পুরো primary monitor share করে checkbox confirm করতে হবে। চিহ্নিত ছবি ও বাস্তব screen মিলিয়ে প্রতিটি click আলাদাভাবে অনুমতি দিতে হবে; click ভুল বা ধ্বংসাত্মক হতে পারে। এই আলাদা viewer-এ প্রতিটি click-এ আলাদা অনুমতি লাগে। Visual work session-এ সীমিত স্বয়ংক্রিয় loop আছে।
 - Real Windows screen sharing, নতুন mouse/keyboard action, microphone ও Groq vision এই build-এ বাস্তব laptop-এ পরীক্ষা করা হয়নি। Browser/OS permission প্রয়োজন।
+
+---
+
+## Experimental visual work session
+
+Conversation বা Desktop control → **Visual work**। প্রথমে পুরো primary monitor share করো, goal লেখো, তারপর **Approve & start** বা **Approve by voice** (`অনুমতি দিচ্ছি`)। এটি সর্বোচ্চ ১২ step / ৪ মিনিটের অনুমতি। Window খোলা ও screen sharing চালু থাকতে হবে। প্রতিবার একটি frame ও goal সংযুক্ত cloud vision provider-এ যায়; কাজের label ও টাইপ করা text activity history-তে থাকে। আগে গোপন window বন্ধ করো। Voice বক্তার পরিচয় যাচাই করে না।
+
+NOVA screenshot দেখে পরের step নির্বাচন করে, bridge-কে অনুমোদিত click বা নির্দিষ্ট app-এ এক লাইন text পাঠায়, action-এর ফল অপেক্ষা করে এবং আবার screenshot নেয়। Website goal হলে একটি নতুন তিন-file static project ও সর্বোচ্চ দুইটি নতুন revision তৈরি করতে পারে; আগের version মুছে না। Sandboxed preview থাকে। AI-এর completion message নিজের দাবি, সম্পূর্ণ correctness-এর নিশ্চয়তা নয়।
+
+**Stop** বা dialog বন্ধ করলে নতুন step বন্ধ হয় এবং queued step cancel করার চেষ্টা হয়; Windows-এ ইতোমধ্যে শুরু হওয়া action শেষ হতে পারে। ১৫ সেকেন্ডে unclaimed automatic action expire হয়। Delete/send/install ইত্যাদি AI বা keyword দিয়ে শনাক্ত হলে আলাদা approval চায়; **এটি নির্ভুল নয় এবং ভুল click-এ অনুমতি ছাড়াও deletion ঘটতে পারে**। Screen বদলে যাওয়া, ভুল monitor নির্বাচন, DPI scaling বা ভুল AI সিদ্ধান্তে অন্য জায়গায় click হতে পারে। শুধু নজর রেখে, backup রেখে ব্যবহার করো।
+
+এখনো unrestricted PC control, arbitrary app/software/backend তৈরি, shell command, package download/install, runtime test বা deployment নেই। এটি সম্পূর্ণ project automation-এর নিশ্চয়তা নয়। Real Windows input, real screen capture, microphone ও cloud vision এখনো এই build-এ বাস্তব laptop-এ পরীক্ষা হয়নি; automated checks mocked। Commercial release-এর আগে security, privacy, reliability ও license review দরকার।
 
 ---
 
@@ -175,7 +187,7 @@ NOVA_AI_MODEL=llama-3.3-70b-versatile
 - Desktop bridge-কে polling-এর সময় নিজের system info server-এ পাঠাতে হয়; সেটা শুধু সেই workspace-এ দেখা যায়।
 - এটি single-user companion MVP, enterprise multi-tenant product নয়। নিজের server HTTPS, backup ও access control দিয়ে চালাও।
 - Globe-এর hotspot কেবল USGS earthquake; এটি সব global event cover করে না। BBC বা USGS offline/blocked থাকলে পুরনো বা fake headline দেখায় না।
-- Screen viewer-এ বাছাই করা frame দিয়ে compatible cloud vision model click-এর point প্রস্তাব করতে পারে, কিন্তু প্রতিটি click-এ owner approval লাগে; স্বয়ংক্রিয় বহু-step mouse/keyboard loop নেই। File search, calendar/email data integration ও wake word এই version-এর বাইরে।
+- Screen viewer-এ আলাদা click suggestion পর্যালোচনা করা যায়। Visual work session-এ একবার অনুমতির পরে সীমিত বহু-step loop চলতে পারে; ঝুঁকি শনাক্তকরণ নিখুঁত নয়। File search, calendar/email data integration ও wake word এই version-এর বাইরে।
 
 ---
 

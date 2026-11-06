@@ -613,3 +613,174 @@ test('project builder repairs invalid JavaScript once without another approval',
     assert.equal(result.ok, true); assert.equal(calls, 4); assert.match(result.files['app.js'], /Ready/);
   } finally { global.fetch = original; }
 });
+
+test('one authorization drives multiple observed desktop steps and builds a project', async () => {
+  const w = store.createWorkspace(), owner = w.token, other = store.createWorkspace().token;
+  const remote = store.redeemPairing(store.createPairing(w.workspaceId).code).token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridgeToken = store.issueBridge(w.workspaceId), bridge = { Authorization: 'Bearer ' + bridgeToken };
+  const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2, 3]).toString('base64');
+  const realFetch = global.fetch; let visions = 0, generations = 0;
+  const decisions = [
+    { action: 'click', x: 3500, y: 5000, risk: 'low', reason: 'Open editor' },
+    { action: 'type', target: 'code', text: 'Hello', risk: 'low', reason: 'Enter title' },
+    { action: 'build_site', reason: 'Create static website' },
+    { action: 'finish', reason: 'The static project is ready for review' },
+  ];
+  const generated = ['<!doctype html><html><head><link href="styles.css"></head><body><h1>Hi</h1><script src="app.js"></script></body></html>', 'body{}', 'console.log("hello")'];
+  global.fetch = async (url, opts = {}) => {
+    if (!String(url).startsWith('https://api.groq.com/')) return realFetch(url, opts);
+    const body = JSON.parse(opts.body);
+    const content = body.model === 'vision-model' ? JSON.stringify(decisions[visions++]) : generated[generations++];
+    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content } }] }), { status: 200 });
+  };
+  try {
+    const start = { goal: 'build a bakery website', model: 'vision-model', confirm: true, primary: true };
+    assert.equal((await req('/autonomy/start', { method: 'POST', token: owner, body: { ...start, confirm: false } })).status, 400);
+    assert.equal((await req('/autonomy/start', { method: 'POST', token: remote, body: start })).status, 403);
+    assert.equal((await req('/autonomy/start', { method: 'POST', token: owner, body: start })).data.ok, false);
+    await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+    const started = await req('/autonomy/start', { method: 'POST', token: owner, body: start });
+    assert.equal(started.data.ok, true); const id = started.data.session.id;
+    assert.equal((await req('/autonomy/' + id, { token: other })).status, 404);
+    assert.equal((await req('/autonomy/start', { method: 'POST', token: owner, body: start })).data.ok, false);
+    const step1 = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step1.data.session.action.status, 'approved'); assert.equal(step1.data.session.action.kind, 'mouse_click_primary');
+    assert.equal((await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.ok, false);
+    const claim1 = (await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } })).data.action;
+    assert.equal(claim1.id, step1.data.session.action.id);
+    await req('/bridge/result', { method: 'POST', headers: bridge, body: { id: claim1.id, ok: true, result: 'click sent' } });
+    const step2 = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step2.data.session.action.kind, 'keyboard_type_app'); assert.equal(step2.data.session.action.status, 'approved');
+    const claim2 = (await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } })).data.action;
+    await req('/bridge/result', { method: 'POST', headers: bridge, body: { id: claim2.id, ok: true, result: 'typed' } });
+    const step3 = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step3.data.session.project.files.length, 3); assert.equal(generations, 3);
+    assert.equal((await req('/builder/projects/' + step3.data.session.project.id, { token: owner })).status, 200);
+    const done = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(done.data.session.state, 'complete'); assert.equal(done.data.session.steps, 3);
+    assert.match(done.data.session.message, /AI reports/); assert.equal(visions, 4);
+    assert.ok(!JSON.stringify((await req('/state', { token: owner })).data).includes(image));
+  } finally { global.fetch = realFetch; }
+});
+
+test('visual work pauses for risky actions and stop cancels queued work', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  const remote = store.redeemPairing(store.createPairing(w.workspaceId).code).token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridgeToken = store.issueBridge(w.workspaceId), bridge = { Authorization: 'Bearer ' + bridgeToken };
+  await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+  const realFetch = global.fetch;
+  global.fetch = async (url, opts) => String(url).startsWith('https://api.groq.com/') ? new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ action: 'click', x: 100, y: 100, risk: 'low', reason: 'Delete file' }) } }] }), { status: 200 }) : realFetch(url, opts);
+  try {
+    const id = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'work on files', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2]).toString('base64');
+    const step = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step.data.session.state, 'review'); assert.equal(step.data.session.action.status, 'pending');
+    assert.equal((await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } })).data.action, null);
+    assert.equal((await req('/autonomy/' + id + '/approve', { method: 'POST', token: remote, body: { confirm: true } })).status, 403);
+    assert.equal((await req('/autonomy/' + id + '/approve', { method: 'POST', token: owner, body: { confirm: false } })).status, 400);
+    assert.equal((await req('/autonomy/' + id + '/approve', { method: 'POST', token: owner, body: { confirm: true } })).data.session.action.status, 'approved');
+    assert.equal((await req('/autonomy/' + id + '/stop', { method: 'POST', token: owner, body: {} })).data.session.state, 'stopped');
+    assert.equal((await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } })).data.action, null);
+    assert.equal(store.action(step.data.session.action.id).status, 'cancelled');
+  } finally { global.fetch = realFetch; }
+});
+
+test('stopping a visual session aborts in-flight AI and cannot queue a later action', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridge = { Authorization: 'Bearer ' + store.issueBridge(w.workspaceId) };
+  await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+  const realFetch = global.fetch; let started; const entered = new Promise(resolve => { started = resolve; });
+  global.fetch = async (url, opts) => {
+    if (!String(url).startsWith('https://api.groq.com/')) return realFetch(url, opts);
+    started(); return new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
+  };
+  try {
+    const id = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'Open a website', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2]).toString('base64');
+    const pending = req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    await entered;
+    assert.equal((await req('/autonomy/' + id + '/stop', { method: 'POST', token: owner, body: {} })).data.session.state, 'stopped');
+    assert.equal((await pending).data.ok, false);
+    assert.equal((await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } })).data.action, null);
+    assert.equal((await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.ok, false);
+  } finally { global.fetch = realFetch; }
+});
+
+test('visual session can revise its saved project without overwriting the original', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridge = { Authorization: 'Bearer ' + store.issueBridge(w.workspaceId) };
+  await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+  const realFetch = global.fetch; let vision = 0, files = 0; let revisionHadContext = false;
+  const decisions = [{ action: 'build_site', reason: 'Create site' }, { action: 'revise_site', changes: 'Make the heading bigger', reason: 'Improve heading' }, { action: 'finish', reason: 'Site is ready to review' }];
+  const contents = ['<!doctype html><html><head><link href="styles.css"></head><body><h1>Original</h1><script src="app.js"></script></body></html>', 'h1{font-size:12px}', 'console.log("old")', '<!doctype html><html><head><link href="styles.css"></head><body><h1>Revised</h1><script src="app.js"></script></body></html>', 'h1{font-size:32px}', 'console.log("new")'];
+  global.fetch = async (url, opts = {}) => {
+    if (!String(url).startsWith('https://api.groq.com/')) return realFetch(url, opts);
+    const request = JSON.parse(opts.body); let content;
+    if (request.model === 'vision') content = JSON.stringify(decisions[vision++]);
+    else { if (files >= 3 && JSON.stringify(request.messages).includes('Original')) revisionHadContext = true; content = contents[files++]; }
+    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content } }] }), { status: 200 });
+  };
+  try {
+    const id = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'Build a website', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2]).toString('base64');
+    const first = (await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.session.project;
+    const second = (await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.session.project;
+    assert.notEqual(first.id, second.id); assert.equal(revisionHadContext, true);
+    assert.match((await req('/builder/projects/' + first.id, { token: owner })).data.files['index.html'], /Original/);
+    assert.match((await req('/builder/projects/' + second.id, { token: owner })).data.files['index.html'], /Revised/);
+    assert.equal((await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.session.state, 'complete');
+  } finally { global.fetch = realFetch; }
+});
+
+test('restart cancels queued auto actions without cancelling ordinary actions', async () => {
+  const { createAutonomy } = require('../src/nova/autonomy');
+  const w = store.createWorkspace();
+  const queued = store.createAction(w.workspaceId, 'mouse_click_primary', { x: 10, y: 10 }, 'NOVA AUTO: queued', 30000);
+  store.transitionAction(queued.id, ['pending'], 'approved');
+  const ordinary = store.createAction(w.workspaceId, 'open_youtube', {}, 'Open YouTube');
+  store.transitionAction(ordinary.id, ['pending'], 'approved');
+  createAutonomy({ store, dataDir: dir, workspaceAi: () => ({ configured: true }), bridgeOnline: () => true });
+  assert.equal(store.action(queued.id).status, 'cancelled');
+  assert.equal(store.action(ordinary.id).status, 'approved');
+  store.transitionAction(ordinary.id, ['approved'], 'cancelled');
+});
+
+test('visual session rejects malformed, unsupported or out-of-range AI steps', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridge = { Authorization: 'Bearer ' + store.issueBridge(w.workspaceId) };
+  await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+  const realFetch = global.fetch; let result = '{"action":"click","x":10001,"y":1,"risk":"low"}';
+  global.fetch = async (url, opts) => String(url).startsWith('https://api.groq.com/') ? new Response(JSON.stringify({ choices: [{ message: { content: result } }] }), { status: 200 }) : realFetch(url, opts);
+  try {
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2]).toString('base64');
+    const id = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'click a button', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    assert.equal((await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image: 'not an image' } })).data.ok, false);
+    const step = await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step.data.session.state, 'failed'); assert.equal((await req('/state', { token: owner })).data.actions.length, 0);
+    const id2 = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'work', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    result = '{"action":"shell","command":"bad","risk":"low"}';
+    const step2 = await req('/autonomy/' + id2 + '/step', { method: 'POST', token: owner, body: { image } });
+    assert.equal(step2.data.session.state, 'failed'); assert.equal((await req('/state', { token: owner })).data.actions.length, 0);
+  } finally { global.fetch = realFetch; }
+});
+
+test('visual session cannot claim a website was completed before a project is saved', async () => {
+  const w = store.createWorkspace(), owner = w.token;
+  store.saveAiProvider(w.workspaceId, { provider: 'groq', model: 'text-model', base_url: 'https://api.groq.com/openai/v1', ...new Vault(dir).encrypt('gsk_test_key_abcdefghijklmnopqrstuvwxyz', w.workspaceId) });
+  const bridge = { Authorization: 'Bearer ' + store.issueBridge(w.workspaceId) };
+  await req('/bridge/poll', { method: 'POST', headers: bridge, body: { system: {} } });
+  const realFetch = global.fetch;
+  global.fetch = async (url, opts) => String(url).startsWith('https://api.groq.com/') ? new Response(JSON.stringify({ choices: [{ message: { content: '{"action":"finish","reason":"done"}' } }] }), { status: 200 }) : realFetch(url, opts);
+  try {
+    const id = (await req('/autonomy/start', { method: 'POST', token: owner, body: { goal: 'build a website', model: 'vision', confirm: true, primary: true } })).data.session.id;
+    const image = 'data:image/jpeg;base64,' + Buffer.from([255, 216, 255, 1, 2]).toString('base64');
+    const result = (await req('/autonomy/' + id + '/step', { method: 'POST', token: owner, body: { image } })).data.session;
+    assert.equal(result.state, 'stopped'); assert.match(result.message, /No website project was saved/);
+    assert.deepEqual((await req('/builder/projects', { token: owner })).data.projects, []);
+  } finally { global.fetch = realFetch; }
+});

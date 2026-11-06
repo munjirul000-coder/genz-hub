@@ -74,7 +74,11 @@ npm run nova
 
 Conversation → **Project builder**-এ কী ধরনের website চাও লেখো। **Approve by voice** চেপে `অনুমতি দিচ্ছি` বললে NOVA একটি নতুন static website-এর তিনটি file বানানোর চেষ্টা করবে। এটি এক project-এর অনুমতি, পুরো PC চালানোর অনুমতি নয়। Preview দেখে project ZIP download করা যায়। Internet ও Groq connection দরকার। Generated code verify করে ব্যবহার করবে।
 
-Desktop control → **Share screen** চাপলে browser-এ screen বেছে নিতে হবে। **Analyze screen** চাপলে নির্বাচিত screen-এর একটি ছবি এবং প্রশ্ন তোমার AI provider-এ যাবে—private তথ্য আগে বন্ধ করো। Vision model support না থাকলে error দেখাবে। AI চাইলে পুরো primary monitor-এর জন্য click point প্রস্তাব করে; point দেখে প্রতিবার নিজে অনুমতি দিতে হবে। ভুল point বা বদলে যাওয়া screen-এ click করলে delete-সহ ক্ষতি হতে পারে। নিজে নিজে একাধিক click/type করে না। বাস্তব Windows microphone, screen sharing, mouse ও keyboard পরীক্ষা করা হয়নি।
+Desktop control → **Share screen** চাপলে browser-এ screen বেছে নিতে হবে। **Analyze screen** চাপলে নির্বাচিত screen-এর একটি ছবি এবং প্রশ্ন তোমার AI provider-এ যাবে—private তথ্য আগে বন্ধ করো। Vision model support না থাকলে error দেখাবে। AI চাইলে পুরো primary monitor-এর জন্য click point প্রস্তাব করে; point দেখে প্রতিবার নিজে অনুমতি দিতে হবে। ভুল point বা বদলে যাওয়া screen-এ click করলে delete-সহ ক্ষতি হতে পারে। আলাদা **Visual work** session চালু করলে একবার অনুমতিতে সর্বোচ্চ ১২ step click বা এক-লাইন type করতে পারে; ভুল click-এ delete হতে পারে এবং ঝুঁকি শনাক্ত সবসময় সফল নাও হতে পারে। বাস্তব Windows microphone, screen sharing, mouse ও keyboard পরীক্ষা করা হয়নি।
+
+## Visual work session (পরীক্ষামূলক)
+
+**Visual work**-এ পুরো primary screen share করে লক্ষ্য লিখলে, একবার button বা voice অনুমতিতে NOVA screen দেখে একাধিক সীমিত step চালাতে পারে। প্রতি step-এ screenshot তোমার AI provider-এ যায়; গোপন জিনিস বন্ধ রাখো। Stop করলে পরবর্তী কাজ থামে, তবে আগে থেকে চলমান Windows action শেষ হতে পারে। ভুল click বা delete শনাক্ত না হওয়ার ঝুঁকি আছে—backup রাখো ও কাজের দিকে নজর রাখো। Website project এখন তিনটি static file; app/backend তৈরি বা install করে না। বাস্তব Windows ও Groq vision-এ পরীক্ষা বাকি।
 
 ## Website বানানো (প্রথম version)
 
