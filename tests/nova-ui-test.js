@@ -369,7 +369,7 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       const realFetch = window.fetch; window.__worldOffline = false;
       window.fetch = (url, options) => {
         if (new URL(String(url), location.href).pathname.endsWith('/world')) {
-          const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, sources: [{ name: 'BBC World', ok: true }, { name: 'The Guardian', ok: false }], items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000, source: 'BBC World', image: 'https://ichef.bbci.co.uk/ace/test.jpg' }, { title: 'Guardian test headline', url: 'https://www.theguardian.com/world/test', time: 1700000000000, source: 'The Guardian', image: '' }] } };
+          const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, sources: [{ name: 'BBC World', ok: true }, { name: 'The Guardian', ok: false }], items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000, source: 'BBC World', image: 'https://ichef.bbci.co.uk/ace/test.jpg' }, { title: 'Guardian test headline', url: 'https://www.theguardian.com/world/test', time: 1700000000000, source: 'The Guardian', image: '' }] }, bangladesh: { ok: true, items: [{ title: 'বাংলাদেশ পরীক্ষা সংবাদ', url: 'https://www.jagonews24.com/national/news/123', time: Date.now(), source: 'Jago News 24', image: '' }] } };
           return Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         }
         return realFetch(url, options);
@@ -384,9 +384,10 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await go(page, 'world'); await page.waitForSelector('.world-event');
     ok('world monitor renders live source events and headlines', (await text(page)).includes('Near Dhaka') && (await text(page)).includes('BBC test headline'));
     ok('news cards show publisher images, attribution and image fallback', await page.evaluate(() => {
-      const cards = [...document.querySelectorAll('.news-card')];
+      const cards = [...document.querySelectorAll('#world-news .news-card')];
       return cards.length === 2 && cards[0].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[0].querySelector('img')?.src === 'https://ichef.bbci.co.uk/ace/test.jpg' && cards[0].querySelector('img')?.getAttribute('referrerpolicy') === 'no-referrer' && cards[1].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[1].textContent.includes('IMAGE UNAVAILABLE') && cards[1].textContent.includes('The Guardian') && document.querySelector('#news-source-status').textContent.includes('Unavailable');
     }));
+    ok('Bangladesh headlines show their actual publisher and article link', (await text(page)).includes('বাংলাদেশ পরীক্ষা সংবাদ') && await page.$eval('#bangladesh-news a', a => a.href.startsWith('https://www.jagonews24.com/')));
     ok('new NOVA brand logo loads in sidebar', await page.$eval('.brand-emblem', e => e.complete && e.naturalWidth > 0));
     await click(page, '[data-world-mode="map"]');
     ok('world monitor switches to 2D map', await page.$eval('[data-world-mode="map"]', el => el.classList.contains('active')));
@@ -521,6 +522,54 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.screenshot({ path: path.join(SHOTS, 'nova-mobile.png'), fullPage: true });
     await page.setViewport({ width: 375, height: 667, isMobile: true, hasTouch: true }); await noOverflow(page, 'small mobile');
     await page.setViewport({ width: 768, height: 1024 }); await noOverflow(page, 'tablet');
+    // Separate voice window remains open when its opener tab closes. Speech is mocked;
+    // real Windows background listening and microphone service still require user testing.
+    const parent = await browser.newPage(); await parent.setViewport({ width: 1200, height: 900 });
+    await parent.goto(base + '/nova#conversation', { waitUntil: 'networkidle0' }); await parent.waitForSelector('[data-action="voice-window"]');
+    await click(parent, '[data-action="voice-window"]');
+    ok('voice window explains continuous audio privacy before opening', (await text(parent)).includes('audio may be sent') && (await text(parent)).includes('recording cannot prove identity'));
+    const popupPromise = new Promise(resolve => parent.once('popup', resolve)); await click(parent, '#confirm-action'); const voice = await popupPromise;
+    await voice.waitForSelector('.voice-window-note');
+    ok('voice window opens independently with explicit start and safety note', (await text(voice)).includes('say “নোভা” or “Nova”') && (await text(voice)).includes('Anyone nearby'));
+    await parent.close(); ok('voice window remains after the main tab closes', !voice.isClosed());
+    await voice.evaluate(() => {
+      window.__voiceFetch = window.fetch; window.__voiceMessages = []; window.__voiceApprovals = 0; window.__voiceStartCount = 0;
+      window.fetch = async (url, opts = {}) => {
+        const target = String(url);
+        if (target.endsWith('/chat')) { window.__voiceMessages.push(JSON.parse(opts.body).message); const now = Date.now(); const mouse = window.__voiceMessages.at(-1).includes('mouse'); const action = { id: mouse ? 'mock-mouse' : 'mock-app', kind: mouse ? 'mouse_click' : 'open_firefox', label: mouse ? 'Left click mouse' : 'Open Firefox', params: mouse ? { x: 10, y: 10 } : {}, status: 'pending', created_at: now }; return new Response(JSON.stringify({ userMessage: { id: 'mock-user-' + now, role: 'user', content: window.__voiceMessages.at(-1), created_at: now }, message: { id: 'mock-assistant-' + now, role: 'assistant', content: 'Review Open Firefox', action_id: action.id, created_at: now }, action, engine: 'local' }), { status: 200 }); }
+        if (target.endsWith('/actions/mock-app/approve')) { window.__voiceApprovals++; return new Response(JSON.stringify({ action: { id: 'mock-app', kind: 'open_firefox', label: 'Open Firefox', params: {}, status: 'approved', created_at: Date.now() } }), { status: 200 }); }
+        const response = await window.__voiceFetch(url, opts);
+        if (target.endsWith('/sync')) { const data = await response.json(); data.bridge = { ...data.bridge, online: true, managed: true }; return new Response(JSON.stringify(data), { status: 200 }); }
+        return response;
+      };
+      window.SpeechRecognition = class {
+        start() { window.__voiceRecognition = this; window.__voiceStartCount++; }
+        stop() { setTimeout(() => this.onend?.(), 0); }
+        abort() { setTimeout(() => this.onend?.(), 0); }
+        say(value) { this.onresult?.({ results: [Object.assign([{ transcript: value }], { isFinal: true })] }); }
+      };
+      speechSynthesis.speak = utterance => setTimeout(() => utterance.onend?.(), 1);
+    });
+    await voice.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await voice.waitForFunction(() => document.querySelector('#sidebar-bridge-status')?.textContent.includes('Connected'), { timeout: 10000 });
+    await click(voice, '[data-action="continuous-voice"]');
+    await voice.evaluate(() => window.__voiceRecognition.say('background conversation not addressed to assistant')); await voice.waitForFunction(() => window.__voiceStartCount >= 2);
+    ok('wake window ignores speech without NOVA', await voice.evaluate(() => window.__voiceMessages.length === 0));
+    await voice.evaluate(() => window.__voiceRecognition.say('নোভা open firefox'));
+    await voice.waitForFunction(() => window.__voiceMessages.length === 1); await voice.waitForFunction(() => window.__voiceStartCount >= 3);
+    ok('wake phrase sends request but does not auto approve by default', await voice.evaluate(() => window.__voiceMessages[0] === 'open firefox' && window.__voiceApprovals === 0));
+    await click(voice, '#voice-app-permission'); await voice.waitForSelector('#confirm-action');
+    ok('automatic opening requires separate informed session consent', (await text(voice)).includes('Anyone nearby or a recording'));
+    await click(voice, '#confirm-action');
+    await voice.evaluate(() => window.__voiceRecognition.say('Nova open firefox'));
+    await voice.waitForFunction(() => window.__voiceApprovals === 1);
+    ok('only after consent can a supported voice app request be approved', await voice.evaluate(() => window.__voiceMessages.length === 2 && window.__voiceApprovals === 1));
+    await voice.waitForFunction(() => window.__voiceStartCount >= 4); await voice.evaluate(() => window.__voiceRecognition.say('Nova mouse click'));
+    await voice.waitForFunction(() => window.__voiceMessages.length === 3); await sleep(300);
+    ok('mouse clicks are not auto-approved by app-only voice consent', await voice.evaluate(() => window.__voiceApprovals === 1));
+    await click(voice, '[data-action="continuous-voice"]');
+    ok('stopping voice clears session app-opening permission', (await text(voice)).includes('Allow voice app opening for this session'));
+    await voice.close();
     ok('no uncaught browser errors', errors.length === 0, errors.join(' | '));
   } finally {
     if (browser) { const child = browser.process(); await Promise.race([browser.close().catch(() => {}), sleep(5000).then(() => child?.kill('SIGKILL'))]); }

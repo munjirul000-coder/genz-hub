@@ -427,7 +427,7 @@ test('world endpoint fetches fixed public sources, reports real source status an
   const realFetch = global.fetch;
   global.fetch = async (url, options) => {
     if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [{ geometry: { coordinates: [90.4, 23.7] }, properties: { mag: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' } }] }), { status: 200 });
-    if (String(url).startsWith('https://feeds.bbci.co.uk/') || String(url).startsWith('https://www.theguardian.com/world/rss')) throw new Error('offline');
+    if (String(url).startsWith('https://feeds.bbci.co.uk/') || String(url).startsWith('https://www.theguardian.com/world/rss') || String(url).startsWith('https://www.jagonews24.com/')) throw new Error('offline');
     if (String(url).startsWith('https://api.groq.com/')) {
       assert.match(options.body, /Near Dhaka/);
       return new Response(JSON.stringify({ choices: [{ message: { content: 'An earthquake occurred near Dhaka [Q1].' } }] }), { status: 200 });
@@ -454,6 +454,7 @@ test('world news falls back to another publisher and manual refresh bypasses cac
     calls.push(String(url));
     if (String(url).startsWith('https://earthquake.usgs.gov/')) return new Response(JSON.stringify({ features: [] }), { status: 200 });
     if (String(url).startsWith('https://feeds.bbci.co.uk/')) throw new Error('bbc unavailable');
+    if (String(url).startsWith('https://www.jagonews24.com/')) return new Response(`<rss><item><title>বাংলাদেশের খবর</title><link>https://www.jagonews24.com/national/news/123</link><pubDate>${new Date().toUTCString()}</pubDate></item></rss>`, { status: 200 });
     if (String(url).startsWith('https://www.theguardian.com/world/rss')) return new Response(`<rss><channel><item><title>Guardian headline</title><link>https://www.theguardian.com/world/test</link><pubDate>Fri, 06 Nov 2026 02:00:00 GMT</pubDate><media:content medium="image" url="https://i.guim.co.uk/img/test.jpg"/></item></channel></rss>`, { status: 200 });
     throw new Error('unexpected URL');
   };
@@ -461,10 +462,11 @@ test('world news falls back to another publisher and manual refresh bypasses cac
     const result = await getWorldData({ force: true });
     assert.equal(result.news.ok, true); assert.deepEqual(result.news.sources, [{ name: 'BBC World', ok: false }, { name: 'The Guardian', ok: true }]);
     assert.equal(result.news.items[0].source, 'The Guardian'); assert.equal(result.news.items[0].image, 'https://i.guim.co.uk/img/test.jpg');
-    assert.equal(calls.length, 3); await getWorldData(); assert.equal(calls.length, 3);
-    await getWorldData({ force: true }); assert.equal(calls.length, 6);
+    assert.equal(result.bangladesh.ok, true); assert.equal(result.bangladesh.items[0].source, 'Jago News 24');
+    assert.equal(calls.length, 4); await getWorldData(); assert.equal(calls.length, 4);
+    await getWorldData({ force: true }); assert.equal(calls.length, 8);
     const token = store.createWorkspace().token; const responseRefresh = await req('/world?refresh=1', { token });
-    assert.equal(responseRefresh.status, 200); assert.equal(calls.length, 9);
+    assert.equal(responseRefresh.status, 200); assert.equal(calls.length, 12);
     assert.equal(responseRefresh.data.news.items[0].source, 'The Guardian');
     const { respond } = require('../src/nova/assistant');
     const response = await respond({ text: 'latest news', settings: {}, memories: [], history: [], timezone: 'UTC', config: { configured: false }, loadWorld: async () => result });
@@ -883,4 +885,41 @@ test('world chat handles offline, partial, empty and failed AI cases without inv
     result = await respond({ ...common, text: 'Hello', config: { configured: false }, loadWorld: async () => { feedCalls++; return offline; } });
     assert.equal(feedCalls, 0); assert.match(result.content, /NOVA/);
   } finally { global.fetch = realFetch; }
+});
+
+
+test('Firefox requests reach the reviewed desktop action with and without AI', async () => {
+  const { respond, actionIntent } = require('../src/nova/assistant');
+  const agent = require('../desktop/nova-agent');
+  assert.equal(actionIntent('open the firefox'), 'open_firefox');
+  assert.equal(actionIntent('ফায়ারফক্স খুলে দাও'), 'open_firefox');
+  assert.equal(actionIntent('do not open firefox'), null);
+  assert.equal(actionIntent('ফায়ারফক্স খুলে দিও না'), null);
+  assert.equal(actionIntent('how do I open firefox'), null);
+  assert.equal(actionIntent('open google chrome'), 'open_chrome');
+  assert.equal(agent.knownBrowser('firefox', { ProgramFiles: 'C:/Apps' }, p => p.endsWith('Mozilla Firefox/firefox.exe')), 'C:/Apps/Mozilla Firefox/firefox.exe');
+  assert.equal(agent.knownBrowser('shell', { ProgramFiles: 'C:/Apps' }, () => true), null);
+  const common = { settings: { language: 'bn' }, memories: [], history: [], timezone: 'Asia/Dhaka', config: { configured: true, base: 'https://mock.ai', model: 'test' } };
+  const realFetch = global.fetch; let calls = 0;
+  global.fetch = async () => { calls++; return new Response(JSON.stringify({ choices: [{ message: { content: 'YES' } }] }), { status: 200 }); };
+  try {
+    const direct = await respond({ ...common, text: 'open the firefox' });
+    assert.equal(direct.action.kind, 'open_firefox'); assert.equal(calls, 0); // deterministic, not a fake AI execution
+    const ai = await respond({ ...common, text: 'ফায়ারফক্সটা আমার জন্য চালিয়ে দাও' });
+    assert.equal(ai.action.kind, 'open_firefox'); assert.equal(ai.engine, 'cloud'); assert.equal(calls, 1);
+    const negative = await respond({ ...common, text: 'do not open firefox' }); assert.equal(negative.action, undefined);
+    const ambiguous = await respond({ ...common, text: 'firefox and chrome please' }); assert.equal(ambiguous.action, undefined);
+  } finally { global.fetch = realFetch; }
+});
+
+test('Bangladesh news is a separate verified feed and is not confused with world headlines', async () => {
+  const { newsItems } = require('../src/nova/world'); const { respond, worldIntent } = require('../src/nova/assistant');
+  const rss = `<rss><item><title><![CDATA[বাংলাদেশে ঘটনা]]></title><link>https://www.jagonews24.com/national/news/123</link><pubDate>${new Date().toUTCString()}</pubDate></item><item><title>Outside topic</title><link>https://www.jagonews24.com/international/news/9</link></item><item><title>Unsafe</title><link>https://www.jagonews24.com.evil.example/national/news/5</link></item></rss>`;
+  const items = newsItems(rss, 'Jago News 24'); assert.equal(items.length, 1); assert.equal(items[0].source, 'Jago News 24'); assert.equal(items[0].image, '');
+  assert.equal(worldIntent('বাংলাদেশের আজকের খবর বলো'), 'bangladesh');
+  const common = { settings: { language: 'bn' }, memories: [], history: [], timezone: 'Asia/Dhaka', config: { configured: false } };
+  const result = await respond({ ...common, text: 'বাংলাদেশের খবর বলো', loadWorld: async () => ({ fetchedAt: Date.now(), news: { ok: true, items: [{ title: 'world only' }] }, bangladesh: { ok: true, items }, quakes: { ok: false, items: [] } }) });
+  assert.match(result.content, /বাংলাদেশে ঘটনা/); assert.match(result.content, /Jago News 24/); assert.match(result.content, /jagonews24\.com/); assert.doesNotMatch(result.content, /world only/);
+  const offline = await respond({ ...common, text: 'Bangladesh news', loadWorld: async () => ({ fetchedAt: Date.now(), news: { ok: true, items: [{ title: 'world only' }] }, bangladesh: { ok: false, items: [] }, quakes: { ok: false, items: [] } }) });
+  assert.match(offline.content, /Bangladesh news feed unavailable/); assert.doesNotMatch(offline.content, /world only/);
 });

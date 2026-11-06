@@ -100,7 +100,7 @@ Conversation-এ যেমন `ekta bakery website banao` লিখে পাঠ
 
 ## 5) Windows desktop control চালাও
 
-**সহজ উপায়:** এই laptop-এ NOVA খুলে **Desktop control → Connect this PC → Connect** চাপো। Token copy বা আলাদা ফাইল লাগে না। NOVA খোলা রাখো। বন্ধ করতে একই পেজে **Disconnect this PC** চাপো। NOVA restart করলে আবার Connect চাপতে হবে। Connect করলে আগের bridge token এবং অপেক্ষমাণ action বাতিল হতে পারে; সাধারণ action review লাগে, আর অনুমোদিত visual session একাধিক সাধারণ step চালাতে পারে। অন্য ফোন বা hosted preview থেকে এই local shortcut চালু করা যায় না। নিচের ধাপগুলো শুধু manual setup-এর বিকল্প।
+**সহজ উপায়:** এই laptop-এ NOVA খুলে **Desktop control → Connect this PC → Connect** চাপো। Token copy বা আলাদা ফাইল লাগে না। NOVA খোলা রাখো। বন্ধ করতে একই পেজে **Disconnect this PC** চাপো। একবার সম্মতি দিলে NOVA restart হলে bridge নিজে reconnect করার চেষ্টা করবে, যতক্ষণ না তুমি Disconnect চাপো। Browser tab বন্ধ করলেও NOVA server চালু থাকলে bridge চলবে। Connect করলে আগের bridge token এবং অপেক্ষমাণ action বাতিল হতে পারে; সাধারণ action review লাগে, আর অনুমোদিত visual session একাধিক সাধারণ step চালাতে পারে। অন্য ফোন বা hosted preview থেকে এই local shortcut চালু করা যায় না। নিচের ধাপগুলো শুধু manual setup-এর বিকল্প।
 
 1. NOVA → **Desktop control** → **Generate token**।
 2. **Copy token** চাপো, Notepad-এ paste করে `nova-bridge.token` নামে save করো। Token কাউকে দেখাবে না।
@@ -150,3 +150,10 @@ Connected bridge থাকলে action review-এ **Approve by voice** চে�
 - **Desktop offline:** `START-BRIDGE.bat` চলছে কি না, token file ঠিক জায়গায় আছে কি না দেখো। Token বদলালে পুরোনো agent disconnect হয়।
 
 বাইরের network থেকে ফোনে চালাতে আলাদা private VPN বা HTTPS endpoint setup দরকার; শুধু laptop চালু রাখলে সরাসরি internet access তৈরি হয় না। `localhost` ফোনে দিলে laptop নয়, ফোনকেই বোঝায়। নিরাপত্তার জন্য router-এ সরাসরি port খুলবে না।
+
+
+### আলাদা voice window (পরীক্ষামূলক)
+
+Conversation বা Overview-এ **Open separate voice window → Open window** চাপো। নতুন window-তে **Start voice conversation** চাপো, microphone permission দাও এবং NOVA বা নোভা বলে অনুরোধ শুরু করো। মূল NOVA tab বন্ধ করা যায়, কিন্তু আলাদা voice window, Chrome এবং NOVA server চালু থাকতে হবে; voice window minimize করা যায়। এটি browser-এর speech recognition-এর ওপর নির্ভর করে, তাই background-এ থেমে যেতে পারে এবং Windows sleep/Chrome বন্ধ থাকলে কাজ করে না। Listening চলাকালে browser-এর speech service-এ audio যেতে পারে, এমনকি wake word না থাকলেও। যে কেউ বা recording নোভা বলতে পারে; কণ্ঠ দিয়ে পরিচয় যাচাই হয় না।
+
+ইচ্ছা করলে আলাদা নিশ্চিতকরণ দিয়ে শুধু Firefox, Chrome, Edge, Notepad ও Calculator এই session-এ স্পষ্ট ও local-recognized নির্দেশে review ছাড়া খুলতে দিতে পারো; AI দিয়ে বোঝা নির্দেশ ও অন্য action review লাগে, voice বন্ধ করলে অনুমতি মুছে যায়। অন্য action review লাগে; চলমান কাজ stop-এর পরেও শেষ হতে পারে। বাস্তব Windows-এ minimized microphone ও wake word যাচাই বাকি। বাংলাদেশ সংবাদ Jago News 24 থেকে সর্বশেষ national/country/politics/economy headlines হিসেবে আসে; feed পুরোনো বা unavailable হলে জানানো হয়। BBC/Guardian বিশ্ব সংবাদ অপরিবর্তিত।

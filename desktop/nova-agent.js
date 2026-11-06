@@ -19,6 +19,9 @@ const ACTIONS = Object.freeze({
   open_google_calendar: { label: 'Open Google Calendar', url: 'https://calendar.google.com' },
   open_github: { label: 'Open GitHub', url: 'https://github.com' },
   open_wikipedia: { label: 'Open Wikipedia', url: 'https://www.wikipedia.org' },
+  open_firefox: { label: 'Open Firefox', app: 'firefox' },
+  open_chrome: { label: 'Open Chrome', app: 'chrome' },
+  open_edge: { label: 'Open Microsoft Edge', app: 'edge' },
   open_paint: { label: 'Open Paint', exe: 'mspaint.exe' },
   open_task_manager: { label: 'Open Task Manager', exe: 'taskmgr.exe' },
   open_onscreen_keyboard: { label: 'Open On-Screen Keyboard', exe: 'osk.exe' },
@@ -174,6 +177,18 @@ function sendKeyboard(params) {
     });
   });
 }
+// Executables are selected only from fixed Windows installation locations,
+// never from model text, the request or an arbitrary path.
+function knownBrowser(app, env = process.env, exists = fs.existsSync) {
+  const suffixes = { firefox: ['Mozilla Firefox', 'firefox.exe'], chrome: ['Google', 'Chrome', 'Application', 'chrome.exe'], edge: ['Microsoft', 'Edge', 'Application', 'msedge.exe'] };
+  if (!Object.prototype.hasOwnProperty.call(suffixes, app)) return null;
+  for (const key of ['ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA']) {
+    if (!env[key]) continue;
+    const file = path.join(env[key], ...suffixes[app]);
+    if (exists(file)) return file;
+  }
+  return null;
+}
 async function execute(action, dryRun = false) {
   const params = validate(action.kind, action.params);
   const item = ACTIONS[action.kind];
@@ -189,6 +204,7 @@ async function execute(action, dryRun = false) {
   }
   if (item.url) await launch('rundll32.exe', ['url.dll,FileProtocolHandler', item.url]);
   else if (item.exe) await launch(item.exe);
+  else if (item.app) { const file = knownBrowser(item.app); if (!file) throw new Error(`${item.label.slice(5)} was not found in a standard installation location.`); await launch(file); }
   else if (action.kind === 'open_notepad') await launch('notepad.exe');
   else if (action.kind === 'open_calculator') await launch('calc.exe');
   else if (action.kind === 'open_explorer') await launch('explorer.exe', [path.join(os.homedir(), 'Downloads')]);
@@ -250,4 +266,4 @@ async function main() {
   }
 }
 if (require.main === module) main().catch(err => { console.error('NOVA bridge:', err.message); process.exitCode = 1; });
-module.exports = { ACTIONS, validate, execute, systemInfo, argsOf };
+module.exports = { ACTIONS, validate, execute, systemInfo, argsOf, knownBrowser };

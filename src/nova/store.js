@@ -50,6 +50,10 @@ class NovaStore {
         token_hash TEXT NOT NULL UNIQUE, last_seen INTEGER, system_info TEXT NOT NULL DEFAULT '{}',
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS local_bridge_preferences (
+        workspace_id TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+        enabled INTEGER NOT NULL DEFAULT 0
+      );
       CREATE TABLE IF NOT EXISTS pairings (
         id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
         code_hash TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,
@@ -154,6 +158,11 @@ class NovaStore {
     this.db.prepare("UPDATE actions SET status='cancelled',result='Bridge credentials were reset.',updated_at=? WHERE workspace_id=? AND status IN ('pending','approved','running')").run(now, workspaceId);
     return raw;
   }
+  localBridgeEnabled(workspaceId) { return !!this.db.prepare('SELECT enabled FROM local_bridge_preferences WHERE workspace_id=?').get(workspaceId)?.enabled; }
+  setLocalBridgeEnabled(workspaceId, enabled) {
+    this.db.prepare('INSERT INTO local_bridge_preferences (workspace_id,enabled) VALUES (?,?) ON CONFLICT(workspace_id) DO UPDATE SET enabled=excluded.enabled').run(workspaceId, enabled ? 1 : 0);
+  }
+  enabledLocalBridges() { return this.db.prepare('SELECT workspace_id FROM local_bridge_preferences WHERE enabled=1').all().map(row => row.workspace_id); }
   revokeManagedBridge(workspaceId, tokenHash) {
     return this.db.transaction(() => {
       const removed = this.db.prepare('DELETE FROM bridge WHERE workspace_id=? AND token_hash=?').run(workspaceId, tokenHash);

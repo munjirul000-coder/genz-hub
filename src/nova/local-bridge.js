@@ -40,7 +40,7 @@ function createLocalBridge({ store, agentFile, platform = process.platform, spaw
     // Only pass OS variables required by Windows and process startup; do not
     // forward any AI keys or other secrets from the server environment.
     const env = {};
-    for (const name of ['SystemRoot', 'SYSTEMROOT', 'WINDIR', 'PATH', 'Path', 'PATHEXT', 'COMSPEC', 'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH']) if (process.env[name]) env[name] = process.env[name];
+    for (const name of ['SystemRoot', 'SYSTEMROOT', 'WINDIR', 'PATH', 'Path', 'PATHEXT', 'COMSPEC', 'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA']) if (process.env[name]) env[name] = process.env[name];
     env.NOVA_BRIDGE_TOKEN = token;
     let child;
     try {

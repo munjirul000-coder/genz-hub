@@ -52,7 +52,12 @@ test('one-click bridge is local-owner-only, confirmed, ephemeral, connected, and
     assert.equal(spawnOptions.options.env.NOVA_AI_API_KEY, undefined); assert.equal(spawnOptions.options.shell, false); assert.equal(spawnOptions.options.stdio[3], 'ipc');
     assert.equal(fs.existsSync(path.join(dir, 'nova-bridge.token')), false);
     const state = await request('/state', { token: owner.token, method: 'GET' });
-    assert.equal(state.data.bridge.online, true); assert.equal(state.data.bridge.managed, true);
+    assert.equal(state.data.bridge.online, true); assert.equal(state.data.bridge.managed, true); assert.equal(state.data.bridge.autoReconnect, true);
+    const chat = await request('/chat', { token: owner.token, body: { message: 'open the firefox' }, headers: { Origin: origin } });
+    assert.equal(chat.data.action.kind, 'open_firefox'); assert.equal(chat.data.action.status, 'pending');
+    assert.equal((await request(`/actions/${chat.data.action.id}/approve`, opts)).data.action.status, 'approved');
+    for (let i = 0; i < 60 && nova.store.action(chat.data.action.id).status !== 'completed'; i++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(nova.store.action(chat.data.action.id).status, 'completed'); assert.match(nova.store.action(chat.data.action.id).result, /DRY RUN/);
     const pending = nova.store.createAction(owner.workspaceId, 'open_notepad', {}, 'Open Notepad');
     assert.equal((await request('/local-bridge/stop', { ...opts, token: remote })).status, 403);
     assert.equal((await request('/local-bridge/stop', opts)).data.ok, true);
@@ -68,6 +73,13 @@ test('one-click bridge is local-owner-only, confirmed, ephemeral, connected, and
     const lastExit = new Promise(resolve => children[1].once('exit', resolve));
     nova.close(); assert.equal(nova.store.bridge(owner.workspaceId), undefined);
     await Promise.race([lastExit, new Promise((_, reject) => setTimeout(() => reject(new Error('bridge did not stop on shutdown')), 5000))]);
+    assert.equal(nova.store.localBridgeEnabled(owner.workspaceId), true);
+    nova.resumeLocalBridges(server.address().port);
+    for (let i = 0; i < 70 && !(nova.store.bridge(owner.workspaceId)?.last_seen); i++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(children.length, 3); assert.ok(nova.store.bridge(owner.workspaceId)?.last_seen);
+    assert.equal((await request('/local-bridge/stop', opts)).data.ok, true);
+    assert.equal(nova.store.localBridgeEnabled(owner.workspaceId), false);
+    nova.resumeLocalBridges(server.address().port); await new Promise(resolve => setTimeout(resolve, 250)); assert.equal(children.length, 3);
   } finally {
     nova.close(); for (const child of children) if (child.exitCode === null) child.kill('SIGKILL');
     await new Promise(resolve => server.close(resolve)); nova.store.close(); fs.rmSync(dir, { recursive: true, force: true });

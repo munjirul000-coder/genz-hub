@@ -255,7 +255,10 @@ try { require('./recommendations').init(); } catch (e) { console.error('[recomme
 // Resume any video that was mid-transcode when the process restarted.
 try { require('./video-jobs').resumePending(); } catch (e) { console.error('[video] resume failed', e.message); }
 
-const server = app.listen(PORT, '0.0.0.0', () => console.log(`Gen-Z Hub running on http://0.0.0.0:${PORT} (${PROD ? 'production' : 'development'})`));
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Gen-Z Hub running on http://0.0.0.0:${PORT} (${PROD ? 'production' : 'development'})`);
+  nova.resumeLocalBridges(server.address().port);
+});
 
 function shutdown(sig) {
   console.log(`[${sig}] shutting down…`);
