@@ -1,11 +1,11 @@
 /* NOVA world monitor. Coastline outlines: Natural Earth / world-atlas.
-   Only USGS feed entries are interactive event markers; stars, grids and
+   Only supplied source entries are interactive markers; stars, grids and
    orbital lines are decorative and do not represent live events. */
 (() => {
   'use strict';
   function create(canvas, select) {
     const ctx = canvas.getContext('2d');
-    let alive = true, frame = 0, mode = 'globe', rotation = 1.18, dragX = null, dragged = false;
+    let alive = true, frame = 0, mode = 'globe', rotation = -1.58, dragX = null, dragged = false;
     let lines = [], landDots = [], points = [], painted = [], w = 0, h = 0, dpr = 1, lastDraw = 0;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches, rad = Math.PI / 180;
     let seed = 7181;
@@ -100,20 +100,34 @@
       ctx.fillStyle = 'rgba(110,220,255,.5)';
       for (const arc of lines) for (let i = 0; i < arc.length; i += 9) { const p = project(arc[i][0], arc[i][1]); if (p.visible) ctx.fillRect(p.x, p.y, 1.1, 1.1); }
     }
-    function drawEvents() {
+    function drawEvents(now) {
       painted = [];
       for (const item of points) {
         const p = project(item.lon, item.lat); if (!p.visible) continue;
-        const r = Math.max(3, Math.min(9, 3 + item.magnitude)); painted.push({ ...p, item });
-        ctx.strokeStyle = 'rgba(255,141,119,.65)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowColor = '#ff8c72'; ctx.shadowBlur = 9; ctx.fillStyle = '#ff9f89'; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2, r / 2), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+        painted.push({ ...p, item });
+        const type = item.kind || 'quake';
+        if (type === 'flight') {
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((item.heading || 0) * rad);
+          ctx.fillStyle = '#f8d178'; ctx.shadowColor = '#f6c768'; ctx.shadowBlur = 7;
+          ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 4); ctx.lineTo(0, 2); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+        } else if (type === 'weather') {
+          const wet = item.precipitation > 0 || item.code >= 95;
+          ctx.fillStyle = wet ? '#64cfff' : 'rgba(160,202,211,.6)'; ctx.beginPath(); ctx.arc(p.x, p.y, wet ? 4 : 2.4, 0, Math.PI * 2); ctx.fill();
+          if (wet) { ctx.strokeStyle = 'rgba(100,207,255,.5)'; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.stroke(); }
+        } else {
+          const storm = type === 'storm' || type === 'cyclone', r = storm ? 6 : Math.max(3, Math.min(8, 3 + item.magnitude));
+          const pulse = reduced ? 0 : (now % 2200) / 2200 * 8;
+          ctx.strokeStyle = storm ? 'rgba(246,193,104,.7)' : 'rgba(255,126,119,.65)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, r + pulse, 0, Math.PI * 2); ctx.stroke();
+          ctx.shadowColor = storm ? '#ffc66f' : '#ff8c72'; ctx.shadowBlur = 9; ctx.fillStyle = storm ? '#ffd083' : '#ff9f89'; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2, r / 2), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+        }
       }
     }
     function draw(now = 0) {
       if (!alive || !w || !h) return;
       if (!reduced && now && now - lastDraw < 30) { frame = requestAnimationFrame(draw); return; }
       lastDraw = now; ctx.clearRect(0, 0, w, h); drawBackground(); if (mode === 'globe') drawGlobe();
-      drawContours(); drawEvents();
+      drawContours(); drawEvents(now);
       if (mode === 'globe' && dragX === null && !reduced) rotation += .0015;
       if (!reduced) frame = requestAnimationFrame(draw);
     }
@@ -126,7 +140,7 @@
     canvas.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rotation += e.key === 'ArrowLeft' ? -.12 : .12; invalidate(); } });
     fetch('/nova/world/coastlines.json').then(r => { if (!r.ok) throw new Error('Coastline map unavailable'); return r.json(); }).then(data => { if (alive && Array.isArray(data)) { lines = data; landDots = makeLandDots(data); invalidate(); } }).catch(() => { if (alive) select(null); });
     if (!reduced) frame = requestAnimationFrame(draw);
-    return { setMode(value) { mode = value === 'map' ? 'map' : 'globe'; invalidate(); }, setPoints(value) { points = value || []; invalidate(); }, destroy() { alive = false; cancelAnimationFrame(frame); ro.disconnect(); } };
+    return { setMode(value) { mode = value === 'map' ? 'map' : 'globe'; invalidate(); }, setPoints(value) { points = value || []; invalidate(); }, focus(lon) { if (Number.isFinite(lon)) { rotation = -lon * rad; invalidate(); } }, destroy() { alive = false; cancelAnimationFrame(frame); ro.disconnect(); } };
   }
   window.NovaWorld = { create };
 })();

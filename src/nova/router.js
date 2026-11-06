@@ -14,6 +14,7 @@ const { createAutonomy } = require('./autonomy');
 const { createNativeVoice } = require('./native-voice');
 const { createGoalPlanner } = require('./goal-planner');
 const { createNativeScreen, screenVoiceIntent } = require('./native-screen');
+const { getSignals, getFlights, REGIONS } = require('./world-signals');
 
 const DEFAULT_SETTINGS = { assistantName: 'NOVA', userName: '', language: 'auto', persona: 'nova', customCharacterName: 'MY ASSISTANT', customInstructions: '', voiceEnabled: false, voiceGender: 'feminine', voiceURI: '', speechRate: 1, timezone: 'Asia/Dhaka' };
 const clean = (v, max) => typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, max) : '';
@@ -131,6 +132,12 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
       ai: aiState(workspaceId), nativeVoice: session.role === 'owner' ? { ...nativeVoice.status(workspaceId), supported: nativeVoice.supported() } : { state: 'off', supported: false }, nativeScreen: session.role === 'owner' ? { ...nativeScreen.status(workspaceId, session.token_hash), supported: nativeScreen.supported() } : { state: 'off', supported: false }, remotes: session.role === 'owner' ? store.remotes(workspaceId) : [], serverTime: Date.now() };
   }
   router.get('/world', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world' }), U.wrap(async (req, res) => res.json(await getWorldData({ force: req.query.refresh === '1' }))));
+  router.get('/world/signals', auth, U.rateLimit({ max: 25, windowMs: 60000, key: 'nova-world-signals' }), U.wrap(async (req, res) => res.json(await getSignals())));
+  router.get('/world/flights', auth, U.rateLimit({ max: 20, windowMs: 60000, key: 'nova-world-flights' }), U.wrap(async (req, res) => {
+    const region = typeof req.query.region === 'string' ? req.query.region : '';
+    if (!Object.hasOwn(REGIONS, region)) return res.status(400).json({ error: 'Choose a supported flight region.' });
+    res.json(await getFlights(region));
+  }));
   router.get('/sync', auth, (req, res) => { store.expireActions(); res.json(snapshot(req.nova.workspace_id, req.nova)); });
 
   router.patch('/settings', auth, owner, (req, res) => {

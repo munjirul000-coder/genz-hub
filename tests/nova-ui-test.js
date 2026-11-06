@@ -29,7 +29,12 @@ async function click(page, selector) {
     for (let node = el; node; node = node.parentElement) animations.push(...node.getAnimations().filter(a => a.playState === 'running' && a.effect.getTiming().iterations !== Infinity));
     await Promise.all(animations.map(a => a.finished.catch(() => {})));
   }, selector);
-  await page.click(selector);
+  try { await page.click(selector); } catch (err) {
+    // Background sync can replace a list between selector lookup and click.
+    // A detached node was not clicked; reacquire it once.
+    if (!/detached from document|Node is detached/.test(err.message)) throw err;
+    await page.waitForSelector(selector, { visible: true }); await page.click(selector);
+  }
 }
 async function text(page) { return page.evaluate(() => document.body.innerText); }
 async function go(page, view) { await page.evaluate(v => { location.hash = v; }, view); await sleep(350); }
@@ -56,8 +61,8 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await click(page, '[data-action="native-voice"]');
     ok('background voice requires explicit consent and explains privacy', (await text(page)).includes('I agree · start microphone') && (await text(page)).includes('Do not speak passwords') && (await text(page)).includes('not yet been tested on Windows hardware'));
     ok('background voice offers Bengali and English', await page.$$eval('#native-language option', options => options.map(o => o.value).join(',') === 'bn-BD,en-US'));
-    await click(page, '#native-confirm'); await page.waitForFunction(() => document.body.innerText.includes('available only on this Windows PC'), { timeout: 8000 });
-    ok('non-Windows start reports an honest error', (await text(page)).includes('available only on this Windows PC'));
+    await click(page, '#native-confirm'); await page.waitForFunction(() => { if (!document.body.innerText.includes('available only on this Windows PC')) return false; window.__nativeVoiceErrorSeen = true; return true; }, { timeout: 8000 });
+    ok('non-Windows start reports an honest error', await page.evaluate(() => window.__nativeVoiceErrorSeen === true));
     await click(page, '.modal [data-close]');
 
     await go(page, 'desktop'); await click(page, '[data-action="native-screen"]');
@@ -418,9 +423,12 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
 
     // World monitor uses sourced data and never invents events on failure.
     await page.evaluate(() => {
-      const realFetch = window.fetch; window.__worldOffline = false;
+      const realFetch = window.fetch; window.__worldOffline = false; window.__flightCalls = 0;
       window.fetch = (url, options) => {
-        if (new URL(String(url), location.href).pathname.endsWith('/world')) {
+        const path = new URL(String(url), location.href).pathname;
+        if (path.endsWith('/world/signals')) return Promise.resolve(Response.json(window.__worldOffline ? {fetchedAt:Date.now(),weather:{ok:false,items:[],error:'Weather offline'},storms:{ok:false,items:[],error:'Storm offline'},cyclones:{ok:false,items:[],error:'GDACS offline'}} : {fetchedAt:Date.now(),weather:{ok:true,items:[{name:'Dhaka',lat:23.81,lon:90.41,temperature:28,precipitation:1,wind:12,code:61,time:Date.now()}]},storms:{ok:true,items:[{name:'TEST STORM',classification:'TS',lat:20,lon:-50,time:Date.now(),wind:45,url:'https://www.nhc.noaa.gov/text/test.shtml'}]},cyclones:{ok:true,items:[{name:'Cyclone example',country:'Bangladesh',lat:21,lon:90,time:Date.now(),alert:'Orange',severity:'Strong winds',url:'https://www.gdacs.org/report.aspx?eventtype=TC'}]}}));
+        if (path.endsWith('/world/flights')) { window.__flightCalls++; return Promise.resolve(Response.json(window.__worldOffline ? {ok:false,error:'Flight offline',items:[]} : {ok:true,region:'Dhaka region',radiusNm:250,fetchedAt:Date.now(),items:[{id:'ABCDEF',callsign:'BG123',lat:24,lon:91,time:Date.now(),altitude:30000,speed:400,heading:90}]})); }
+        if (path.endsWith('/world')) {
           const data = window.__worldOffline ? { fetchedAt: Date.now(), quakes: { ok: false, items: [], error: 'Feed unavailable' }, news: { ok: false, items: [], error: 'Feed unavailable' } } : { fetchedAt: Date.now(), quakes: { ok: true, items: [{ lat: 23.7, lon: 90.4, magnitude: 4.2, time: 1700000000000, place: 'Near Dhaka', url: 'https://earthquake.usgs.gov/earthquakes/eventpage/test' }] }, news: { ok: true, sources: [{ name: 'BBC World', ok: true }, { name: 'The Guardian', ok: false }], items: [{ title: 'BBC test headline', url: 'https://www.bbc.com/news/test', time: 1700000000000, source: 'BBC World', image: 'https://ichef.bbci.co.uk/ace/test.jpg' }, { title: 'Guardian test headline', url: 'https://www.theguardian.com/world/test', time: 1700000000000, source: 'The Guardian', image: '' }] }, bangladesh: { ok: true, items: [{ title: 'বাংলাদেশ পরীক্ষা সংবাদ', url: 'https://www.jagonews24.com/national/news/123', time: Date.now(), source: 'Jago News 24', image: '' }] } };
           return Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } }));
         }
@@ -440,6 +448,20 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
       return cards.length === 2 && cards[0].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[0].querySelector('img')?.src === 'https://ichef.bbci.co.uk/ace/test.jpg' && cards[0].querySelector('img')?.getAttribute('referrerpolicy') === 'no-referrer' && cards[1].querySelector('.news-image').getBoundingClientRect().height > 50 && cards[1].textContent.includes('IMAGE UNAVAILABLE') && cards[1].textContent.includes('The Guardian') && document.querySelector('#news-source-status').textContent.includes('Unavailable');
     }));
     ok('Bangladesh headlines show their actual publisher and article link', (await text(page)).includes('বাংলাদেশ পরীক্ষা সংবাদ') && await page.$eval('#bangladesh-news a', a => a.href.startsWith('https://www.jagonews24.com/')));
+    await page.waitForSelector('[data-weather]'); await page.waitForSelector('[data-storm]');
+    ok('weather and storm source snapshots render with honest coverage and no flight request by default', (await text(page)).includes('Dhaka') && (await text(page)).includes('TEST STORM') && (await text(page)).includes('not Bangladesh or worldwide') && await page.evaluate(() => window.__flightCalls === 0));
+    await click(page, '[data-weather]'); ok('weather item shows model information and measured units', (await page.$eval('#world-selected', e => e.textContent)).includes('Open-Meteo model'));
+    await click(page, '[data-storm]'); ok('storm item shows official advisory link', await page.$eval('#world-selected a', a => a.href.startsWith('https://www.nhc.noaa.gov/')));
+    await click(page, '[data-cyclone]'); ok('global cyclone report discloses centroid and source', (await page.$eval('#world-selected',e => e.textContent)).includes('reported centroid') && await page.$eval('#world-selected a',a => a.href.startsWith('https://www.gdacs.org/')));
+    await click(page, '#wm-flight-toggle'); await page.waitForSelector('[data-flight]');
+    ok('flight tracking is opt-in and displays sourced positions, not invented routes', (await text(page)).includes('BG123') && await page.evaluate(() => window.__flightCalls === 1) && (await text(page)).includes('snapshots, not routes'));
+    await click(page, '[data-flight]'); ok('selected aircraft can be followed through snapshots', (await page.$eval('#world-selected',e => e.textContent)).includes('BG123') && await page.$eval('[data-flight]',e => e.getAttribute('aria-pressed') === 'true') && await page.$eval('#wm-flight-untrack',e => !e.hidden));
+    await click(page, '#world-refresh'); await page.waitForFunction(() => window.__flightCalls === 2 && document.querySelector('[data-flight]')?.getAttribute('aria-pressed') === 'true'); ok('selected aircraft stays followed on the next snapshot', (await page.$eval('#world-selected', e => e.textContent)).includes('BG123'));
+    await click(page, '#wm-flight-untrack'); ok('flight following can be stopped independently', await page.$eval('#wm-flight-untrack', e => e.hidden));
+    await click(page, '#wm-flight-toggle'); ok('flight layer can be turned off and is cleared', await page.$('[data-flight]') === null && await page.$eval('#wm-flight-toggle',e => e.getAttribute('aria-pressed') === 'false'));
+    await page.evaluate(() => { const real = window.fetch; window.__worldFetchBeforeLate = real; window.fetch = (url, opts) => new URL(String(url), location.href).pathname.endsWith('/world/flights') ? new Promise(resolve => { window.__lateFlight = () => resolve(Response.json({ok:true,region:'Dhaka region',radiusNm:250,fetchedAt:Date.now(),items:[{id:'ABCDEF',callsign:'LATE',lat:24,lon:91,time:Date.now()}]})); }) : real(url,opts); });
+    await click(page, '#wm-flight-toggle'); await page.waitForFunction(() => !!window.__lateFlight); await click(page, '#wm-flight-toggle'); await page.evaluate(() => { window.__lateFlight(); window.fetch = window.__worldFetchBeforeLate; }); await sleep(100);
+    ok('turning flight tracking off suppresses late responses', await page.$('[data-flight]') === null && !(await page.$eval('#world-selected', e => e.textContent)).includes('LATE'));
     ok('new NOVA brand logo loads in sidebar', await page.$eval('.brand-emblem', e => e.complete && e.naturalWidth > 0));
     await click(page, '[data-world-mode="map"]');
     ok('world monitor switches to 2D map', await page.$eval('[data-world-mode="map"]', el => el.classList.contains('active')));
@@ -457,6 +479,8 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     await page.emulateMediaFeatures([]);
     await page.evaluate(() => window.__worldOffline = true); await click(page, '#world-refresh');
     await page.waitForFunction(() => document.querySelector('#world-quakes')?.innerText.includes('Feed unavailable'));
+    await page.waitForFunction(() => document.querySelector('#wm-weather-list')?.innerText.includes('Weather offline'));
+    ok('offline weather and storm sources do not invent events', (await text(page)).includes('Weather offline') && (await text(page)).includes('Storm offline'));
     ok('world monitor shows source failure without fake events', await page.$('.world-event') === null && (await text(page)).includes('Feed unavailable'));
 
     // Command palette keyboard navigation.
