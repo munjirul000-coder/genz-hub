@@ -80,3 +80,8 @@ body{background:radial-gradient(ellipse at 82% 2%,#08243c 0,transparent 34%),rad
 
 #voice-language{max-width:100%;margin:5px;padding:6px 9px;background:#102333;color:#e8f7ff;border:1px solid #357184;border-radius:7px}
 .goal-plan-list{padding-left:22px;margin:12px 0;color:var(--text)}.goal-plan-list li{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;overflow-wrap:anywhere}.goal-plan-list li p{color:var(--muted);margin:5px 0;font-size:11px}.goal-plan-list li small{color:var(--mint);font-size:10px}
+
+/* Native-screen permission indicator stays visible across workspace views. */
+.native-screen-banner:not([hidden]) { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 20px; background:#78350f; color:#fff7ed; border-bottom:2px solid #fb923c; font-size:13px; }
+.native-screen-banner button { flex-shrink:0; }
+@media (max-width: 600px) { .native-screen-banner:not([hidden]) { align-items:flex-start; flex-direction:column; } }

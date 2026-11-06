@@ -31,14 +31,14 @@ function createNativeVoice({ onUtterance, sessionActive, spawnChild = spawn, pla
   };
   const stillValid = entry => { try { return current === entry && !entry.stopped && sessionActive(entry.workspace, entry.sessionHash); } catch { return false; } };
   function finish(entry) {
-    if (entry.finished) return; entry.finished = true; clearTimeout(entry.startTimer); clearTimeout(entry.killTimer); clearInterval(entry.checkTimer);
+    if (entry.finished) return; entry.finished = true; entry.stopped = true; entry.turnAbort?.abort(); clearTimeout(entry.startTimer); clearTimeout(entry.killTimer); clearInterval(entry.checkTimer);
     if (current === entry) current = null;
     if (!entry.started && entry.resolveStart) { entry.resolveStart({ ok: false, error: entry.error || errors.UNAVAILABLE }); entry.resolveStart = null; }
   }
   function stop(workspace) {
     const entry = current;
     if (!entry || (workspace && entry.workspace !== workspace) || entry.stopped) return false;
-    entry.stopped = true; entry.phase = 'stopping';
+    entry.stopped = true; entry.phase = 'stopping'; entry.turnAbort?.abort();
     try { entry.child.stdin.write(JSON.stringify({ type: 'stop' }) + '\n'); entry.child.stdin.end(); } catch { try { entry.child.kill(); } catch {} }
     entry.killTimer = setTimeout(() => { try { entry.child.kill(); } catch {} }, stopMs); entry.killTimer.unref?.();
     return true;
@@ -68,13 +68,13 @@ function createNativeVoice({ onUtterance, sessionActive, spawnChild = spawn, pla
     if (/(?:gsk_[A-Za-z0-9_-]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|\b(?:password|api[ -]?key|secret|token)\b|পাসওয়ার্ড|পাসওয়ার্ড)/i.test(text)) return say(entry, entry.language === 'bn-BD' ? 'অনুগ্রহ করে গোপন তথ্য বলে বা লিখে পাঠিও না।' : 'Please do not say passwords or secret keys aloud.');
     entry.recent = entry.recent.filter(t => Date.now() - t < 60000);
     if (entry.recent.length >= 10) return say(entry, entry.language === 'bn-BD' ? 'একটু পরে আবার বলো।' : 'Please wait a little before asking again.');
-    entry.recent.push(Date.now()); entry.phase = 'thinking';
+    entry.recent.push(Date.now()); entry.phase = 'thinking'; const abort = new AbortController(); entry.turnAbort = abort;
     try {
-      const reply = await onUtterance({ workspace: entry.workspace, sessionHash: entry.sessionHash, language: entry.language, text, isActive: () => stillValid(entry) });
+      const reply = await onUtterance({ workspace: entry.workspace, sessionHash: entry.sessionHash, language: entry.language, text, signal: abort.signal, isActive: () => stillValid(entry) });
       if (stillValid(entry)) say(entry, reply);
     } catch {
       if (stillValid(entry)) say(entry, entry.language === 'bn-BD' ? 'এখন উত্তর দিতে পারছি না। পরে আবার চেষ্টা করো।' : 'I cannot answer right now. Please try again.');
-    }
+    } finally { if (entry.turnAbort === abort) entry.turnAbort = null; }
   }
   function onLine(entry, line) {
     let event; try { event = JSON.parse(line); } catch { return fail(entry, errors.UNAVAILABLE); }

@@ -60,6 +60,16 @@ async function noOverflow(page, label) { const r = await page.evaluate(() => ({ 
     ok('non-Windows start reports an honest error', (await text(page)).includes('available only on this Windows PC'));
     await click(page, '.modal [data-close]');
 
+    await go(page, 'desktop'); await click(page, '[data-action="native-screen"]');
+    ok('native screen consent discloses provider, sensitive data and separate voice permission', (await text(page)).includes('connected AI vision provider') && (await text(page)).includes('Anyone nearby or a recording') && (await text(page)).includes('No clicks, settings changes'));
+    ok('native screen voice permission defaults off', !(await page.$eval('#native-screen-voice', el => el.checked)));
+    await click(page, '#native-screen-start'); await page.waitForFunction(() => document.body.innerText.includes('Native screen access works only on the Windows PC')); ok('native screen unsupported OS fails closed', (await text(page)).includes('Native screen access works only on the Windows PC'));
+    await click(page, '.modal [data-close]'); await go(page, 'overview');
+    await page.evaluate(() => { const original = window.fetch; window.__screenFetch = original; window.__screenStop = 0; window.fetch = async (url, opts) => { if (String(url).endsWith('/sync')) { const res = await original(url, opts); const body = await res.json(); body.nativeScreen = { state:'ready', owned:true, voiceRequests:false, model:'test', expiresAt:Date.now()+60000 }; return new Response(JSON.stringify(body), {headers:{'Content-Type':'application/json'}}); } if (String(url).endsWith('/native-screen/stop')) { window.__screenStop++; window.fetch = original; return new Response(JSON.stringify({ok:true}),{headers:{'Content-Type':'application/json'}}); } return original(url, opts); }; });
+    await page.waitForFunction(() => !document.querySelector('#native-screen-banner').hidden, { timeout: 10000 });
+    ok('screen permission is prominently indicated across views with Stop', (await text(page)).includes('Windows screen permission READY') && await page.$('[data-action="native-screen-stop"]') !== null);
+    await click(page, '[data-action="native-screen-stop"]'); await page.waitForFunction(() => window.__screenStop === 1); ok('banner Stop sends the screen revocation request', await page.evaluate(() => window.__screenStop === 1));
+    await page.waitForFunction(() => document.querySelector('#native-screen-banner').hidden, { timeout: 8000 });
     ok('root opens NOVA when NOVA_HOME=1', page.url().endsWith('/nova#overview'));
     ok('animated core renders', await page.$('#orb-canvas') !== null);
     await noOverflow(page, 'desktop overview');
