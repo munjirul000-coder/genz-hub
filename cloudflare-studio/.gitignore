@@ -1,0 +1,4 @@
+.wrangler/
+.dev.vars*
+.wrangler-test.jsonc
+node_modules/

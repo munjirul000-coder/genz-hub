@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Isolated preview</title></head><body><script>
+// This document is served with a sandbox CSP. It accepts only its own parent.
+addEventListener('message', function receive(e) {
+  if (e.source !== parent || !e.data || !e.data.files) return;
+  const f = e.data.files;
+  if (['index.html','styles.css','app.js'].some(n => typeof f[n] !== 'string' || f[n].length > 30000)) return;
+  removeEventListener('message', receive);
+  let html = f['index.html'].replace(/<link\b[^>]*href\s*=\s*(["'])styles\.css\1[^>]*>/gi, '').replace(/<script\b[^>]*src\s*=\s*(["'])app\.js\1[^>]*>\s*<\/script\s*>/gi, '');
+  html = html.replace(/<\/head>/i, () => '<style>' + f['styles.css'].replace(/<\/style/gi, '<\\/style') + '</style></head>');
+  html = html.replace(/<\/body>/i, () => '<scr' + 'ipt>' + f['app.js'].replace(/<\/script/gi, '<\\/script') + '</scr' + 'ipt></body>');
+  document.open(); document.write(html); document.close();
+});
+</script></body></html>
