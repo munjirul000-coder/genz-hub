@@ -1,6 +1,6 @@
-# NOVA Website Studio — Cloudflare beta
+# ELOVRA Website Studio — Cloudflare beta
 
-এটি laptop-এর সম্পূর্ণ NOVA নয়। একক owner-এর জন্য একটি আলাদা experimental **static website studio**: Groq দিয়ে plan ও তিনটি file generate/revise, isolated preview, এবং browser-local project storage। Laptop-এর chat/memory, world monitor, voice, desktop control, old projects বা encrypted Groq key এখানে নিজে থেকে আসে না। Backend, database, real login/payment, hosting বা generated website deploy করে না। Output কাজ বা নিরাপদ হওয়ার নিশ্চয়তা নেই; code manually review করো। JavaScript syntax বা বাস্তব browser interaction server-side পরীক্ষা করে না।
+এটি laptop-এর আগের NOVA app-এর সম্পূর্ণ online রূপ নয়। একক owner-এর জন্য একটি আলাদা experimental **static website studio**: Groq দিয়ে plan ও তিনটি file generate/revise, isolated preview, এবং browser-local project storage। Laptop-এর chat/memory, world monitor, voice, desktop control, old projects বা encrypted Groq key এখানে নিজে থেকে আসে না। Backend, database, real login/payment, hosting বা generated website deploy করে না। Output কাজ বা নিরাপদ হওয়ার নিশ্চয়তা নেই; code manually review করো। JavaScript syntax বা বাস্তব browser interaction server-side পরীক্ষা করে না।
 
 ## নিরাপত্তা ও storage
 

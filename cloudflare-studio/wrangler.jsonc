@@ -1,5 +1,5 @@
 {
-  "name": "nova-website-studio",
+  "name": "elovra-website-studio",
   "main": "worker.mjs",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
