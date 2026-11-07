@@ -9,7 +9,7 @@ const { Vault } = require('./vault');
 const { getWorldData } = require('./world');
 const { createLocalBridge, isLocalRequest } = require('./local-bridge');
 const { saveWebsite, listWebsites, readWebsite } = require('./projects');
-const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip } = require('./project-builder');
+const { generateProject, saveProject, readProject, listProjects, projectPreview, projectZip, projectChecks } = require('./project-builder');
 const { createAutonomy } = require('./autonomy');
 const { createNativeVoice } = require('./native-voice');
 const { createGoalPlanner } = require('./goal-planner');
@@ -250,9 +250,9 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
     const abort = new AbortController();
     res.on('close', () => { if (!res.writableEnded) abort.abort(); });
     try {
-      const result = await generateProject(workspaceAi(workspaceId), brief, abort.signal);
+      const result = await generateProject(workspaceAi(workspaceId), brief, abort.signal, null, { studio: req.body?.studio === true });
       if (abort.signal.aborted) return;
-      if (!store.workspace(workspaceId)) return res.status(401).json({ error: 'This workspace no longer exists.' });
+      if (!store.workspace(workspaceId) || (req.body?.studio === true && !store.ownerSessionActive(workspaceId, req.nova.token_hash))) return res.status(401).json({ error: 'Owner session expired or workspace no longer exists.' });
       if (!result.ok) return res.json(result);
       const project = await saveProject(dataDir, workspaceId, brief, result.files);
       if (!abort.signal.aborted) {
@@ -263,7 +263,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
           grant = { token: raw, expiresAt: Date.now() + 15 * 60000, remaining: 2 };
           projectGrants.set(key, { workspaceId, sessionHash: req.nova.token_hash, projectId: project.id, expiresAt: grant.expiresAt, remaining: 2 });
         }
-        res.json({ ok: true, project, ...(grant ? { grant } : {}) });
+        res.json({ ok: true, project, checks: projectChecks(result.files), ...(grant ? { grant } : {}) });
       }
     } finally { building.delete(workspaceId); }
   }));
@@ -298,6 +298,27 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
       if (!abort.signal.aborted) { found.grant.projectId = project.id; found.grant.remaining--; res.json({ ok: true, project, remaining: found.grant.remaining }); }
     } finally { building.delete(workspaceId); }
   }));
+  // Explicit, per-request studio revisions preserve the earlier project. No grant,
+  // filesystem path from the user, commands or deployment authority is accepted.
+  router.post('/builder/revise-manual', auth, owner, U.rateLimit({ max: 5, windowMs: 60000, key: 'nova-studio-revise' }), U.wrap(async (req, res) => {
+    const projectId = clean(req.body?.projectId, 50), changes = clean(req.body?.changes, 3000);
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Explicit revision approval is required.' });
+    if (!changes || SECRET_IN_CHAT.test(changes)) return res.status(400).json({ error: 'Describe the revision without passwords or API keys.' });
+    const workspaceId = req.nova.workspace_id;
+    if (building.has(workspaceId)) return res.status(409).json({ error: 'A project build is already running.' });
+    building.add(workspaceId); const abort = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+    try {
+      const previous = await readProject(dataDir, workspaceId, projectId);
+      if (!previous) return res.status(404).json({ error: 'Project not found.' });
+      const result = await generateProject(workspaceAi(workspaceId), `Requested changes: ${changes}`, abort.signal, previous.files, { studio: true });
+      if (abort.signal.aborted) return;
+      if (!store.ownerSessionActive(workspaceId, req.nova.token_hash)) return res.status(401).json({ error: 'Owner session expired or workspace no longer exists.' });
+      if (!result.ok) return res.json(result);
+      const project = await saveProject(dataDir, workspaceId, `Revision of ${previous.project.name}: ${changes}`, result.files);
+      if (!abort.signal.aborted) res.json({ ok: true, project, checks: projectChecks(result.files) });
+    } finally { building.delete(workspaceId); }
+  }));
   router.get('/builder/projects', auth, owner, U.wrap(async (req, res) => res.json({ projects: await listProjects(dataDir, req.nova.workspace_id) })));
   router.get('/builder/projects/:id/preview', auth, owner, U.wrap(async (req, res) => {
     const result = await readProject(dataDir, req.nova.workspace_id, req.params.id);
@@ -314,7 +335,7 @@ function createNovaRouter({ dataDir, agentFile, localBridgeOptions = {}, nativeV
   router.get('/builder/projects/:id', auth, owner, U.wrap(async (req, res) => {
     const result = await readProject(dataDir, req.nova.workspace_id, req.params.id);
     if (!result) return res.status(404).json({ error: 'Project not found.' });
-    res.json(result);
+    res.json({ ...result, checks: projectChecks(result.files) });
   }));
   // Only an explicitly shared, single still frame is sent. No capture or cloud
   // analysis runs automatically; image data is never stored in our database.

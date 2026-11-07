@@ -227,3 +227,7 @@ NOVA আপডেটের পর **Desktop control → Native screen permission
 **Desktop control → Windows power options** থেকে shutdown/restart/sleep বেছে আগে review, তারপর আলাদা confirm করা যায়। আগে কাজ save করো। Confirm করলে ৩০ সেকেন্ডের countdown; NOVA পেজ খোলা, দৃশ্যমান ও সক্রিয় রাখতে হবে। লাল **Cancel power request** দিয়ে থামাও। পেজ বন্ধ বা আড়াল হলে countdown বাতিলের চেষ্টা হয়; শেষ মুহূর্তে cancel ও Windows request-এর মধ্যে race হতে পারে। একবার Windows-এ request পৌঁছালে কাজ নাও থামতে পারে।
 
 এটি এখনো বাস্তব Windows laptop-এ পরীক্ষা হয়নি; tests simulated। প্রথম ধাপে এটি voice দিয়ে চালানো যায় না, অন্য desktop কাজ বা software install অনুমোদন করে না।
+
+### Website Studio দিয়ে বেশি বিস্তারিত static design
+
+আপডেটের পর **Conversation → Website studio** চাপো। Brand, রং/style, কী কী section এবং কোন বাটন কী করবে লিখে **Approve & build** দাও। NOVA পরিকল্পনা করে তিনটি static file তৈরির চেষ্টা করবে; কয়েক মিনিট ও একাধিক AI request লাগতে পারে। Preview-তে **Mobile** দেখে, চাইলে **Request changes** দিয়ে আলাদা অনুমতিতে নতুন version বানাও। পুরোনো version **Saved projects**-এ থাকে; ZIP-ও download করা যায়। Basic checks পূর্ণ পরীক্ষা নয়। Preview network ও form submission বন্ধ রাখে। Real login, payment, database, backend বা publish করার সুবিধা এটি নয়; AI-র code ব্যবহার করার আগে যাচাই করো। কোনো password বা API key description-এ দেবে না।
