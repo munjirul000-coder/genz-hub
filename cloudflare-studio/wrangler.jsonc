@@ -4,5 +4,6 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": false,
+  "keep_vars": true,
   "rules": [{ "type": "Text", "globs": ["**/*.html", "**/*.css", "**/public/app.js"], "fallthrough": true }]
 }

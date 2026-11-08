@@ -1,5 +1,6 @@
 // Phone-first, single-owner static website studio. It is not the local NOVA server.
-// Every route fails closed unless Cloudflare Access authenticated the configured owner.
+// Every route fails closed unless the configured owner is authenticated.
+import {githubAuth} from './github-auth.mjs';
 const LIMIT = 30000;
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const names = ['index.html','styles.css','app.js'];
@@ -48,12 +49,18 @@ async function generate(env, brief, previous, signal) {
 }
 export default {
   async fetch(request,env,ctx,assets = {}) {
-    const email=text(env.OWNER_EMAIL,254).toLowerCase();
-    if(!email || !ctx?.access || typeof ctx.access.getIdentity!=='function')return respond({error:'Cloudflare Access and OWNER_EMAIL must be configured before this app can be used.'},403);
-    let identity;try { identity=await ctx.access.getIdentity(); } catch { return respond({error:'Cloudflare Access authentication is required.'},403); }
-    if(!identity?.email || identity.email.toLowerCase()!==email)return respond({error:'This app is restricted to its owner.'},403);
+    if(env.AUTH_MODE==='github') {
+      const result=await githubAuth(request,env);
+      if(result)return result;
+    } else {
+      if(env.AUTH_MODE && env.AUTH_MODE!=='access')return respond({error:'Invalid authentication mode.'},503);
+      const email=text(env.OWNER_EMAIL,254).toLowerCase();
+      if(!email || !ctx?.access || typeof ctx.access.getIdentity!=='function')return respond({error:'Cloudflare Access and OWNER_EMAIL must be configured before this app can be used.'},403);
+      let identity;try { identity=await ctx.access.getIdentity(); } catch { return respond({error:'Cloudflare Access authentication is required.'},403); }
+      if(!identity?.email || identity.email.toLowerCase()!==email)return respond({error:'This app is restricted to its owner.'},403);
+    }
     const url=new URL(request.url);
-    if(url.pathname==='/api/status'&&request.method==='GET')return respond({configured:!!env.GROQ_API_KEY,mode:'browser-storage'});
+    if(url.pathname==='/api/status'&&request.method==='GET')return respond({configured:!!env.GROQ_API_KEY,mode:'browser-storage',authMode:env.AUTH_MODE==='github'?'github':'access'});
     if(url.pathname==='/api/build'&&request.method==='POST') {
       if(request.headers.get('origin')!==url.origin||request.headers.get('x-nova-studio')!=='1'||!/^application\/json(?:;|$)/i.test(request.headers.get('content-type')||''))return respond({error:'Request origin or content type rejected.'},403);
       if(!env.GROQ_API_KEY)return respond({error:'The Groq secret is not configured in Cloudflare.'},503);

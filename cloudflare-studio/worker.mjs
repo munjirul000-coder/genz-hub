@@ -1,5 +1,5 @@
 // Bundle assets in the Worker: Static Assets routes through an internal Worker
-// which does not forward ctx.access. Direct invocation is required to fail closed.
+// which does not forward ctx.access. Direct invocation keeps both auth modes gated.
 import app from './app.mjs';
 import html from './public/index.html';
 import preview from './public/preview.html';
