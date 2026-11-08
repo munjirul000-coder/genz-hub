@@ -1,0 +1,6 @@
+{
+  "name": "elovra-website-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Cloudflare Worker; no project dependencies."
+}
