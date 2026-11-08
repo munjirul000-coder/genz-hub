@@ -7,6 +7,8 @@ Every button in the UI is wired to a real backend endpoint.
 
 > **New: NOVA Personal AI Workspace** — an optional, isolated desktop-companion MVP lives at `/nova` (chat, memory, voice, focus, phone remote and permission-first Windows bridge). Run `npm run nova` to make it the home page, or double-click `START-NOVA.bat` on Windows. Groq can be connected inside Settings → Intelligence (no `.env` editing). See [`NOVA.md`](NOVA.md) and [`LAPTOP-SETUP.md`](LAPTOP-SETUP.md). The original social platform remains available at `/` with `npm start`.
 
+> **ELOVRA Website Studio (cloud beta)** — a separate, owner-protected static website builder. It does not replace or import the local NOVA app. Deployment and limitations: [`cloudflare-studio/README.md`](cloudflare-studio/README.md).
+
 ---
 
 ## Run it
