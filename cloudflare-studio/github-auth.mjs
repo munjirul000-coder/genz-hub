@@ -48,7 +48,7 @@ function settings(env) {
     return {origin:origin.origin,id:env.GITHUB_CLIENT_ID,secret:env.GITHUB_CLIENT_SECRET,owner:env.GITHUB_OWNER_ID};
   }catch{return null;}
 }
-const loginPage = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ELOVRA — লগইন</title><style>body{font:18px system-ui;background:#101423;color:#f5f5ff;display:grid;place-items:center;min-height:90vh;margin:0}main{padding:2rem;max-width:28rem}a{display:inline-block;background:#b4ff6b;color:#12200a;padding:1rem 1.5rem;border-radius:1rem;font-weight:700;text-decoration:none}</style></head><body><main><h1>ELOVRA</h1><p>শুধু অনুমোদিত মালিকের GitHub অ্যাকাউন্ট দিয়ে প্রবেশ করা যাবে।</p><a href="/auth/github">GitHub দিয়ে প্রবেশ করো</a></main></body></html>`;
+const loginPage = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ELOVRA — লগইন</title><style>body{font:18px system-ui;background:#101423;color:#f5f5ff;display:grid;place-items:center;min-height:90vh;margin:0}main{padding:2rem;max-width:28rem}a{display:inline-block;background:#b4ff6b;color:#12200a;padding:1rem 1.5rem;border-radius:1rem;font-weight:700;text-decoration:none}</style></head><body><main><h1>ELOVRA</h1><p>শুধু অনুমোদিত মালিকের GitHub অ্যাকাউন্ট দিয়ে প্রবেশ করা যাবে।</p>__LOGIN_ERROR__<a href="/auth/github">GitHub দিয়ে প্রবেশ করো</a></main></body></html>`;
 // Returns null only for a verified owner session; otherwise a complete response.
 export async function githubAuth(request,env) {
   const config=settings(env);if(!config)return json('GitHub login is not configured.',503);
@@ -65,18 +65,23 @@ export async function githubAuth(request,env) {
   if(url.pathname==='/auth/github/callback' && request.method==='GET') {
     const clear=cookie(stateCookie,'',0), value=await open(config.secret,'oauth',cookies(request,stateCookie));
     const states=url.searchParams.getAll('state'),codes=url.searchParams.getAll('code');
-    if(!value || states.length!==1 || codes.length!==1 || states[0]!==value.state || typeof value.verifier!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(value.verifier) || !/^[A-Za-z0-9_-]{1,512}$/.test(codes[0]))return redirect('/?login=failed',[clear]);
+    if(!value || states.length!==1 || codes.length!==1 || states[0]!==value.state || typeof value.verifier!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(value.verifier) || !/^[A-Za-z0-9_-]{1,512}$/.test(codes[0]))return redirect('/?login=failed&stage=state',[clear]);
+    let stage='provider';
     try {
       const tokenResponse=await fetch('https://github.com/login/oauth/access_token',{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:config.id,client_secret:config.secret,code:codes[0],redirect_uri:callback,code_verifier:value.verifier})});
+      stage='token';
       if(!tokenResponse.ok)throw new Error('Token request failed');
       const token=await tokenResponse.json();
+      const knownErrors=['incorrect_client_credentials','bad_verification_code','redirect_uri_mismatch','bad_redirect_uri','bad_code_verifier','unverified_user_email','access_denied'];
+      if(typeof token.error==='string' && knownErrors.includes(token.error))stage='token-'+token.error;
       if(typeof token.access_token!=='string'||!token.access_token||token.access_token.length>1024)throw new Error('Missing token');
+      stage='identity';
       const userResponse=await fetch('https://api.github.com/user',{redirect:'error',signal:AbortSignal.timeout(15000),headers:{Accept:'application/vnd.github+json','User-Agent':'ELOVRA-Website-Studio',Authorization:'Bearer '+token.access_token}});
       if(!userResponse.ok)throw new Error('Identity request failed');
-      const user=await userResponse.json();if(!Number.isSafeInteger(user.id)||String(user.id)!==config.owner)throw new Error('Not owner');
+      const user=await userResponse.json();stage='owner';if(!Number.isSafeInteger(user.id)||String(user.id)!==config.owner)throw new Error('Not owner');
       const iat=Math.floor(Date.now()/1000),session=await seal(config.secret,'session',{iat,exp:iat+28800,owner:config.owner,nonce:random(16)});
       return redirect('/',[clear,cookie(sessionCookie,session,28800)]);
-    } catch {return redirect('/?login=failed',[clear]);}
+    } catch {return redirect('/?login=failed&stage='+stage,[clear]);}
   }
   if(url.pathname==='/auth/logout' && request.method==='POST') {
     if(request.headers.get('Origin')!==config.origin)return json('Invalid origin.');
@@ -84,6 +89,11 @@ export async function githubAuth(request,env) {
   }
   const session=await open(config.secret,'session',cookies(request,sessionCookie));
   if(session && session.owner===config.owner && session.exp-session.iat<=28800)return null;
-  if(url.pathname==='/' && request.method==='GET')return new Response(loginPage,{headers:{...security,'Content-Type':'text/html; charset=utf-8'}});
+  if(url.pathname==='/' && request.method==='GET') {
+    const stages=['state','provider','token','identity','owner','token-incorrect_client_credentials','token-bad_verification_code','token-redirect_uri_mismatch','token-bad_redirect_uri','token-bad_code_verifier','token-unverified_user_email','token-access_denied'];
+    const stage=url.searchParams.get('stage');
+    const error=url.searchParams.get('login')==='failed' ? `<p role="alert">লগইন হয়নি। আবার চেষ্টা করো। ${stages.includes(stage)?'('+stage+')':''}</p>` : '';
+    return new Response(loginPage.replace('__LOGIN_ERROR__',error),{headers:{...security,'Content-Type':'text/html; charset=utf-8'}});
+  }
   return json('Owner login is required.',401);
 }

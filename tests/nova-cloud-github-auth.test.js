@@ -30,7 +30,7 @@ test('OAuth state, PKCE and redirect are fixed and reject tampering',async()=>{
   assert.equal(started.location.searchParams.get('code_challenge_method'),'S256');assert.equal(started.location.searchParams.get('code_challenge').length,43);
   assert.match(started.response.headers.getSetCookie()[0],/HttpOnly; Secure; SameSite=Lax; Max-Age=300/);
   for(const r of [await callback(started,'wrong'),await run(req('/auth/github/callback?code=x&state='+started.state)),await run(req('/auth/github/callback?code=x&state='+started.state,{headers:{cookie:started.cookie+'x'}})),await run(req('/auth/github/callback?code=x&code=y&state='+started.state,{headers:{cookie:started.cookie}}))]){
-    assert.equal(r.headers.get('location'),'/?login=failed');assert.match(r.headers.getSetCookie()[0],/Max-Age=0/);
+    assert.equal(r.headers.get('location'),'/?login=failed&stage=state');assert.match(r.headers.getSetCookie()[0],/Max-Age=0/);
   }
   assert.equal(githubRequests.length,0);
 });
@@ -50,7 +50,7 @@ test('verified owner gets a short-lived signed HttpOnly session and can use the 
   assert.equal((await run(req('/api/status',{headers:{cookie:session}}),{...env,GITHUB_CLIENT_SECRET:'a'.repeat(40)})).status,401);
 });
 test('other GitHub accounts and provider failures never receive a session',async()=>{
-  for(const value of ['other','network']){mode=value;const result=await callback(await start());assert.equal(result.headers.get('location'),'/?login=failed');assert.ok(!result.headers.getSetCookie().some(c=>c.startsWith(sessionName)));}
+  for(const value of ['other','network']){mode=value;const result=await callback(await start());assert.equal(result.headers.get('location'),'/?login=failed&stage='+(value==='other'?'owner':'provider'));assert.ok(!result.headers.getSetCookie().some(c=>c.startsWith(sessionName)));}
   mode='owner';
 });
 
@@ -61,3 +61,5 @@ test('expired and future-issued signed sessions are rejected',async()=>{
     assert.equal((await run(req('/api/status',{headers:{cookie:await make(payload)}}))).status,401);
   }
 });
+
+test('login failure displays only a safe diagnostic without echoing input',async()=>{const r=await run(req('/?login=failed&stage=owner'));assert.match(await r.text(),/লগইন হয়নি.*owner/);const x=await run(req('/?login=failed&stage=%3Cscript%3Eevil'));assert.doesNotMatch(await x.text(),/<script>evil/);});
