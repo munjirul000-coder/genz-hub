@@ -7,7 +7,7 @@ const req=(path,options={})=>new Request('https://studio.example'+path,options);
 const run=(request,e=env)=>app.fetch(request,e,{},assets);
 const pair=(headers,name)=>headers.getSetCookie().find(s=>s.startsWith(name+'=')).split(';')[0];
 const stateName='__Host-elovra-oauth',sessionName='__Host-elovra-session';
-before(async()=>{({default:app}=await import('../cloudflare-studio/app.mjs'));oldFetch=global.fetch;global.fetch=async(url,options)=>{githubRequests.push({url,options});assert.equal(options.redirect,'error');if(mode==='network')throw new Error('Network');if(url==='https://github.com/login/oauth/access_token')return Response.json({access_token:'fake-github-token'});assert.equal(url,'https://api.github.com/user');return Response.json({id:mode==='owner'?317030294:42});};});
+before(async()=>{({default:app}=await import('../cloudflare-studio/app.mjs'));oldFetch=global.fetch;global.fetch=async(url,options)=>{githubRequests.push({url,options});assert.equal(options.redirect,'manual');if(mode==='network')throw new Error('Network');if(mode==='redirect')return new Response(null,{status:302,headers:{location:'https://evil.example'}});if(url==='https://github.com/login/oauth/access_token')return Response.json({access_token:'fake-github-token'});assert.equal(url,'https://api.github.com/user');return Response.json({id:mode==='owner'?317030294:42});};});
 after(()=>{global.fetch=oldFetch;});
 async function start() {const response=await run(req('/auth/github'));assert.equal(response.status,303);const location=new URL(response.headers.get('location'));return {response,location,state:location.searchParams.get('state'),cookie:pair(response.headers,stateName)};}
 async function callback(started,state=started.state){return run(req('/auth/github/callback?code=sample_code&state='+state,{headers:{cookie:started.cookie}}));}
@@ -50,7 +50,7 @@ test('verified owner gets a short-lived signed HttpOnly session and can use the 
   assert.equal((await run(req('/api/status',{headers:{cookie:session}}),{...env,GITHUB_CLIENT_SECRET:'a'.repeat(40)})).status,401);
 });
 test('other GitHub accounts and provider failures never receive a session',async()=>{
-  for(const value of ['other','network']){mode=value;const result=await callback(await start());assert.equal(result.headers.get('location'),'/?login=failed&stage='+(value==='other'?'owner':'provider'));assert.ok(!result.headers.getSetCookie().some(c=>c.startsWith(sessionName)));}
+  for(const value of ['other','network','redirect']){mode=value;const result=await callback(await start());assert.equal(result.headers.get('location'),'/?login=failed&stage='+(value==='other'?'owner':value==='redirect'?'token':'provider'));assert.ok(!result.headers.getSetCookie().some(c=>c.startsWith(sessionName)));}
   mode='owner';
 });
 

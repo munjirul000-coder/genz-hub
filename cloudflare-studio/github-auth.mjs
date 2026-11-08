@@ -68,7 +68,9 @@ export async function githubAuth(request,env) {
     if(!value || states.length!==1 || codes.length!==1 || states[0]!==value.state || typeof value.verifier!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(value.verifier) || !/^[A-Za-z0-9_-]{1,512}$/.test(codes[0]))return redirect('/?login=failed&stage=state',[clear]);
     let stage='provider';
     try {
-      const tokenResponse=await fetch('https://github.com/login/oauth/access_token',{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:config.id,client_secret:config.secret,code:codes[0],redirect_uri:callback,code_verifier:value.verifier})});
+      // Workers does not implement redirect:'error'. Manual plus an ok check
+      // rejects redirects without forwarding client credentials to another URL.
+      const tokenResponse=await fetch('https://github.com/login/oauth/access_token',{method:'POST',redirect:'manual',signal:AbortSignal.timeout(15000),headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:config.id,client_secret:config.secret,code:codes[0],redirect_uri:callback,code_verifier:value.verifier})});
       stage='token';
       if(!tokenResponse.ok)throw new Error('Token request failed');
       const token=await tokenResponse.json();
@@ -76,7 +78,7 @@ export async function githubAuth(request,env) {
       if(typeof token.error==='string' && knownErrors.includes(token.error))stage='token-'+token.error;
       if(typeof token.access_token!=='string'||!token.access_token||token.access_token.length>1024)throw new Error('Missing token');
       stage='identity';
-      const userResponse=await fetch('https://api.github.com/user',{redirect:'error',signal:AbortSignal.timeout(15000),headers:{Accept:'application/vnd.github+json','User-Agent':'ELOVRA-Website-Studio',Authorization:'Bearer '+token.access_token}});
+      const userResponse=await fetch('https://api.github.com/user',{redirect:'manual',signal:AbortSignal.timeout(15000),headers:{Accept:'application/vnd.github+json','User-Agent':'ELOVRA-Website-Studio',Authorization:'Bearer '+token.access_token}});
       if(!userResponse.ok)throw new Error('Identity request failed');
       const user=await userResponse.json();stage='owner';if(!Number.isSafeInteger(user.id)||String(user.id)!==config.owner)throw new Error('Not owner');
       const iat=Math.floor(Date.now()/1000),session=await seal(config.secret,'session',{iat,exp:iat+28800,owner:config.owner,nonce:random(16)});
