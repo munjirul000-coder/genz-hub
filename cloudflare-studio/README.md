@@ -12,7 +12,7 @@
 
 ## GitHub থেকে Cloudflare-এ deploy (কোনো credential chat-এ নয়)
 
-Cloudflare Dashboard-এর বর্তমান UI সময়ের সাথে বদলাতে পারে:
+Cloudflare Dashboard-এর বর্তমান UI সময়ের সাথে বদলাতে পারে। Build details-এ branch, root directory এবং commit যাচাই করো; ভুল branch বা `/` root থেকে build হলে অন্য site deploy হতে পারে।
 
 1. **Compute → Workers & Pages → Create application → Import a repository / Connect to Git**। GitHub-এ স্বাভাবিক authorization দিয়ে `munjirul000-coder/genz-hub` repository বেছে নাও। শুধু প্রয়োজনীয় repo access দাও। Production branch `arena/549dbb1e-genz-hub` বেছে নাও; `main`-এ এই version নাও থাকতে পারে।
 2. Root directory: `cloudflare-studio`। Build command ফাঁকা; deploy command: `npx --yes wrangler@4.158.0 deploy`। Build environment-এ `NODE_VERSION=22` দাও (Wrangler 4.158.0-এর Node 22+ প্রয়োজন); এই root-এ `.node-version`-ও 22 নির্দিষ্ট করে। Free plan বেছে deployment শুরু করো। Preview deployments বন্ধ রাখো। Configured না হওয়া পর্যন্ত Worker 403 দেখাবে—এটা expected।
