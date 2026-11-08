@@ -30,7 +30,7 @@ Cloudflare Zero Trust Free onboarding-এ payment method চাইতে পা�
 4. `GROQ_API_KEY` আলাদা **Secret** হিসেবে যোগ করো। Credentials কোনো ব্যক্তি বা AI-কে না পাঠিয়ে কেবল নিজের dashboard-এ দাও।
 5. Owner GitHub login যাচাই করো; অন্য GitHub account ও incognito session দিয়ে Studio এবং API-তে ঢোকা যায় না তা যাচাই করো। Session signed, HTTP-only cookie, সর্বোচ্চ আট ঘণ্টা। Log out এই browser-এর cookie মুছে; চুরি হওয়া session সঙ্গে সঙ্গে revoke করতে GitHub client secret বদলাতে হবে।
 
-এই authentication Cloudflare Access-এর বদলি experimental app-level protection, সমতুল্য security audit বা MFA নয়। GitHub-এ MFA রাখা এবং strong account security জরুরি। Provider বা Worker failure এবং free quota এখনও বাস্তবে পরীক্ষা হয়নি। পুরোনো Cloudflare Access mode default-ই থাকে যতক্ষণ `AUTH_MODE=github` explicit না দেওয়া হয়।
+এই authentication Cloudflare Access-এর বদলি experimental app-level protection, সমতুল্য security audit বা MFA নয়। GitHub-এ MFA রাখা এবং strong account security জরুরি। Provider বা Worker failure এবং free quota এখনও বাস্তবে পরীক্ষা হয়নি। এ deployment-এর Wrangler config-এ `AUTH_MODE=github` এবং public app settings দেওয়া আছে; client secret না থাকলে এটি fail closed। Access mode চাইলে config-এ mode বদলে OWNER_EMAIL এবং Access policy ঠিক করতে হবে।
 
 ## Local tests (simulated Access, GitHub and AI)
 

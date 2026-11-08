@@ -5,5 +5,11 @@
   "workers_dev": true,
   "preview_urls": false,
   "keep_vars": true,
+  "vars": {
+    "AUTH_MODE": "github",
+    "APP_ORIGIN": "https://elovra-website-studio.munjirul000.workers.dev",
+    "GITHUB_CLIENT_ID": "Ov23lipEz00ydEfvjL4e",
+    "GITHUB_OWNER_ID": "317030294"
+  },
   "rules": [{ "type": "Text", "globs": ["**/*.html", "**/*.css", "**/public/app.js"], "fallthrough": true }]
 }
